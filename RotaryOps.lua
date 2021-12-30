@@ -2,15 +2,37 @@ RotaryOps = {}
 RotaryOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
 RotaryOps.conflict_started = false
 RotaryOps.ground_speed = 10
-trigger.action.outText("ROTARY OPS STARTED", 5)
+RotaryOps.std_phonetic_names = true
+trigger.action.outText("ROTOR OPS STARTED", 5)
+env.info("ROTOR OPS STARTED")
 
 local staged_units
+local commandDB = {}
 
-env.info("ROTARY OPS STARTED")
+local gameMsgs = {
+  push = {
+    {'ALL UNITS, PUSH TO FIRST ZONE!', '.wav'},
+    {'ALL UNITS, PUSH TO ALPHA!', '.wav'},
+    {'ALL UNITS, PUSH TO BRAVO!', '.wav'},
+    {'ALL UNITS, PUSH TO CHARLIE!', '.wav'},
+  },
+  fallback = {
+    {'ALL UNITS, FALL BACK!', '.wav'},
+    {'ALL UNITS, FALL BACK TO ALPHA!', '.wav'},
+    {'ALL UNITS, FALL BACK TO BRAVO!', '.wav'},
+    {'ALL UNITS, FALL BACK TO CHARLIE!', '.wav'},
+  },
+  
+  
+    
+}
+
+--[[ UTILITY FUNCTIONS ]]--
 
 local function debugMsg(text)
   trigger.action.outText(text, 5)
 end
+
 
 local function debugTable(table)
   trigger.action.outText("dbg: ".. mist.utils.tableShow(table), 5) 
@@ -22,9 +44,11 @@ local function dispMsg(text)
   return text
 end
 
+
 local function tableHasKey(table,key)
     return table[key] ~= nil
 end
+
 
 local function hasValue (tab, val)
     for index, value in ipairs(tab) do
@@ -34,7 +58,6 @@ local function hasValue (tab, val)
     end
     return false
 end
-
 
 local function getObjectVolume(obj)
   local length = (obj:getDesc().box.max.x + math.abs(obj:getDesc().box.min.x))
@@ -59,12 +82,30 @@ function RotaryOps.groupsFromUnits(units)
   return groups
 end
 
-function RotaryOps.gameMsg(text)
-  trigger.action.outText(text, 5, true)
+
+local function gameMsg(event, _index)
+  debugTable(event)
+  local index = 1
+  if _index ~= nill then
+    index = _index  
+  end
+  if tableHasKey(event, index) then
+    trigger.action.outText(event[index][1], 5, true)
+  else env.info("ROTOR OPS could not find entry for "..key)
+  end
 end
 
+
+
+
+
+
+
+
+
+
 function RotaryOps.spawnInfantryOnGrp(grp, src_grp_name, behavior) --allow to spawn on other group units
-  trigger.action.outText("attempting to spawn at "..grp:getUnit(1):getTypeName(), 5)
+  debugMsg("attempting to spawn at "..grp:getUnit(1):getTypeName())
   local vars = {} 
   vars.gpName = src_grp_name
   vars.action = 'clone' 
@@ -86,7 +127,7 @@ function RotaryOps.spawnInfantryOnGrp(grp, src_grp_name, behavior) --allow to sp
     if behavior == AGGRESSIVE then
       RotaryOps.chargeEnemy({grp = new_grp})
     end
-  else trigger.action.outText("Infantry failed to spawn. ", 5)  
+  else debugMsg("Infantry failed to spawn. ")  
   end
 end
 
@@ -143,7 +184,7 @@ function RotaryOps.chargeEnemy(vars)
  end
  --default path if no units found
  if false then
-   trigger.action.outText("group going back to origin", 5)  
+   debugMsg("group going back to origin")  
    path[1] = mist.ground.buildWP(start_point, '', 5) 
    path[2] = mist.ground.buildWP(vars.spawn_point, '', 5)
    
@@ -156,7 +197,7 @@ end
 
 
 function RotaryOps.patrolRadius(vars)
- trigger.action.outText("patrol radius: "..mist.utils.tableShow(vars), 5) 
+ debugMsg("patrol radius: "..mist.utils.tableShow(vars)) 
  local grp = vars.grp
  local search_radius = vars.radius or 100
  local first_valid_unit
@@ -189,7 +230,7 @@ function RotaryOps.patrolRadius(vars)
     if getObjectVolume(foundItem) > object_vol_thresh then
       foundUnits[#foundUnits + 1] = foundItem
       --trigger.action.outText("valid cover item: "..foundItem:getTypeName(), 5) 
-    else trigger.action.outText("object not large enough: "..foundItem:getTypeName(), 5) 
+    else --debugMsg("object not large enough: "..foundItem:getTypeName()) 
     end
   else --trigger.action.outText("object not the right type", 5)  
   end
@@ -223,72 +264,7 @@ function RotaryOps.patrolRadius(vars)
 end
 
 
-function RotaryOps.knowEnemy(vars)
- --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
- local grp = vars.grp
- local search_radius = vars.radius or 5000
- ----
- local first_valid_unit
- if grp:isExist() ~= true then return end
- for index, unit in pairs(grp:getUnits())
- do
-   if unit:isExist() == true then
-     first_valid_unit = unit
-     break
-   else --trigger.action.outText("a unit no longer exists", 15) 
-   end 
- end
- ----
- 
- if first_valid_unit == nil then return end
- local start_point = first_valid_unit:getPoint()
- if not vars.spawn_point then vars.spawn_point = start_point end
 
- local enemy_coal
- if grp:getCoalition() == 1 then enemy_coal = 2 end
- if grp:getCoalition() == 2 then enemy_coal = 1 end
-
- --local sphere = trigger.misc.getZone('town')
- local volS = {
-   id = world.VolumeType.SPHERE,
-   params = {
-     point = grp:getUnit(1):getPoint(),  --check if exists, maybe itterate through grp
-     radius = search_radius
-   }
- }
- local enemy_unit
- local path = {} 
- local ifFound = function(foundItem, val)
-  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
-  if foundItem:getCoalition() == enemy_coal then
-    enemy_unit = foundItem
-    trigger.action.outText("found enemy! "..foundItem:getTypeName(), 5) 
-    
-    path[1] = mist.ground.buildWP(start_point, '', 5) 
-    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
-    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5)
-    grp:getUnit(1):getController():knowTarget(enemy_unit, true, true)
-    
-     
-  else 
-
-    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
-  end
-  
- return true
- end
- --default path if no units found
- if false then
-   trigger.action.outText("group going back to origin", 5)  
-   path[1] = mist.ground.buildWP(start_point, '', 5) 
-   path[2] = mist.ground.buildWP(vars.spawn_point, '', 5)
-   
- end
- world.searchObjects(Object.Category.UNIT, volS, ifFound)
- --mist.goRoute(grp, path)
- local id = timer.scheduleFunction(RotaryOps.knowEnemy, vars, timer.getTime() + 15)
-
-end
 
 
 ------------------------------------------
@@ -297,7 +273,7 @@ end
 
 RotaryOps.zones = {}
 RotaryOps.active_zone = ""
-RotaryOps.active_zone_index = 1
+RotaryOps.active_zone_index = 2
 RotaryOps.active_zone_flag = 1
 RotaryOps.conflict = {
   aggressor = 'blue',
@@ -329,7 +305,9 @@ function RotaryOps.assessUnitsInZone(var)
    local blue_infantry = RotaryOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotaryOps.sortOutInfantry(blue_ground_units).not_infantry
    
-   trigger.action.outText("[BATTLE FOR "..RotaryOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
+   if RotaryOps.conflict_started then
+     trigger.action.outText("[BATTLE FOR "..RotaryOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
+   end
    local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
 local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
@@ -349,7 +327,7 @@ function RotaryOps.drawZones(zones)  --should be drawZones and itterate through 
     local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
     local font_size = 20
     local read_only = false
-    local text = zone.outter_zone_name
+    local text = index..". "..zone.outter_zone_name
     if zone.outter_zone_name == RotaryOps.active_zone then
       color = {1, 1, 1, 0.5}
       fill_color = {1, 0, 1, 0.1}
@@ -382,7 +360,7 @@ RotaryOps.addPilots(1)
 function RotaryOps.sendUnitsToZone(units_table, zone)
   local groups = RotaryOps.groupsFromUnits(units_table)
   for index, group in pairs(groups) do
-    debugMsg("sending to zone: "..zone.." grp: "..group)
+    --debugMsg("sending to zone: "..zone.." grp: "..group)
     mist.groupToPoint(group, zone, 'cone', nil, nil, false)
   end
 end
@@ -402,10 +380,14 @@ end
 function RotaryOps.startConflict()
   if RotaryOps.conflict_started then return end 
   RotaryOps.conflict_started = true
-  missionCommands.removeItem({[1] = "Start conflict"}) --not working since mission commands is not global
   
-  RotaryOps.gameMsg("THE BATTLE BEGINS")
+  --make some changes to the radio menu
+  local conflict_zones_menu = commandDB['conflict_zones_menu']
+  missionCommands.removeItem(commandDB['start_conflict']) 
+  commandDB['push_zone'] = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotaryOps.pushZone)
+  commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotaryOps.fallBack)
   
+  gameMsg(gameMsgs.push, 2)
   staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotaryOps.zones[1].outter_zone_name})
   RotaryOps.sendUnitsToZone(staged_units, RotaryOps.zones[2].outter_zone_name)
 end
@@ -428,9 +410,13 @@ function RotaryOps.setActiveZone(value)  --this should accept the zone index so 
     ctld.deactivatePickupZone(RotaryOps.zones[new_index].outter_zone_name)
     RotaryOps.active_zone_index = new_index
     
+    
   end
+  
+  if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
+  if new_index > old_index then gameMsg(gameMsgs.push, new_index) end
   RotaryOps.active_zone = RotaryOps.zones[new_index].outter_zone_name
-  trigger.action.outText("active zone: "..RotaryOps.active_zone.."  old zone: "..RotaryOps.zones[old_index].outter_zone_name, 5)  
+  --debugMsg("active zone: "..RotaryOps.active_zone.."  old zone: "..RotaryOps.zones[old_index].outter_zone_name)  
   trigger.action.setUserFlag(RotaryOps.active_zone_flag, RotaryOps.active_zone_index)
 end
 
@@ -476,22 +462,39 @@ end
 
 
 function RotaryOps.setupRadioMenu()
-  local conflict_zones_menu = missionCommands.addSubMenu( "ROTOR OPS")
+  commandDB['conflict_zones_menu'] = missionCommands.addSubMenu( "ROTOR OPS")
+  local conflict_zones_menu = commandDB['conflict_zones_menu']
 
-  local push_zone = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotaryOps.pushZone)
-  local fall_back = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotaryOps.fallBack)
-  local start_conflict = missionCommands.addCommand( "Start conflict"  , conflict_zones_menu , RotaryOps.startConflict)
-  local log_something = missionCommands.addCommand( "Log something"  , conflict_zones_menu , RotaryOps.logSomething)
+
+  commandDB['start_conflict'] = missionCommands.addCommand( "Start conflict"  , conflict_zones_menu , RotaryOps.startConflict)
+  --commandDB['log_something'] = missionCommands.addCommand( "Log something"  , conflict_zones_menu , RotaryOps.logSomething)
 end
 RotaryOps.setupRadioMenu()
 
+function RotaryOps.spawnInfantryAtZone(vars)
+  local side = vars.side
+  local inf = vars.inf
+  local zone = vars.zone
+  local radius = vars.radius
+  ctld.spawnGroupAtTrigger(side, inf, zone, radius)
+end
 
-function RotaryOps.addZone(_outter_zone_name, _vars) 
-  table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name, vars = _vars})
+
+function RotaryOps.addZone(_outter_zone_name) 
+  table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name})
   RotaryOps.drawZones(RotaryOps.zones)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
   ctld.pickupZones[#ctld.pickupZones + 1] = { _outter_zone_name, "blue", -1, "yes", 0 }  --should be set as innactive to start, can we dynamically change sides?
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotaryOps.zones), 5)  
+  if infantry_grps ~= nil then 
+    local vars = {
+      side = "red",
+      inf = infantry_grps,
+      zone = _outter_zone_name,
+      radius = 1000,
+    }
+    local id = timer.scheduleFunction(RotaryOps.spawnInfantryAtZone, vars, timer.getTime() + 5)
+  end
 end
 
 function RotaryOps.setupConflict(_active_zone_flag)
