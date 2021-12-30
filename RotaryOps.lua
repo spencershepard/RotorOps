@@ -268,6 +268,7 @@ end
 RotaryOps.zones = {}
 RotaryOps.active_zone = ""
 RotaryOps.active_zone_index = 1
+RotaryOps.active_zone_flag = 1
 RotaryOps.conflict = {
   aggressor = 'blue',
   blue_forces_flag = 99,
@@ -349,21 +350,34 @@ end
 RotaryOps.addPilots(1)
 
 function RotaryOps.pushZone()
-  RotaryOps.active_zone_index = RotaryOps.active_zone_index + 1
-  if RotaryOps.active_zone_index > #RotaryOps.zones then 
-    RotaryOps.active_zone_index = #RotaryOps.zones 
-  end
-  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
+  RotaryOps.setActiveZone(1)
 end
 
 function RotaryOps.fallBack()
-  RotaryOps.active_zone_index = RotaryOps.active_zone_index - 1
-  if RotaryOps.active_zone_index < 1 then 
-    RotaryOps.active_zone_index = 1 
-  end
-  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
+  RotaryOps.setActiveZone(-1)
 end
 
+function RotaryOps.setActiveZone(value)  --this should accept the zone index so that we can set active value to any zone and set up zones appropriately
+  local old_index = RotaryOps.active_zone_index
+  local new_index = RotaryOps.active_zone_index + value
+  if new_index > #RotaryOps.zones then 
+    new_index = #RotaryOps.zones 
+  end
+  if new_index < 1 then 
+    new_index = 1 
+  end
+  
+  if new_index ~= old_index then  --the active zone is changing
+    
+    ctld.activatePickupZone(RotaryOps.zones[old_index].outter_zone_name)
+    ctld.deactivatePickupZone(RotaryOps.zones[new_index].outter_zone_name)
+    RotaryOps.active_zone_index = new_index
+    
+  end
+  RotaryOps.active_zone = RotaryOps.zones[new_index].outter_zone_name
+  trigger.action.outText("active zone: "..RotaryOps.active_zone.."  old zone: "..RotaryOps.zones[old_index].outter_zone_name, 5)  
+  trigger.action.setUserFlag(RotaryOps.active_zone_flag, RotaryOps.active_zone_index)
+end
 
 function RotaryOps.setupCTLD()
   ctld.enableCrates = false
@@ -427,9 +441,10 @@ function RotaryOps.addZone(_outter_zone_name, _vars, group_id)  --todo: implemen
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotaryOps.zones), 5)  
 end
 
-function RotaryOps.setupConflict()
-  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
-  trigger.action.outText("active zone: "..RotaryOps.active_zone, 5)  
+function RotaryOps.setupConflict(_active_zone_flag)
+  
+  RotaryOps.active_zone_flag = _active_zone_flag
+  RotaryOps.setActiveZone(0)
 end
 
 
