@@ -1,12 +1,21 @@
 RotaryOps = {}
 RotaryOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
+RotaryOps.conflict_started = false
+RotaryOps.ground_speed = 10
 trigger.action.outText("ROTARY OPS STARTED", 5)
+
+local staged_units
+
 env.info("ROTARY OPS STARTED")
 
-
-local function tableHasKey(table,key)
-    return table[key] ~= nil
+local function debugMsg(text)
+  trigger.action.outText(text, 5)
 end
+
+local function debugTable(table)
+  trigger.action.outText("dbg: ".. mist.utils.tableShow(table), 5) 
+end
+
 
 local function dispMsg(text)
   trigger.action.outText(text, 5)
@@ -26,11 +35,32 @@ local function hasValue (tab, val)
     return false
 end
 
+
 local function getObjectVolume(obj)
   local length = (obj:getDesc().box.max.x + math.abs(obj:getDesc().box.min.x))
   local height = (obj:getDesc().box.max.y + math.abs(obj:getDesc().box.min.y))
   local depth = (obj:getDesc().box.max.z + math.abs(obj:getDesc().box.min.z))
   return length * height * depth
+end
+
+function RotaryOps.groupsFromUnits(units)
+  --debugTable(units)
+  local groups = {}
+  --local groupIndex = {}
+  for i = 1, #units do 
+   if hasValue(groups, units[i]:getGroup():getName()) == false then 
+       --debugMsg("added: "..units[i]:getGroup():getName())
+       --groups[units[i]:getGroup():getName()] = true
+       --groupIndex[#groupIndex + 1] = groups[units[i]:getGroup():getName()]
+       groups[#groups + 1] = units[i]:getGroup():getName()
+   else --debugMsg(units[i]:getGroup():getName().." was already in the table")
+   end
+  end
+  return groups
+end
+
+function RotaryOps.gameMsg(text)
+  trigger.action.outText(text, 5, true)
 end
 
 function RotaryOps.spawnInfantryOnGrp(grp, src_grp_name, behavior) --allow to spawn on other group units
@@ -349,13 +379,38 @@ function RotaryOps.addPilots(var)
 end
 RotaryOps.addPilots(1)
 
+function RotaryOps.sendUnitsToZone(units_table, zone)
+  local groups = RotaryOps.groupsFromUnits(units_table)
+  for index, group in pairs(groups) do
+    debugMsg("sending to zone: "..zone.." grp: "..group)
+    mist.groupToPoint(group, zone, 'cone', nil, nil, false)
+  end
+end
+
+
+
 function RotaryOps.pushZone()
   RotaryOps.setActiveZone(1)
+  RotaryOps.sendUnitsToZone(staged_units, RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name)
 end
 
 function RotaryOps.fallBack()
   RotaryOps.setActiveZone(-1)
+  RotaryOps.sendUnitsToZone(staged_units, RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name)
 end
+
+function RotaryOps.startConflict()
+  if RotaryOps.conflict_started then return end 
+  RotaryOps.conflict_started = true
+  missionCommands.removeItem({[1] = "Start conflict"}) --not working since mission commands is not global
+  
+  RotaryOps.gameMsg("THE BATTLE BEGINS")
+  
+  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotaryOps.zones[1].outter_zone_name})
+  RotaryOps.sendUnitsToZone(staged_units, RotaryOps.zones[2].outter_zone_name)
+end
+
+
 
 function RotaryOps.setActiveZone(value)  --this should accept the zone index so that we can set active value to any zone and set up zones appropriately
   local old_index = RotaryOps.active_zone_index
@@ -421,19 +476,17 @@ end
 
 
 function RotaryOps.setupRadioMenu()
-  local conflict_zones_menu = missionCommands.addSubMenu( "Conflict Zones")
+  local conflict_zones_menu = missionCommands.addSubMenu( "ROTOR OPS")
 
   local push_zone = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotaryOps.pushZone)
-
   local fall_back = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotaryOps.fallBack)
-  
+  local start_conflict = missionCommands.addCommand( "Start conflict"  , conflict_zones_menu , RotaryOps.startConflict)
   local log_something = missionCommands.addCommand( "Log something"  , conflict_zones_menu , RotaryOps.logSomething)
 end
 RotaryOps.setupRadioMenu()
 
 
-function RotaryOps.addZone(_outter_zone_name, _vars, group_id)  --todo: implement zone group ids 
-  group_id = group_id or 1
+function RotaryOps.addZone(_outter_zone_name, _vars) 
   table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name, vars = _vars})
   RotaryOps.drawZones(RotaryOps.zones)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
