@@ -1,6 +1,8 @@
 RotaryOps = {}
-
+RotaryOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
 trigger.action.outText("ROTARY OPS STARTED", 5)
+env.info("ROTARY OPS STARTED")
+
 
 local function tableHasKey(table,key)
     return table[key] ~= nil
@@ -13,6 +15,15 @@ end
 
 local function tableHasKey(table,key)
     return table[key] ~= nil
+end
+
+local function hasValue (tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+    return false
 end
 
 local function getObjectVolume(obj)
@@ -255,7 +266,15 @@ end
 
 
 RotaryOps.zones = {}
-RotaryOps.active_zone = 'ALPHA'
+RotaryOps.active_zone = ""
+RotaryOps.active_zone_index = 1
+RotaryOps.conflict = {
+  aggressor = 'blue',
+  blue_forces_flag = 99,
+  red_forces_flag = 98,
+  aggressor_zone_is_first = true,
+}
+
 
 function RotaryOps.sortOutInfantry(mixed_units)
   local _infantry = {}
@@ -279,7 +298,7 @@ function RotaryOps.assessUnitsInZone(var)
    local blue_infantry = RotaryOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotaryOps.sortOutInfantry(blue_ground_units).not_infantry
    
-   trigger.action.outText("["..RotaryOps.active_zone .. "] RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
+   trigger.action.outText("[BATTLE FOR "..RotaryOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
    local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
 local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
@@ -308,7 +327,6 @@ function RotaryOps.drawZones(zones)  --should be drawZones and itterate through 
       trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
-    trigger.action.outText("drawing map circle", 5)  
     trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
     trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
   end
@@ -316,16 +334,106 @@ function RotaryOps.drawZones(zones)  --should be drawZones and itterate through 
 
 end
 
+--function to automatically add transport craft to ctld, rather than having to define each in the mission editor
+function RotaryOps.addPilots(var)
+   for uName, uData in pairs(mist.DBs.humansByName) do
+     if hasValue(RotaryOps.transports, uData.type) then
+       if hasValue(ctld.transportPilotNames, uData.unitName) ~= true then
+         ctld.transportPilotNames [#ctld.transportPilotNames + 1] = uData.unitName
+       --else trigger.action.outText("player already in pilot table", 5)
+       end
+     end
+   end
+ local id = timer.scheduleFunction(RotaryOps.addPilots, 1, timer.getTime() + 15)
+end
+RotaryOps.addPilots(1)
 
+function RotaryOps.pushZone()
+  RotaryOps.active_zone_index = RotaryOps.active_zone_index + 1
+  if RotaryOps.active_zone_index > #RotaryOps.zones then 
+    RotaryOps.active_zone_index = #RotaryOps.zones 
+  end
+  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
+end
+
+function RotaryOps.fallBack()
+  RotaryOps.active_zone_index = RotaryOps.active_zone_index - 1
+  if RotaryOps.active_zone_index < 1 then 
+    RotaryOps.active_zone_index = 1 
+  end
+  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
+end
+
+
+function RotaryOps.setupCTLD()
+  ctld.enableCrates = false
+  ctld.enabledFOBBuilding = false
+  ctld.JTAC_lock = "vehicle"
+  ctld.location_DMS = true
+  ctld.numberOfTroops = 24 --max loading size
+  
+  ctld.unitLoadLimits = {
+    -- Remove the -- below to turn on options
+     ["SA342Mistral"] = 4,
+     ["SA342L"] = 4,
+     ["SA342M"] = 4,
+     ["UH-1H"] = 10,
+     ["Mi-8MT"] = 24,
+     ["Mi-24P"] = 8,
+   }
+   
+   ctld.loadableGroups = {  
+   -- {name = "Mortar Squad Red", inf = 2, mortar = 5, side =1 }, --would make a group loadable by RED only
+    {name = "Standard Group (10)", inf = 6, mg = 2, at = 2 }, -- will make a loadable group with 6 infantry, 2 MGs and 2 anti-tank for both coalitions
+    {name = "Anti Air (5)", inf = 2, aa = 3  },
+    {name = "Anti Tank (8)", inf = 2, at = 6  },
+    {name = "Mortar Squad (6)", mortar = 6 },
+    {name = "Small Standard Group (4)", inf = 2, mg = 1, at = 1 },
+    {name = "JTAC Group (5)", inf = 4, jtac = 1 }, -- will make a loadable group with 4 infantry and a JTAC soldier for both coalitions
+    {name = "Single JTAC (1)", jtac = 1 },
+    {name = "Platoon (24)", inf = 12, mg = 4, at = 3, aa = 1 },
+    
+}
+end
+RotaryOps.setupCTLD()
+
+
+function RotaryOps.logSomething()
+  --trigger.action.outText("zones: ".. mist.utils.tableShow(RotaryOps.zones), 5)
+  for key, value in pairs(RotaryOps.zones) do 
+    trigger.action.outText("zone: ".. RotaryOps.zones[key].outter_zone_name, 5)
+  end
+end
+
+
+function RotaryOps.setupRadioMenu()
+  local conflict_zones_menu = missionCommands.addSubMenu( "Conflict Zones")
+
+  local push_zone = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotaryOps.pushZone)
+
+  local fall_back = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotaryOps.fallBack)
+  
+  local log_something = missionCommands.addCommand( "Log something"  , conflict_zones_menu , RotaryOps.logSomething)
+end
+RotaryOps.setupRadioMenu()
 
 
 function RotaryOps.addZone(_outter_zone_name, _vars, group_id)  --todo: implement zone group ids 
   group_id = group_id or 1
   table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name, vars = _vars})
   RotaryOps.drawZones(RotaryOps.zones)
-  ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
+  --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
+  ctld.pickupZones[#ctld.pickupZones + 1] = { _outter_zone_name, "blue", -1, "yes", 0 }  --should be set as innactive to start, can we dynamically change sides?
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotaryOps.zones), 5)  
 end
+
+function RotaryOps.setupConflict()
+  RotaryOps.active_zone = RotaryOps.zones[RotaryOps.active_zone_index].outter_zone_name
+  trigger.action.outText("active zone: "..RotaryOps.active_zone, 5)  
+end
+
+
+
 
 --[[
 vars = {
