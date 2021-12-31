@@ -1,6 +1,7 @@
 RotaryOps = {}
 RotaryOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
 RotaryOps.conflict_started = false
+RotaryOps.zone_states = {not_started = 0, active = 1, cleared = 2}
 RotaryOps.ground_speed = 10
 RotaryOps.std_phonetic_names = true
 trigger.action.outText("ROTOR OPS STARTED", 5)
@@ -22,7 +23,12 @@ local gameMsgs = {
     {'ALL UNITS, FALL BACK TO BRAVO!', '.wav'},
     {'ALL UNITS, FALL BACK TO CHARLIE!', '.wav'},
   },
-  
+  cleared = {
+    {'ZONE CLEARED!', '.wav'},
+    {'ALPHA CLEARED!', '.wav'},
+    {'BRAVO CLEARED!', '.wav'},
+    {'CHARLIE CLEARED!', '.wav'},
+  },
   
     
 }
@@ -273,14 +279,8 @@ end
 
 RotaryOps.zones = {}
 RotaryOps.active_zone = ""
-RotaryOps.active_zone_index = 2
+RotaryOps.active_zone_index = 1
 RotaryOps.active_zone_flag = 1
-RotaryOps.conflict = {
-  aggressor = 'blue',
-  blue_forces_flag = 99,
-  red_forces_flag = 98,
-  aggressor_zone_is_first = true,
-}
 
 
 function RotaryOps.sortOutInfantry(mixed_units)
@@ -297,7 +297,7 @@ function RotaryOps.sortOutInfantry(mixed_units)
 end
 
 function RotaryOps.assessUnitsInZone(var)
-   --consider adding other unit types
+   --find and sort units found in the active zone
    local red_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotaryOps.active_zone})  --consider adding other unit types
    local red_infantry = RotaryOps.sortOutInfantry(red_ground_units).infantry
    local red_vehicles = RotaryOps.sortOutInfantry(red_ground_units).not_infantry
@@ -305,15 +305,23 @@ function RotaryOps.assessUnitsInZone(var)
    local blue_infantry = RotaryOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotaryOps.sortOutInfantry(blue_ground_units).not_infantry
    
+   --is the zone cleared?
+   local max_units_left = 3 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
+   if #blue_ground_units > #red_ground_units and #red_ground_units <= max_units_left then
+     RotaryOps.zones[RotaryOps.active_zone_index].zone_status_flag = RotaryOps.zone_states.cleared  --set the zone's flag to cleared
+     gameMsg(gameMsgs.cleared, RotaryOps.active_zone_index)
+   end
+   
    if RotaryOps.conflict_started then
      trigger.action.outText("[BATTLE FOR "..RotaryOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
+   else trigger.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!")
    end
    local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
 local id = timer.scheduleFunction(RotaryOps.assessUnitsInZone, 1, timer.getTime() + 5)
 
 
-function RotaryOps.drawZones(zones)  --should be drawZones and itterate through all zones, getting the active zone, and incrementing id
+function RotaryOps.drawZones(zones)  
   local previous_point
   for index, zone in pairs(zones)
   do
@@ -409,6 +417,8 @@ function RotaryOps.setActiveZone(value)  --this should accept the zone index so 
     ctld.activatePickupZone(RotaryOps.zones[old_index].outter_zone_name)
     ctld.deactivatePickupZone(RotaryOps.zones[new_index].outter_zone_name)
     RotaryOps.active_zone_index = new_index
+    trigger.action.setUserFlag(RotaryOps.zones[new_index].zone_status_flag, RotaryOps.zone_states.active)
+    --trigger.action.setUserFlag(RotaryOps.zones[new_index].zone_status_flag, RotaryOps.zone_states.)  --set another type of zone flag here
     
     
   end
@@ -416,8 +426,9 @@ function RotaryOps.setActiveZone(value)  --this should accept the zone index so 
   if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
   if new_index > old_index then gameMsg(gameMsgs.push, new_index) end
   RotaryOps.active_zone = RotaryOps.zones[new_index].outter_zone_name
-  --debugMsg("active zone: "..RotaryOps.active_zone.."  old zone: "..RotaryOps.zones[old_index].outter_zone_name)  
+  debugMsg("active zone: "..RotaryOps.active_zone.."  old zone: "..RotaryOps.zones[old_index].outter_zone_name)  
   trigger.action.setUserFlag(RotaryOps.active_zone_flag, RotaryOps.active_zone_index)
+  RotaryOps.drawZones()
 end
 
 function RotaryOps.setupCTLD()
@@ -480,12 +491,17 @@ function RotaryOps.spawnInfantryAtZone(vars)
 end
 
 
-function RotaryOps.addZone(_outter_zone_name) 
-  table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name})
+function RotaryOps.addZone(_outter_zone_name, _zone_status_flag) 
+  table.insert(RotaryOps.zones, {outter_zone_name = _outter_zone_name, zone_status_flag = _zone_status_flag})
+  trigger.action.setUserFlag(_zone_status_flag, RotaryOps.zone_states.not_started)
   RotaryOps.drawZones(RotaryOps.zones)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
-  ctld.pickupZones[#ctld.pickupZones + 1] = { _outter_zone_name, "blue", -1, "yes", 0 }  --should be set as innactive to start, can we dynamically change sides?
+  ctld.pickupZones[#ctld.pickupZones + 1] = { _outter_zone_name, "blue", -1, "yes", 0 }  --can we dynamically change sides?
+  ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "none", 1 }
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotaryOps.zones), 5)  
+  
+  
+  
   if infantry_grps ~= nil then 
     local vars = {
       side = "red",
