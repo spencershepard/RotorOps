@@ -333,8 +333,8 @@ function RotorOps.drawZones(zones)
   local previous_point
   for index, zone in pairs(zones)
   do
-    local point = trigger.misc.getZone(zone.outter_zone_name).point
-    local radius = trigger.misc.getZone(zone.outter_zone_name).radius
+    local point = trigger.misc.getZone(zone.name).point
+    local radius = trigger.misc.getZone(zone.name).radius
     local coalition = -1
     local id = index  --this must be UNIQUE!
     local color = {1, 1, 1, 0.5}
@@ -343,8 +343,8 @@ function RotorOps.drawZones(zones)
     local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
     local font_size = 20
     local read_only = false
-    local text = index..". "..zone.outter_zone_name
-    if zone.outter_zone_name == RotorOps.active_zone then
+    local text = index..". "..zone.name
+    if zone.name == RotorOps.active_zone then
       color = {1, 1, 1, 0.5}
       fill_color = {1, 0, 1, 0.1}
     end
@@ -388,12 +388,12 @@ end
 
 function RotorOps.pushZone()
   RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].outter_zone_name)
+  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
 end
 
 function RotorOps.fallBack()
   RotorOps.setActiveZone(RotorOps.active_zone_index - 1)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].outter_zone_name)
+  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
 end
 
 function RotorOps.startConflict()
@@ -408,10 +408,10 @@ function RotorOps.startConflict()
   
   gameMsg(gameMsgs.push, 2)
   RotorOps.setActiveZone(2)
-  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.zones[1].outter_zone_name})
-  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].outter_zone_name})
-  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].outter_zone_name, nil, nil, 90)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[2].outter_zone_name)
+  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.zones[1].name})
+  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].name})
+  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
+  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[2].name)
 end
 
 
@@ -428,8 +428,8 @@ function RotorOps.setActiveZone(new_index)
   
   if new_index ~= old_index then  --the active zone is changing
     
-    ctld.activatePickupZone(RotorOps.zones[old_index].outter_zone_name)
-    ctld.deactivatePickupZone(RotorOps.zones[new_index].outter_zone_name)
+    ctld.activatePickupZone(RotorOps.zones[old_index].name)
+    ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     RotorOps.active_zone_index = new_index
     trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active)
     --trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.)  --set another type of zone flag here
@@ -439,15 +439,15 @@ function RotorOps.setActiveZone(new_index)
   
   if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
   if new_index > old_index then gameMsg(gameMsgs.push, new_index) end
-  RotorOps.active_zone = RotorOps.zones[new_index].outter_zone_name
-  debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].outter_zone_name)  
+  RotorOps.active_zone = RotorOps.zones[new_index].name
+  debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
   trigger.action.setUserFlag(RotorOps.active_zone_flag, RotorOps.active_zone_index)
   RotorOps.drawZones(RotorOps.zones)
 end
 
 function RotorOps.zoneCleared(zone)
     for key, value in pairs(RotorOps.zones) do 
-      if zone == RotorOps.zones[key].outter_zone_name then 
+      if zone == RotorOps.zones[key].name then 
          local flag = RotorOps.zones[key].zone_status_flag
          trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.cleared)
       else --debugMsg(zone.." not found in table")
@@ -515,13 +515,13 @@ function RotorOps.spawnInfantryAtZone(vars)
 end
 
 
-function RotorOps.addZone(_outter_zone_name, _zone_status_flag) 
-  table.insert(RotorOps.zones, {outter_zone_name = _outter_zone_name, zone_status_flag = _zone_status_flag})
+function RotorOps.addZone(_name, _zone_status_flag) 
+  table.insert(RotorOps.zones, {name = _name, zone_status_flag = _zone_status_flag})
   trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.not_started)
   RotorOps.drawZones(RotorOps.zones)
-  --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "green", 0 }
-  ctld.pickupZones[#ctld.pickupZones + 1] = { _outter_zone_name, "blue", -1, "yes", 0 }  --can we dynamically change sides?
-  ctld.dropOffZones[#ctld.dropOffZones + 1] = { _outter_zone_name, "none", 1 }
+  --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "green", 0 }
+  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "blue", -1, "yes", 0 }  --can we dynamically change sides?
+  ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "none", 1 }
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)  
   
   
@@ -530,7 +530,7 @@ function RotorOps.addZone(_outter_zone_name, _zone_status_flag)
     local vars = {
       side = "red",
       inf = infantry_grps,
-      zone = _outter_zone_name,
+      zone = _name,
       radius = 1000,
     }
     local id = timer.scheduleFunction(RotorOps.spawnInfantryAtZone, vars, timer.getTime() + 5)
