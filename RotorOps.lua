@@ -1,8 +1,10 @@
 RotorOps = {}
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
-RotorOps.conflict_started = false
 RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3}
+RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3}
+RotorOps.game_state = 0
 RotorOps.ground_speed = 10
+RotorOps.auto_push = true
 
 RotorOps.zones = {}
 RotorOps.active_zone = ""
@@ -309,20 +311,52 @@ function RotorOps.assessUnitsInZone(var)
    local blue_infantry = RotorOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotorOps.sortOutInfantry(blue_ground_units).not_infantry
    
-   --is the zone cleared?
-   local max_units_left = 3 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
-   if #blue_ground_units > #red_ground_units and #red_ground_units <= max_units_left then
-     RotorOps.zones[RotorOps.active_zone_index].zone_status_flag = RotorOps.zone_states.cleared  --set the zone's flag to cleared
+   --is the active zone cleared?
+   local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
+   local max_units_left = 100003 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
+   if #red_ground_units <= max_units_left then
+     trigger.action.setUserFlag(active_zone_status_flag, RotorOps.zone_states.cleared)  --set the zone's flag to cleared
      gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
+     if RotorOps.auto_push then
+       RotorOps.pushZone(RotorOps.active_zone_index + 1)
+     end
    end
+   
+   --are all zones clear?
+   local all_zones_clear = true
+   for key, value in pairs(RotorOps.zones) do 
+      local zone_status = trigger.misc.getUserFlag(RotorOps.zones[key].zone_status_flag)
+      if zone_status ~= RotorOps.zone_states.cleared then
+        all_zones_clear = false
+      end
+   end
+   
+   if all_zones_clear then
+     RotorOps.game_state = RotorOps.game_states.won
+   end
+   
+   
    
    local message = ""
    local header = ""
-   if RotorOps.conflict_started then
-     message = "[BATTLE FOR "..RotorOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles." 
-   else 
-     message = "ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!"
+   local body = ""
+   
+   local active_zone_status = trigger.misc.getUserFlag(RotorOps.zones[RotorOps.active_zone_index].zone_status_flag)
+   if RotorOps.game_state == RotorOps.game_states.in_progress then
+     if active_zone_status == RotorOps.zone_states.cleared then
+       header = "["..RotorOps.active_zone .. " CLEARED!]   " 
+     else
+       header = "[BATTLE FOR "..RotorOps.active_zone .. "]   " 
+     end
+     body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles." 
+   elseif RotorOps.game_state == RotorOps.game_states.not_started then
+     body = "ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!"
+   elseif RotorOps.game_state == RotorOps.game_states.won then
+     body = "MISSION SUCCESS!"
+   elseif RotorOps.game_state == RotorOps.game_states.lost then
+     body = "MISSION LOST!"
    end
+   message = header .. body
    trigger.action.outText(message , 5, true)
    local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
@@ -397,8 +431,8 @@ function RotorOps.fallBack()
 end
 
 function RotorOps.startConflict()
-  if RotorOps.conflict_started then return end 
-  RotorOps.conflict_started = true
+  if RotorOps.game_state == RotorOps.game_states.in_progress then return end 
+  RotorOps.game_state = RotorOps.game_states.in_progress
   
   --make some changes to the radio menu
   local conflict_zones_menu = commandDB['conflict_zones_menu']
@@ -414,6 +448,9 @@ function RotorOps.startConflict()
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[2].name)
 end
 
+function RotorOps.gameWon()
+  gameMsg(gameMsgs.success)
+end
 
 
 function RotorOps.setActiveZone(new_index) 
@@ -445,15 +482,6 @@ function RotorOps.setActiveZone(new_index)
   RotorOps.drawZones(RotorOps.zones)
 end
 
-function RotorOps.zoneCleared(zone)
-    for key, value in pairs(RotorOps.zones) do 
-      if zone == RotorOps.zones[key].name then 
-         local flag = RotorOps.zones[key].zone_status_flag
-         trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.cleared)
-      else --debugMsg(zone.." not found in table")
-      end 
-    end
-end
 
 
 function RotorOps.setupCTLD()
@@ -491,7 +519,7 @@ end
 
 function RotorOps.debugAction()
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)
-  RotorOps.zoneCleared("CHARLIE")
+  RotorOps.zoneCleared(RotorOps.active_zone)
 
 end
 
@@ -543,6 +571,7 @@ function RotorOps.setupConflict(_active_zone_flag)
   RotorOps.setupCTLD()
   RotorOps.setupRadioMenu()
   RotorOps.active_zone_flag = _active_zone_flag
+  RotorOps.game_state = RotorOps.game_states.not_started
   --RotorOps.setActiveZone(2)
 end
 
