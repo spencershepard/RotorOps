@@ -1,9 +1,14 @@
 RotorOps = {}
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
 RotorOps.conflict_started = false
-RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2}
+RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3}
 RotorOps.ground_speed = 10
-RotorOps.std_phonetic_names = true
+
+RotorOps.zones = {}
+RotorOps.active_zone = ""
+RotorOps.active_zone_index = 1
+RotorOps.active_zone_flag = 1
+
 trigger.action.outText("ROTOR OPS STARTED", 5)
 env.info("ROTOR OPS STARTED")
 
@@ -277,10 +282,7 @@ end
 
 
 
-RotorOps.zones = {}
-RotorOps.active_zone = ""
-RotorOps.active_zone_index = 1
-RotorOps.active_zone_flag = 1
+
 
 
 function RotorOps.sortOutInfantry(mixed_units)
@@ -295,6 +297,8 @@ function RotorOps.sortOutInfantry(mixed_units)
   end
   return {infantry = _infantry, not_infantry = _not_infantry} 
 end
+
+
 
 function RotorOps.assessUnitsInZone(var)
    --find and sort units found in the active zone
@@ -312,13 +316,17 @@ function RotorOps.assessUnitsInZone(var)
      gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
    end
    
+   local message = ""
+   local header = ""
    if RotorOps.conflict_started then
-     trigger.action.outText("[BATTLE FOR "..RotorOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles.", 5, true) 
-   else trigger.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!")
+     message = "[BATTLE FOR "..RotorOps.active_zone .. "]   RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles." 
+   else 
+     message = "ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!"
    end
+   trigger.action.outText(message , 5, true)
    local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
-local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
+
 
 
 function RotorOps.drawZones(zones)  
@@ -363,25 +371,28 @@ function RotorOps.addPilots(var)
    end
  local id = timer.scheduleFunction(RotorOps.addPilots, 1, timer.getTime() + 15)
 end
-RotorOps.addPilots(1)
 
-function RotorOps.sendUnitsToZone(units_table, zone)
+
+function RotorOps.sendUnitsToZone(units_table, zone, _formation, _final_heading, _speed, _force_offroad)
+  local formation = _formation or 'cone'
+  local final_heading = _final_heading or nil
+  local speed = _speed or RotorOps.ground_speed
+  local force_offroad = _force_offroad or false
   local groups = RotorOps.groupsFromUnits(units_table)
   for index, group in pairs(groups) do
     --debugMsg("sending to zone: "..zone.." grp: "..group)
-    mist.groupToPoint(group, zone, 'cone', nil, nil, false)
+    mist.groupToPoint(group, zone, formation, final_heading, speed, force_offroad)
   end
 end
 
 
-
 function RotorOps.pushZone()
-  RotorOps.setActiveZone(1)
+  RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].outter_zone_name)
 end
 
 function RotorOps.fallBack()
-  RotorOps.setActiveZone(-1)
+  RotorOps.setActiveZone(RotorOps.active_zone_index - 1)
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].outter_zone_name)
 end
 
@@ -396,15 +407,18 @@ function RotorOps.startConflict()
   commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotorOps.fallBack)
   
   gameMsg(gameMsgs.push, 2)
+  RotorOps.setActiveZone(2)
   staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.zones[1].outter_zone_name})
+  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].outter_zone_name})
+  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].outter_zone_name, nil, nil, 90)
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[2].outter_zone_name)
 end
 
 
 
-function RotorOps.setActiveZone(value)  --this should accept the zone index so that we can set active value to any zone and set up zones appropriately
+function RotorOps.setActiveZone(new_index) 
   local old_index = RotorOps.active_zone_index
-  local new_index = RotorOps.active_zone_index + value
+  --local new_index = RotorOps.active_zone_index + value
   if new_index > #RotorOps.zones then 
     new_index = #RotorOps.zones 
   end
@@ -428,8 +442,19 @@ function RotorOps.setActiveZone(value)  --this should accept the zone index so t
   RotorOps.active_zone = RotorOps.zones[new_index].outter_zone_name
   debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].outter_zone_name)  
   trigger.action.setUserFlag(RotorOps.active_zone_flag, RotorOps.active_zone_index)
-  RotorOps.drawZones()
+  RotorOps.drawZones(RotorOps.zones)
 end
+
+function RotorOps.zoneCleared(zone)
+    for key, value in pairs(RotorOps.zones) do 
+      if zone == RotorOps.zones[key].outter_zone_name then 
+         local flag = RotorOps.zones[key].zone_status_flag
+         trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.cleared)
+      else --debugMsg(zone.." not found in table")
+      end 
+    end
+end
+
 
 function RotorOps.setupCTLD()
   ctld.enableCrates = false
@@ -461,14 +486,13 @@ function RotorOps.setupCTLD()
     
 }
 end
-RotorOps.setupCTLD()
 
 
-function RotorOps.logSomething()
+
+function RotorOps.debugAction()
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)
-  for key, value in pairs(RotorOps.zones) do 
-    trigger.action.outText("zone: ".. RotorOps.zones[key].outter_zone_name, 5)
-  end
+  RotorOps.zoneCleared("CHARLIE")
+
 end
 
 
@@ -478,9 +502,9 @@ function RotorOps.setupRadioMenu()
 
 
   commandDB['start_conflict'] = missionCommands.addCommand( "Start conflict"  , conflict_zones_menu , RotorOps.startConflict)
-  --commandDB['log_something'] = missionCommands.addCommand( "Log something"  , conflict_zones_menu , RotorOps.logSomething)
+  commandDB['debug_action'] = missionCommands.addCommand( "Debug action"  , conflict_zones_menu , RotorOps.debugAction)
 end
-RotorOps.setupRadioMenu()
+
 
 function RotorOps.spawnInfantryAtZone(vars)
   local side = vars.side
@@ -514,21 +538,12 @@ function RotorOps.addZone(_outter_zone_name, _zone_status_flag)
 end
 
 function RotorOps.setupConflict(_active_zone_flag)
-  
+  local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
+  RotorOps.addPilots(1)
+  RotorOps.setupCTLD()
+  RotorOps.setupRadioMenu()
   RotorOps.active_zone_flag = _active_zone_flag
-  RotorOps.setActiveZone(0)
+  --RotorOps.setActiveZone(2)
 end
 
-
-
-
---[[
-vars = {
-inner_zone = '',
-infantry_spawn = 10,
-infantry_respawn = 50,
-infantry_spawn_zone = ''
-defender_coal = 'red'
-}
-]]
 
