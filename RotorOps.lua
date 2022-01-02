@@ -28,10 +28,11 @@ local commandDB = {}
 
 local gameMsgs = {
   push = {
-    {'ALL GROUND UNITS, PUSH TO THE ACTIVE ZONE!', '.wav'},
-    {'ALL GROUND UNITS, PUSH TO ALPHA!', '.wav'},
-    {'ALL GROUND UNITS, PUSH TO BRAVO!', '.wav'},
-    {'ALL GROUND UNITS, PUSH TO CHARLIE!', '.wav'},
+    {'ALL GROUND UNITS, PUSH TO THE ACTIVE ZONE!', 'push_next_zone.ogg'},
+    {'ALL GROUND UNITS, PUSH TO ALPHA!', 'push_alpha.ogg'},
+    {'ALL GROUND UNITS, PUSH TO BRAVO!', 'push_bravo.ogg'},
+    {'ALL GROUND UNITS, PUSH TO CHARLIE!', 'push_charlie.ogg'},
+    {'ALL GROUND UNITS, PUSH TO DELTA!', 'push_delta.ogg'},
   },
   fallback = {
     {'ALL GROUND UNITS, FALL BACK!', '.wav'},
@@ -40,13 +41,17 @@ local gameMsgs = {
     {'ALL GROUND UNITS, FALL BACK TO CHARLIE!', '.wav'},
   },
   cleared = {
-    {'ZONE CLEARED!', '.wav'},
-    {'ALPHA CLEARED!', '.wav'},
-    {'BRAVO CLEARED!', '.wav'},
-    {'CHARLIE CLEARED!', '.wav'},
+    {'ZONE CLEARED!', 'cleared_active.ogg'},
+    {'ALPHA CLEARED!', 'cleared_alpha.ogg'},
+    {'BRAVO CLEARED!', 'cleared_bravo.ogg'},
+    {'CHARLIE CLEARED!', 'cleared_charlie.ogg'},
+    {'DELTA CLEARED!', 'cleared_delta.ogg'},
   },
   success = {
-    {'GROUND MISSION SUCCESS!', '.wav'},
+    {'GROUND MISSION SUCCESS!', 'mission_success.ogg'},
+  },
+  start = {
+    {'SUPPORT THE WAR ON THE GROUND!', 'support_troops.ogg'},
   },
   
     
@@ -124,7 +129,7 @@ local function processMsgBuffer(vars)
   if #game_message_buffer > 0 then
     local message = table.remove(game_message_buffer, 1)
     trigger.action.outText(message[1], 10, true)
-    --play the sound file message[2]
+    trigger.action.outSound(message[2])
   end
   local id = timer.scheduleFunction(processMsgBuffer, 1, timer.getTime() + 5)
 end
@@ -373,7 +378,7 @@ end
 
 
 
-function RotorOps.drawZones()  
+function RotorOps.drawZones()  --this could use a lot of work, we should use trigger.action.removeMark and some way of managing ids created
   local zones = RotorOps.zones
   local previous_point
 
@@ -394,7 +399,7 @@ function RotorOps.drawZones()
     if zone.name == RotorOps.active_zone then
       id = id + 300
       color = {1, 1, 1, 0.2}
-      fill_color = {1, 0, 0, 0.03}
+      fill_color = {1, 0, 0, 0.05}
     end
     if previous_point ~= nill then
       --trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
@@ -490,6 +495,7 @@ function RotorOps.startConflict()
   --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[1].name)
   RotorOps.setActiveZone(1)
+  gameMsg(gameMsgs.start)
   gameMsg(gameMsgs.push, 1)
   processMsgBuffer()
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
