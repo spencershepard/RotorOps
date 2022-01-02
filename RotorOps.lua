@@ -5,7 +5,10 @@ RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3}
 RotorOps.game_state = 0
 RotorOps.ground_speed = 10
 RotorOps.auto_push = true
-
+local last_message_time
+local game_message_buffer = {}
+RotorOps.zone_status_display = true
+RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 
 
 RotorOps.zones = {}
@@ -23,7 +26,7 @@ local commandDB = {}
 
 local gameMsgs = {
   push = {
-    {'ALL UNITS, PUSH TO FIRST ZONE!', '.wav'},
+    {'ALL UNITS, PUSH TO THE ACTIVE ZONE!', '.wav'},
     {'ALL UNITS, PUSH TO ALPHA!', '.wav'},
     {'ALL UNITS, PUSH TO BRAVO!', '.wav'},
     {'ALL UNITS, PUSH TO CHARLIE!', '.wav'},
@@ -103,23 +106,26 @@ function RotorOps.groupsFromUnits(units)
 end
 
 
-local function gameMsg(event, _index)
-  debugTable(event)
-  local index = 1
+local function gameMsg(event, _index)  
+  local index = 1 
   if _index ~= nill then
     index = _index + 1 
   end
   if tableHasKey(event, index) then
-    trigger.action.outText(event[index][1], 5, true)
+    game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
   else env.info("ROTOR OPS could not find entry for "..key)
   end
 end
 
 
-
-
-
-
+local function processMsgBuffer(vars)
+  if #game_message_buffer > 0 then
+    local message = table.remove(game_message_buffer, 1)
+    trigger.action.outText(message[1], 10, true)
+    --play the sound file message[2]
+  end
+  local id = timer.scheduleFunction(processMsgBuffer, 1, timer.getTime() + 5)
+end
 
 
 
@@ -324,8 +330,8 @@ function RotorOps.assessUnitsInZone(var)
      local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
      local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
      
-     local max_units_left = 2 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
-     if #red_ground_units <= max_units_left then
+     
+     if #red_ground_units <= RotorOps.max_units_left then
        RotorOps.clearActiveZone()
      end
 
@@ -356,8 +362,11 @@ function RotorOps.assessUnitsInZone(var)
    body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles." 
 
    message = header .. body
-   trigger.action.outText(message , 5, true)
-   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
+   if RotorOps.zone_status_display then 
+     --trigger.action.outText(message , 5, true) 
+     game_message_buffer[#game_message_buffer + 1] = {message, ""} --don't load the buffer faster than it's cleared.
+   end
+   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 6)
 end
 
 
@@ -452,6 +461,8 @@ function RotorOps.startConflict()
   --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[1].name)
   RotorOps.setActiveZone(1)
+  gameMsg(gameMsgs.push, 1)
+  processMsgBuffer()
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
 
@@ -476,7 +487,6 @@ function RotorOps.setActiveZone(new_index)
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     RotorOps.active_zone_index = new_index
     trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active)
-    --trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.)  --set another type of zone flag here
     if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
     if new_index > old_index then gameMsg(gameMsgs.push, new_index) end
     
@@ -485,7 +495,7 @@ function RotorOps.setActiveZone(new_index)
   
   
   RotorOps.active_zone = RotorOps.zones[new_index].name
-  debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
+  --debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
   trigger.action.setUserFlag(RotorOps.active_zone_flag, RotorOps.active_zone_index)
   RotorOps.drawZones(RotorOps.zones)
 end
@@ -583,7 +593,7 @@ function RotorOps.setupConflict(_active_zone_flag)
   RotorOps.setupRadioMenu()
   RotorOps.active_zone_flag = _active_zone_flag
   RotorOps.game_state = RotorOps.game_states.not_started
-  trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 60, true)
+  trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   
 end
 
