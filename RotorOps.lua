@@ -366,7 +366,7 @@ function RotorOps.assessUnitsInZone(var)
      --trigger.action.outText(message , 5, true) 
      game_message_buffer[#game_message_buffer + 1] = {message, ""} --don't load the buffer faster than it's cleared.
    end
-   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 6)
+   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 10)
 end
 
 
@@ -566,24 +566,13 @@ function RotorOps.addZone(_name, _zone_status_flag)
   trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.not_started)
   RotorOps.drawZones(RotorOps.zones)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "green", 0 }
-  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "blue", -1, "yes", 0 }  --can we dynamically change sides?
-  ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "none", 1 }
+  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "green", -1, "no", 0 }  --can we dynamically change sides?
+  --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "none", 1 }
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)  
-  
-  
-  
-  if infantry_grps ~= nil then 
-    local vars = {
-      side = "red",
-      inf = infantry_grps,
-      zone = _name,
-      radius = 1000,
-    }
-    local id = timer.scheduleFunction(RotorOps.spawnInfantryAtZone, vars, timer.getTime() + 5)
-  end
 end
 
 function RotorOps.stagingZone(_name)
+  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "blue", -1, "yes", 0 }
   RotorOps.staging_zone = _name
 end
 
