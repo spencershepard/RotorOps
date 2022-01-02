@@ -18,6 +18,8 @@ RotorOps.active_zone_flag = 1
 
 RotorOps.staging_zone = ""
 
+RotorOps.ctld_pickup_zones = {}
+
 trigger.action.outText("ROTOR OPS STARTED", 5)
 env.info("ROTOR OPS STARTED")
 
@@ -26,16 +28,16 @@ local commandDB = {}
 
 local gameMsgs = {
   push = {
-    {'ALL UNITS, PUSH TO THE ACTIVE ZONE!', '.wav'},
-    {'ALL UNITS, PUSH TO ALPHA!', '.wav'},
-    {'ALL UNITS, PUSH TO BRAVO!', '.wav'},
-    {'ALL UNITS, PUSH TO CHARLIE!', '.wav'},
+    {'ALL GROUND UNITS, PUSH TO THE ACTIVE ZONE!', '.wav'},
+    {'ALL GROUND UNITS, PUSH TO ALPHA!', '.wav'},
+    {'ALL GROUND UNITS, PUSH TO BRAVO!', '.wav'},
+    {'ALL GROUND UNITS, PUSH TO CHARLIE!', '.wav'},
   },
   fallback = {
-    {'ALL UNITS, FALL BACK!', '.wav'},
-    {'ALL UNITS, FALL BACK TO ALPHA!', '.wav'},
-    {'ALL UNITS, FALL BACK TO BRAVO!', '.wav'},
-    {'ALL UNITS, FALL BACK TO CHARLIE!', '.wav'},
+    {'ALL GROUND UNITS, FALL BACK!', '.wav'},
+    {'ALL GROUND UNITS, FALL BACK TO ALPHA!', '.wav'},
+    {'ALL GROUND UNITS, FALL BACK TO BRAVO!', '.wav'},
+    {'ALL GROUND UNITS, FALL BACK TO CHARLIE!', '.wav'},
   },
   cleared = {
     {'ZONE CLEARED!', '.wav'},
@@ -44,7 +46,7 @@ local gameMsgs = {
     {'CHARLIE CLEARED!', '.wav'},
   },
   success = {
-    {'MISSION SUCCESS!', '.wav'},
+    {'GROUND MISSION SUCCESS!', '.wav'},
   },
   
     
@@ -371,8 +373,11 @@ end
 
 
 
-function RotorOps.drawZones(zones)  
+function RotorOps.drawZones()  
+  local zones = RotorOps.zones
   local previous_point
+
+  
   for index, zone in pairs(zones)
   do
     local point = trigger.misc.getZone(zone.name).point
@@ -387,11 +392,12 @@ function RotorOps.drawZones(zones)
     local read_only = false
     local text = index..". "..zone.name
     if zone.name == RotorOps.active_zone then
-      color = {1, 1, 1, 0.5}
-      fill_color = {1, 0, 1, 0.1}
+      id = id + 300
+      color = {1, 1, 1, 0.2}
+      fill_color = {1, 0, 0, 0.03}
     end
     if previous_point ~= nill then
-      trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
+      --trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
     trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
@@ -399,6 +405,29 @@ function RotorOps.drawZones(zones)
   end
   
 
+  for index, pickup_zone in pairs(RotorOps.ctld_pickup_zones)
+  do
+    for c_index, c_zone in pairs(ctld.pickupZones)
+    do
+      if pickup_zone == c_zone[1] then
+       --debugMsg("found our zone in ctld zones, status: "..c_zone[4])
+       local ctld_zone_status = c_zone[4]
+       local point = trigger.misc.getZone(pickup_zone).point
+       local radius = trigger.misc.getZone(pickup_zone).radius
+       local coalition = -1
+       local id = index + 150  --this must be UNIQUE!
+       local color = {1, 1, 1, 0.5}
+       local fill_color = {0, 0.8, 0, 0.1}
+       local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
+       if ctld_zone_status == 'yes' or ctld_zone_status == 1 then
+        --debugMsg("draw the pickup zone")
+        trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+       end
+      end  
+    end
+  end
+
+  
 end
 
 --function to automatically add transport craft to ctld, rather than having to define each in the mission editor
@@ -497,7 +526,7 @@ function RotorOps.setActiveZone(new_index)
   RotorOps.active_zone = RotorOps.zones[new_index].name
   --debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
   trigger.action.setUserFlag(RotorOps.active_zone_flag, RotorOps.active_zone_index)
-  RotorOps.drawZones(RotorOps.zones)
+  RotorOps.drawZones()
 end
 
 
@@ -564,15 +593,15 @@ end
 function RotorOps.addZone(_name, _zone_status_flag) 
   table.insert(RotorOps.zones, {name = _name, zone_status_flag = _zone_status_flag})
   trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.not_started)
-  RotorOps.drawZones(RotorOps.zones)
+  RotorOps.drawZones()
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "green", 0 }
-  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "green", -1, "no", 0 }  --can we dynamically change sides?
+  RotorOps.addPickupZone(_name, "green", -1, "no", 0)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "none", 1 }
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)  
 end
 
 function RotorOps.stagingZone(_name)
-  ctld.pickupZones[#ctld.pickupZones + 1] = { _name, "blue", -1, "yes", 0 }
+  RotorOps.addPickupZone(_name, "blue", -1, "yes", 0)
   RotorOps.staging_zone = _name
 end
 
@@ -584,6 +613,12 @@ function RotorOps.setupConflict(_active_zone_flag)
   RotorOps.game_state = RotorOps.game_states.not_started
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   
+end
+
+
+function RotorOps.addPickupZone(zone_name, smoke, limit, active, side)
+  RotorOps.ctld_pickup_zones[#RotorOps.ctld_pickup_zones + 1] = zone_name
+  ctld.pickupZones[#ctld.pickupZones + 1] = {zone_name, smoke, limit, active, side}
 end
 
 
