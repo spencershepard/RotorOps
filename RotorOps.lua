@@ -1,30 +1,39 @@
 RotorOps = {}
-RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'}
-RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3}
-RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3}
-RotorOps.game_state = 0
-RotorOps.ground_speed = 10
-RotorOps.auto_push = true
-local last_message_time
-local game_message_buffer = {}
-RotorOps.zone_status_display = true
+
+RotorOps.voice_overs = true
+RotorOps.ground_speed = 30 --max speed for ground vehicles moving between zones
+RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
+RotorOps.ai_active_zone = true --allow the script to automatically create waypoints for ground units in the active zone
 
 
+RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3} --zone level user flags will use these values
+
+RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3} --game level user flag will use these values
+
+RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'} --players flying these will have ctld transport access
+
+RotorOps.game_state = 0 
 RotorOps.zones = {}
-RotorOps.active_zone = ""
+RotorOps.active_zone = "" --name of the active zone
 RotorOps.active_zone_index = 1
-RotorOps.active_zone_flag = 1
-
+RotorOps.game_state_flag = 1  --user flag to store the game state
 RotorOps.staging_zone = ""
+RotorOps.auto_push = true  --leave true for now
 
-RotorOps.ctld_pickup_zones = {}
+RotorOps.ctld_pickup_zones = {} --keep track of ctld zones we've added, mainly for map markup
 
 trigger.action.outText("ROTOR OPS STARTED", 5)
 env.info("ROTOR OPS STARTED")
 
-local staged_units
-local commandDB = {}
+local staged_units --table of ground units that started in the staging zone
+local commandDB = {} 
+local game_message_buffer = {}
+RotorOps.ai_red_infantry_groups = {} 
+RotorOps.ai_blue_infantry_groups = {} 
+RotorOps.ai_red_vehicle_groups = {} 
+RotorOps.ai_blue_vehicle_groups = {} 
+RotorOps.ai_timers = {} --simply use the group ID for schedulefunction id
 
 local gameMsgs = {
   push = {
@@ -61,6 +70,7 @@ local gameMsgs = {
 
 local function debugMsg(text)
   trigger.action.outText(text, 5)
+  env.info("ROTOROPS_DEBUG: "..text)
 end
 
 
@@ -96,9 +106,11 @@ local function getObjectVolume(obj)
   return length * height * depth
 end
 
-function RotorOps.groupsFromUnits(units)
-  --debugTable(units)
+
+function RotorOps.groupsFromUnits(units, table)  
   local groups = {}
+  --debugTable(units)
+
   --local groupIndex = {}
   for i = 1, #units do 
    if hasValue(groups, units[i]:getGroup():getName()) == false then 
@@ -129,14 +141,32 @@ local function processMsgBuffer(vars)
   if #game_message_buffer > 0 then
     local message = table.remove(game_message_buffer, 1)
     trigger.action.outText(message[1], 10, true)
-    trigger.action.outSound(message[2])
+    if RotorOps.voice_overs then
+      trigger.action.outSound(message[2])
+    end
   end
   local id = timer.scheduleFunction(processMsgBuffer, 1, timer.getTime() + 5)
 end
 
 
+function RotorOps.sortOutInfantry(mixed_units)
+  local _infantry = {}
+  local _not_infantry = {}
+  for index, unit in pairs(mixed_units)
+  do
+    if unit:hasAttribute("Infantry") then
+      _infantry[#_infantry + 1] = unit
+    else _not_infantry[#_not_infantry + 1] = unit
+    end
+  end
+  return {infantry = _infantry, not_infantry = _not_infantry} 
+end
 
 
+
+
+
+--spawn/clone a group onto the location of the first unit in a group (best to only use this for groups of one unit only for now!)
 function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, behavior) --allow to spawn on other group units
   debugMsg("attempting to spawn at "..grp:getUnit(1):getTypeName())
   local vars = {} 
@@ -230,7 +260,7 @@ end
 
 
 function RotorOps.patrolRadius(vars)
- debugMsg("patrol radius: "..mist.utils.tableShow(vars)) 
+ debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
  local grp = vars.grp
  local search_radius = vars.radius or 100
  local first_valid_unit
@@ -292,32 +322,45 @@ function RotorOps.patrolRadius(vars)
  --trigger.action.outText("new waypoints created: "..(#path - 1), 5) 
  mist.goRoute(grp, path)
  --local timing = mist.getPathLength(path) / 5
- local id = timer.scheduleFunction(RotorOps.patrolRadius, vars, timer.getTime() + math.random(50,70))
+ --local id = timer.scheduleFunction(RotorOps.patrolRadius, vars, timer.getTime() + math.random(50,70))
+             
 
+   local group_name = grp:getName()
+   if tableHasKey(RotorOps.ai_timers, group_name) == true then  --if we already have this group id in our list of timers
+     debugMsg("timer already active, do nothing for "..group_name.." : ".. RotorOps.ai_timers[group_name])
+     --timer.removeFunction(RotorOps.ai_timers[group_name])
+   else 
+     debugMsg("adding timer: "..group_name) 
+     local timer_id = timer.scheduleFunction(RotorOps.patrolRadius, vars, timer.getTime() + math.random(50,70))
+     RotorOps.ai_timers[group_name] = timer_id
+   end
+                                                                 
 end
-
-
 
 
 
 ------------------------------------------
 
 
+local function changeGameState(new_state)
+  RotorOps.game_state = new_state
+  trigger.action.setUserFlag(RotorOps.game_state_flag, new_state)
+end
 
 
+function RotorOps.aiActiveZone(var)
+  if RotorOps.ai_active_zone == false then return end
+  --debugMsg("aiActiveZone func")
 
-
-function RotorOps.sortOutInfantry(mixed_units)
-  local _infantry = {}
-  local _not_infantry = {}
-  for index, unit in pairs(mixed_units)
-  do
-    if unit:hasAttribute("Infantry") then
-      _infantry[#_infantry + 1] = unit
-    else _not_infantry[#_not_infantry + 1] = unit
+  for index, group in pairs(RotorOps.ai_red_infantry_groups) do 
+    if group then
+      debugMsg("grp="..group)
+      RotorOps.patrolRadius({grp=Group.getByName(group), radius=400})
     end
   end
-  return {infantry = _infantry, not_infantry = _not_infantry} 
+ 
+  
+  local id = timer.scheduleFunction(RotorOps.aiActiveZone, 1, timer.getTime() + 10)
 end
 
 
@@ -354,10 +397,17 @@ function RotorOps.assessUnitsInZone(var)
    
    if all_zones_clear then
      RotorOps.gameWon()
+     return
    end
    
+   --ground unit ai stuff
+   RotorOps.ai_red_infantry_groups = RotorOps.groupsFromUnits(red_infantry)
+   RotorOps.ai_blue_infantry_groups = RotorOps.groupsFromUnits(blue_infantry)
+   RotorOps.ai_red_vehicle_groups = RotorOps.groupsFromUnits(red_vehicles)
+   RotorOps.ai_blue_vehicle_groups = RotorOps.groupsFromUnits(blue_vehicles)
+
    
-   
+   --zone status display stuff
    local message = ""
    local header = ""
    local body = ""
@@ -435,18 +485,7 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
   
 end
 
---function to automatically add transport craft to ctld, rather than having to define each in the mission editor
-function RotorOps.addPilots(var)
-   for uName, uData in pairs(mist.DBs.humansByName) do
-     if hasValue(RotorOps.transports, uData.type) then
-       if hasValue(ctld.transportPilotNames, uData.unitName) ~= true then
-         ctld.transportPilotNames [#ctld.transportPilotNames + 1] = uData.unitName
-       --else trigger.action.outText("player already in pilot table", 5)
-       end
-     end
-   end
- local id = timer.scheduleFunction(RotorOps.addPilots, 1, timer.getTime() + 15)
-end
+
 
 
 function RotorOps.sendUnitsToZone(units_table, zone, _formation, _final_heading, _speed, _force_offroad)
@@ -480,31 +519,21 @@ function RotorOps.fallBack()
   RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
 end
 
-function RotorOps.startConflict()
-  if RotorOps.game_state == RotorOps.game_states.in_progress then return end 
-  RotorOps.game_state = RotorOps.game_states.in_progress
-  
-  --make some changes to the radio menu
-  local conflict_zones_menu = commandDB['conflict_zones_menu']
-  missionCommands.removeItem(commandDB['start_conflict']) 
-  commandDB['push_zone'] = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotorOps.pushZone)
-  commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotorOps.fallBack)
-  
-  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
-  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].name})
-  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[1].name)
-  RotorOps.setActiveZone(1)
-  gameMsg(gameMsgs.start)
-  gameMsg(gameMsgs.push, 1)
-  processMsgBuffer()
-  local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
-end
+
 
 function RotorOps.gameWon()
-  RotorOps.game_state = RotorOps.game_states.won
+  changeGameState(RotorOps.game_states.won)
   gameMsg(gameMsgs.success)
 end
+
+function RotorOps.spawnInfantryAtZone(vars)
+  local side = vars.side
+  local inf = vars.inf
+  local zone = vars.zone
+  local radius = vars.radius
+  ctld.spawnGroupAtTrigger(side, inf, zone, radius)
+end
+
 
 
 function RotorOps.setActiveZone(new_index) 
@@ -531,7 +560,7 @@ function RotorOps.setActiveZone(new_index)
   
   RotorOps.active_zone = RotorOps.zones[new_index].name
   --debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
-  trigger.action.setUserFlag(RotorOps.active_zone_flag, RotorOps.active_zone_index)
+  
   RotorOps.drawZones()
 end
 
@@ -570,30 +599,15 @@ end
 
 
 
-function RotorOps.debugAction()
-  --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)
-  RotorOps.clearActiveZone()
-
-end
-
 
 function RotorOps.setupRadioMenu()
   commandDB['conflict_zones_menu'] = missionCommands.addSubMenu( "ROTOR OPS")
   local conflict_zones_menu = commandDB['conflict_zones_menu']
-
-
   commandDB['start_conflict'] = missionCommands.addCommand( "Start conflict"  , conflict_zones_menu , RotorOps.startConflict)
-  commandDB['debug_action'] = missionCommands.addCommand( "Debug action"  , conflict_zones_menu , RotorOps.debugAction)
+
 end
 
 
-function RotorOps.spawnInfantryAtZone(vars)
-  local side = vars.side
-  local inf = vars.inf
-  local zone = vars.zone
-  local radius = vars.radius
-  ctld.spawnGroupAtTrigger(side, inf, zone, radius)
-end
 
 
 function RotorOps.addZone(_name, _zone_status_flag) 
@@ -611,12 +625,25 @@ function RotorOps.stagingZone(_name)
   RotorOps.staging_zone = _name
 end
 
-function RotorOps.setupConflict(_active_zone_flag)
+--function to automatically add transport craft to ctld, rather than having to define each in the mission editor
+function RotorOps.addPilots(var)
+   for uName, uData in pairs(mist.DBs.humansByName) do
+     if hasValue(RotorOps.transports, uData.type) then
+       if hasValue(ctld.transportPilotNames, uData.unitName) ~= true then
+         ctld.transportPilotNames [#ctld.transportPilotNames + 1] = uData.unitName
+       --else trigger.action.outText("player already in pilot table", 5)
+       end
+     end
+   end
+ local id = timer.scheduleFunction(RotorOps.addPilots, 1, timer.getTime() + 15)
+end
+
+function RotorOps.setupConflict(_game_state_flag)
   RotorOps.addPilots(1)
   RotorOps.setupCTLD()
   RotorOps.setupRadioMenu()
-  RotorOps.active_zone_flag = _active_zone_flag
-  RotorOps.game_state = RotorOps.game_states.not_started
+  RotorOps.game_state_flag = _game_state_flag
+  changeGameState(RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   
 end
@@ -626,5 +653,30 @@ function RotorOps.addPickupZone(zone_name, smoke, limit, active, side)
   RotorOps.ctld_pickup_zones[#RotorOps.ctld_pickup_zones + 1] = zone_name
   ctld.pickupZones[#ctld.pickupZones + 1] = {zone_name, smoke, limit, active, side}
 end
+
+
+function RotorOps.startConflict()
+  if RotorOps.game_state == RotorOps.game_states.in_progress then return end 
+  changeGameState(RotorOps.game_states.in_progress)
+  
+  --make some changes to the radio menu
+  local conflict_zones_menu = commandDB['conflict_zones_menu']
+  missionCommands.removeItem(commandDB['start_conflict']) 
+  --commandDB['push_zone'] = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotorOps.pushZone)
+  --commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotorOps.fallBack)
+  commandDB['clear_zone'] = missionCommands.addCommand( "Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
+  
+  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
+  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].name})
+  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
+  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[1].name)
+  RotorOps.setActiveZone(1)
+  gameMsg(gameMsgs.start)
+  gameMsg(gameMsgs.push, 1)
+  processMsgBuffer()
+  RotorOps.aiActiveZone()
+  local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
+end
+
 
 
