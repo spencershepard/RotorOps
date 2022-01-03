@@ -33,7 +33,7 @@ RotorOps.ai_red_infantry_groups = {}
 RotorOps.ai_blue_infantry_groups = {} 
 RotorOps.ai_red_vehicle_groups = {} 
 RotorOps.ai_blue_vehicle_groups = {} 
-RotorOps.ai_timers = {} --simply use the group ID for schedulefunction id
+RotorOps.ai_tasks = {} --simply use the group ID for schedulefunction id
 
 local gameMsgs = {
   push = {
@@ -162,45 +162,9 @@ function RotorOps.sortOutInfantry(mixed_units)
   return {infantry = _infantry, not_infantry = _not_infantry} 
 end
 
-
-
-
-
---spawn/clone a group onto the location of the first unit in a group (best to only use this for groups of one unit only for now!)
-function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, behavior) --allow to spawn on other group units
-  debugMsg("attempting to spawn at "..grp:getUnit(1):getTypeName())
-  local vars = {} 
-  vars.gpName = src_grp_name
-  vars.action = 'clone' 
-  vars.point = grp:getUnit(1):getPoint() 
-  vars.radius = 5
-  vars.disperse = 'disp'
-  vars.maxDisp = 5
-  local new_grp_table = mist.teleportToPoint(vars) 
-  
-  if new_grp_table then
-    local new_grp = Group.getByName(new_grp_table.name)
-    local PATROL = 1
-    local AGGRESSIVE = 2
-    if behavior == PATROL then
-      --trigger.action.outText("new group: "..mist.utils.tableShow(new_grp_table), 5)
-      --local id = timer.scheduleFunction(RotorOps.seekCover, new_grp, timer.getTime() + 1)
-      RotorOps.patrolRadius({grp = new_grp})
-    end
-    if behavior == AGGRESSIVE then
-      RotorOps.chargeEnemy({grp = new_grp})
-    end
-  else debugMsg("Infantry failed to spawn. ")  
-  end
-end
-
-function RotorOps.chargeEnemy(vars)
- --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
- local grp = vars.grp
- local search_radius = vars.radius or 5000
- ----
+function RotorOps.getValidUnitFromGroup(grp)
+ if grp:isExist() ~= true then return nil end
  local first_valid_unit
- if grp:isExist() ~= true then return end
  for index, unit in pairs(grp:getUnits())
  do
    if unit:isExist() == true then
@@ -209,7 +173,36 @@ function RotorOps.chargeEnemy(vars)
    else --trigger.action.outText("a unit no longer exists", 15) 
    end 
  end
+ return first_valid_unit
+end
+
+
+
+--spawn/clone a group onto the location of the first unit in a group (best to only use this for groups of one unit only for now!)  See chargeEnemy for grabing first valid unit
+function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spawn on other group units
+  local valid_unit = RotorOps.getValidUnitFromGroup(grp)
+  if not valid_unit then return end
+  local vars = {} 
+  vars.gpName = src_grp_name
+  vars.action = 'clone' 
+  vars.point = valid_unit:getPoint() 
+  vars.radius = 5
+  vars.disperse = 'disp'
+  vars.maxDisp = 5
+  local new_grp_table = mist.teleportToPoint(vars) 
+  
+  if new_grp_table then
+      RotorOps.aiTask({grp = new_grp, ai_task=ai_task})
+  else debugMsg("Infantry failed to spawn. ")  
+  end
+end
+
+function RotorOps.chargeEnemy(vars)
+ trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
+ local grp = vars.grp
+ local search_radius = vars.radius or 5000
  ----
+ local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
  
  if first_valid_unit == nil then return end
  local start_point = first_valid_unit:getPoint()
@@ -218,15 +211,28 @@ function RotorOps.chargeEnemy(vars)
  local enemy_coal
  if grp:getCoalition() == 1 then enemy_coal = 2 end
  if grp:getCoalition() == 2 then enemy_coal = 1 end
-
- --local sphere = trigger.misc.getZone('town')
- local volS = {
-   id = world.VolumeType.SPHERE,
-   params = {
-     point = grp:getUnit(1):getPoint(),  --check if exists, maybe itterate through grp
-     radius = search_radius
-   }
- }
+ 
+ local volS
+   if vars.zone then 
+     local sphere = trigger.misc.getZone('town')
+     volS = {
+       id = world.VolumeType.SPHERE,
+       params = {
+         point = sphere.point, 
+         radius = sphere.radius
+       }
+     }
+     else 
+       volS = {
+       id = world.VolumeType.SPHERE,
+       params = {
+         point = first_valid_unit:getPoint(), 
+         radius = search_radius
+       }
+     }
+   end
+ 
+ 
  local enemy_unit
  local path = {} 
  local ifFound = function(foundItem, val)
@@ -254,7 +260,6 @@ function RotorOps.chargeEnemy(vars)
  end
  world.searchObjects(Object.Category.UNIT, volS, ifFound)
  mist.goRoute(grp, path)
- local id = timer.scheduleFunction(RotorOps.chargeEnemy, vars, timer.getTime() + math.random(50,70))
 
 end
 
@@ -320,21 +325,7 @@ function RotorOps.patrolRadius(vars)
    end
  end
  --trigger.action.outText("new waypoints created: "..(#path - 1), 5) 
- mist.goRoute(grp, path)
- --local timing = mist.getPathLength(path) / 5
- --local id = timer.scheduleFunction(RotorOps.patrolRadius, vars, timer.getTime() + math.random(50,70))
-             
-
-   local group_name = grp:getName()
-   if tableHasKey(RotorOps.ai_timers, group_name) == true then  --if we already have this group id in our list of timers
-     debugMsg("timer already active, do nothing for "..group_name.." : ".. RotorOps.ai_timers[group_name])
-     --timer.removeFunction(RotorOps.ai_timers[group_name])
-   else 
-     debugMsg("adding timer: "..group_name) 
-     local timer_id = timer.scheduleFunction(RotorOps.patrolRadius, vars, timer.getTime() + math.random(50,70))
-     RotorOps.ai_timers[group_name] = timer_id
-   end
-                                                                 
+ mist.goRoute(grp, path)                                                      
 end
 
 
@@ -347,6 +338,57 @@ local function changeGameState(new_state)
   trigger.action.setUserFlag(RotorOps.game_state_flag, new_state)
 end
 
+function RotorOps.aiTask(group_name, task)
+   if tableHasKey(RotorOps.ai_tasks, group_name) == true then  --if we already have this group id in our list of timers
+     --debugMsg("timer already active, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
+     
+
+   else 
+     --debugMsg("adding timer: "..group_name) 
+     local vars = {}
+     vars.group_name = group_name
+     vars.last_task = task
+     local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + 5)
+     RotorOps.ai_tasks[group_name] = {['timer_id'] = timer_id, ['ai_task'] = task}
+   end
+end
+
+function RotorOps.aiExecute(vars)
+  local last_task = vars.last_task
+  local group_name = vars.group_name
+  local task = RotorOps.ai_tasks[group_name].ai_task
+  debugMsg("aiExecute: "..group_name.." : "..task) 
+  --debugMsg("task:"..RotorOps.ai_tasks[group_name].ai_task)
+  
+  --we should remove inactive/dead groups and cancel timer here
+  if Group.isExist(Group.getByName(group_name)) ~= true then
+    debugMsg("group no longer exists")
+    return
+  end  
+  
+ -- if last_task ~= task or Group.getByName(group_name):getController():hasTask() == false then  --should we add new waypoints or let the group finish what it's doing?
+  
+  if task == "patrol" then
+    local vars = {}
+    vars.grp = Group.getByName(group_name)
+    vars.radius = 150
+    RotorOps.patrolRadius(vars) --takes a group object, not name
+  end
+  
+  if task == "aggressive" then 
+    local vars = {}
+    vars.grp = Group.getByName(group_name)
+    vars.radius = 5000 
+    RotorOps.chargeEnemy(vars) --takes a group object, not name
+  end
+  
+--  end
+  
+  
+  vars.last_task = task
+  local update_interval = math.random(10,20) --this can be higher since we will check for changes
+  local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + update_interval)
+end
 
 function RotorOps.aiActiveZone(var)
   if RotorOps.ai_active_zone == false then return end
@@ -354,8 +396,19 @@ function RotorOps.aiActiveZone(var)
 
   for index, group in pairs(RotorOps.ai_red_infantry_groups) do 
     if group then
-      debugMsg("grp="..group)
-      RotorOps.patrolRadius({grp=Group.getByName(group), radius=400})
+      RotorOps.aiTask(group, "patrol")
+    end
+  end
+  
+  for index, group in pairs(RotorOps.ai_blue_infantry_groups) do 
+    if group then
+      RotorOps.aiTask(group, "aggressive")
+    end
+  end
+  
+  for index, group in pairs(RotorOps.ai_blue_vehicle_groups) do 
+    if group then
+      RotorOps.aiTask(group, "aggressive")
     end
   end
  
