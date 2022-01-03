@@ -198,7 +198,7 @@ function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spaw
 end
 
 function RotorOps.chargeEnemy(vars)
- trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
+ --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
  local grp = vars.grp
  local search_radius = vars.radius or 5000
  ----
@@ -214,7 +214,7 @@ function RotorOps.chargeEnemy(vars)
  
  local volS
    if vars.zone then 
-     local sphere = trigger.misc.getZone('town')
+     local sphere = trigger.misc.getZone(vars.zone)
      volS = {
        id = world.VolumeType.SPHERE,
        params = {
@@ -265,7 +265,7 @@ end
 
 
 function RotorOps.patrolRadius(vars)
- debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
+ --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
  local grp = vars.grp
  local search_radius = vars.radius or 100
  local first_valid_unit
@@ -338,30 +338,35 @@ local function changeGameState(new_state)
   trigger.action.setUserFlag(RotorOps.game_state_flag, new_state)
 end
 
-function RotorOps.aiTask(group_name, task)
+function RotorOps.aiTask(group_name, task, zone)
    if tableHasKey(RotorOps.ai_tasks, group_name) == true then  --if we already have this group id in our list of timers
-     --debugMsg("timer already active, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
-     
-
+     debugMsg("timer already active, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
+     RotorOps.ai_tasks[group_name].ai_task = task
+     RotorOps.ai_tasks[group_name].zone = zone
    else 
-     --debugMsg("adding timer: "..group_name) 
+     debugMsg("adding timer: "..group_name.." task: "..task) 
      local vars = {}
      vars.group_name = group_name
      vars.last_task = task
+     if zone then 
+       vars.zone = zone 
+     end
      local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + 5)
-     RotorOps.ai_tasks[group_name] = {['timer_id'] = timer_id, ['ai_task'] = task}
+     RotorOps.ai_tasks[group_name] = {['timer_id'] = timer_id, ['ai_task'] = task, ['zone'] = zone}
    end
+   
 end
 
 function RotorOps.aiExecute(vars)
   local last_task = vars.last_task
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
+  local zone = vars.zone
   debugMsg("aiExecute: "..group_name.." : "..task) 
   --debugMsg("task:"..RotorOps.ai_tasks[group_name].ai_task)
   
   --we should remove inactive/dead groups and cancel timer here
-  if Group.isExist(Group.getByName(group_name)) ~= true then
+  if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
     debugMsg("group no longer exists")
     return
   end  
@@ -373,20 +378,25 @@ function RotorOps.aiExecute(vars)
     vars.grp = Group.getByName(group_name)
     vars.radius = 150
     RotorOps.patrolRadius(vars) --takes a group object, not name
-  end
-  
-  if task == "aggressive" then 
+  elseif task == "aggressive" then 
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 5000 
     RotorOps.chargeEnemy(vars) --takes a group object, not name
-  end
+  elseif task == "clear_zone" then 
+    local vars = {}
+    vars.grp = Group.getByName(group_name)
+    vars.zone = zone
+    RotorOps.chargeEnemy(vars) --takes a group object, not name
+  elseif task == "move_to_zone" then  
+    --placeholder only, we currently use sendUnitsToZone function
+  end  
   
 --  end
   
   
   vars.last_task = task
-  local update_interval = math.random(10,20) --this can be higher since we will check for changes
+  local update_interval = math.random(10,20) 
   local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + update_interval)
 end
 
@@ -402,13 +412,13 @@ function RotorOps.aiActiveZone(var)
   
   for index, group in pairs(RotorOps.ai_blue_infantry_groups) do 
     if group then
-      RotorOps.aiTask(group, "aggressive")
+      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
     end
   end
   
   for index, group in pairs(RotorOps.ai_blue_vehicle_groups) do 
     if group then
-      RotorOps.aiTask(group, "aggressive")
+      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
     end
   end
  
@@ -429,10 +439,10 @@ function RotorOps.assessUnitsInZone(var)
    local blue_vehicles = RotorOps.sortOutInfantry(blue_ground_units).not_infantry
    
    
-   --is the active zone cleared?
+   --is the active zone cleared?  
      local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
      local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
-     
+     ---we should grab these after the clearActiveZone below
      
      if #red_ground_units <= RotorOps.max_units_left then
        RotorOps.clearActiveZone()
@@ -548,8 +558,9 @@ function RotorOps.sendUnitsToZone(units_table, zone, _formation, _final_heading,
   local force_offroad = _force_offroad or false
   local groups = RotorOps.groupsFromUnits(units_table)
   for index, group in pairs(groups) do
-    --debugMsg("sending to zone: "..zone.." grp: "..group)
+    debugMsg("sending to zone: "..zone.." grp: "..group)
     mist.groupToPoint(group, zone, formation, final_heading, speed, force_offroad)
+    RotorOps.aiTask(group, "move_to_zone", zone)
   end
 end
 
@@ -706,7 +717,7 @@ function RotorOps.addPickupZone(zone_name, smoke, limit, active, side)
   RotorOps.ctld_pickup_zones[#RotorOps.ctld_pickup_zones + 1] = zone_name
   ctld.pickupZones[#ctld.pickupZones + 1] = {zone_name, smoke, limit, active, side}
 end
-
+ 
 
 function RotorOps.startConflict()
   if RotorOps.game_state == RotorOps.game_states.in_progress then return end 
