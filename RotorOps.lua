@@ -237,9 +237,10 @@ function RotorOps.chargeEnemy(vars)
  local path = {} 
  local ifFound = function(foundItem, val)
   --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
-  if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+ -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+  if foundItem:getCoalition() == enemy_coal then
     enemy_unit = foundItem
-    --trigger.action.outText("found enemy! "..foundItem:getTypeName(), 5) 
+    trigger.action.outText("found enemy! "..foundItem:getTypeName(), 5) 
     
     path[1] = mist.ground.buildWP(start_point, '', 5) 
     path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
@@ -347,7 +348,7 @@ function RotorOps.aiTask(group_name, task, zone)
      debugMsg("adding timer: "..group_name.." task: "..task) 
      local vars = {}
      vars.group_name = group_name
-     vars.last_task = task
+     --vars.last_task = task
      if zone then 
        vars.zone = zone 
      end
@@ -358,11 +359,14 @@ function RotorOps.aiTask(group_name, task, zone)
 end
 
 function RotorOps.aiExecute(vars)
+  local update_interval = 60
   local last_task = vars.last_task
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
   local zone = vars.zone
-  debugMsg("aiExecute: "..group_name.." : "..task) 
+  --local zone = ""
+  if vars.zone then zone = vars.zone end
+  --debugMsg("aiExecute: "..group_name.." : "..task .." zone:"..zone) 
   --debugMsg("task:"..RotorOps.ai_tasks[group_name].ai_task)
   
   --we should remove inactive/dead groups and cancel timer here
@@ -371,36 +375,41 @@ function RotorOps.aiExecute(vars)
     return
   end  
   
- -- if last_task ~= task or Group.getByName(group_name):getController():hasTask() == false then  --should we add new waypoints or let the group finish what it's doing?
+ --if Group.getByName(group_name):getController():hasTask() == false then   --our implementation of hasTask does not seem to be working for vehicles
   
   if task == "patrol" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 150
     RotorOps.patrolRadius(vars) --takes a group object, not name
+    update_interval = math.random(40,70)
   elseif task == "aggressive" then 
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 5000 
+    update_interval = math.random(20,40)
     RotorOps.chargeEnemy(vars) --takes a group object, not name
   elseif task == "clear_zone" then 
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.zone = zone
+    update_interval = math.random(50,70)
     RotorOps.chargeEnemy(vars) --takes a group object, not name
   elseif task == "move_to_zone" then  
     --placeholder only, we currently use sendUnitsToZone function
+    update_interval = math.random(90,120)
+    RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
   end  
   
---  end
+--end
   
   
   vars.last_task = task
-  local update_interval = math.random(10,20) 
+   
   local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + update_interval)
 end
 
-function RotorOps.aiActiveZone(var)
+function RotorOps.aiActiveZone(var) --[[
   if RotorOps.ai_active_zone == false then return end
   --debugMsg("aiActiveZone func")
 
@@ -423,7 +432,7 @@ function RotorOps.aiActiveZone(var)
   end
  
   
-  local id = timer.scheduleFunction(RotorOps.aiActiveZone, 1, timer.getTime() + 10)
+  local id = timer.scheduleFunction(RotorOps.aiActiveZone, 1, timer.getTime() + 10) ]]--
 end
 
 
@@ -438,17 +447,6 @@ function RotorOps.assessUnitsInZone(var)
    local blue_infantry = RotorOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotorOps.sortOutInfantry(blue_ground_units).not_infantry
    
-   
-   --is the active zone cleared?  
-     local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
-     local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
-     ---we should grab these after the clearActiveZone below
-     
-     if #red_ground_units <= RotorOps.max_units_left then
-       RotorOps.clearActiveZone()
-     end
-
-   
    --are all zones clear?
    local all_zones_clear = true
    for key, value in pairs(RotorOps.zones) do 
@@ -457,6 +455,15 @@ function RotorOps.assessUnitsInZone(var)
         all_zones_clear = false
       end
    end
+   
+     if #red_ground_units <= RotorOps.max_units_left then
+       RotorOps.clearActiveZone()
+     end
+     
+        --is the active zone cleared?  
+     local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
+     local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
+     ---we should grab these after the clearActiveZone below
    
    if all_zones_clear then
      RotorOps.gameWon()
@@ -468,6 +475,22 @@ function RotorOps.assessUnitsInZone(var)
    RotorOps.ai_blue_infantry_groups = RotorOps.groupsFromUnits(blue_infantry)
    RotorOps.ai_red_vehicle_groups = RotorOps.groupsFromUnits(red_vehicles)
    RotorOps.ai_blue_vehicle_groups = RotorOps.groupsFromUnits(blue_vehicles)
+   
+   
+-------
+
+  for index, group in pairs(RotorOps.ai_red_infantry_groups) do 
+    if group then
+      RotorOps.aiTask(group, "patrol")
+    end
+  end
+  
+  for index, group in pairs(RotorOps.ai_blue_infantry_groups) do 
+    if group then
+      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
+    end
+  end
+
 
    
    --zone status display stuff
