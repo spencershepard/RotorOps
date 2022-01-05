@@ -1,7 +1,7 @@
 RotorOps = {}
 
 RotorOps.voice_overs = true
-RotorOps.ground_speed = 30 --max speed for ground vehicles moving between zones
+RotorOps.ground_speed = 40 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.ai_active_zone = true --allow the script to automatically create waypoints for ground units in the active zone
@@ -195,6 +195,16 @@ function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spaw
       RotorOps.aiTask({grp = new_grp, ai_task=ai_task})
   else debugMsg("Infantry failed to spawn. ")  
   end
+end
+
+function RotorOps.deployTroops(quantity, target_group_obj)
+  local valid_unit = RotorOps.getValidUnitFromGroup(target_group_obj)
+  if not valid_unit then return end
+  local coalition = valid_unit:getCoalition()
+  local side = "red"
+  if coalition == 2 then side = "blue" end
+  local point = valid_unit:getPoint() 
+  ctld.spawnGroupAtPoint(side, quantity, point, 1000)
 end
 
 function RotorOps.chargeEnemy(vars)
@@ -659,6 +669,8 @@ function RotorOps.setupCTLD()
   ctld.JTAC_lock = "vehicle"
   ctld.location_DMS = true
   ctld.numberOfTroops = 24 --max loading size
+  ctld.maximumSearchDistance = 4000 -- max distance for troops to search for enemy
+  ctld.maximumMoveDistance = 0 -- max distance for troops to move from drop point if no enemy is nearby
   
   ctld.unitLoadLimits = {
     -- Remove the -- below to turn on options
@@ -702,7 +714,7 @@ function RotorOps.addZone(_name, _zone_status_flag)
   trigger.action.setUserFlag(_zone_status_flag, RotorOps.zone_states.not_started)
   RotorOps.drawZones()
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "green", 0 }
-  RotorOps.addPickupZone(_name, "green", -1, "no", 0)
+  RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
   --ctld.dropOffZones[#ctld.dropOffZones + 1] = { _name, "none", 1 }
   --trigger.action.outText("zones: ".. mist.utils.tableShow(RotorOps.zones), 5)  
 end
