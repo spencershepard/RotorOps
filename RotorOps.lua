@@ -1,7 +1,7 @@
 RotorOps = {}
 
 RotorOps.voice_overs = true
-RotorOps.ground_speed = 40 --max speed for ground vehicles moving between zones
+RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.ai_active_zone = true --allow the script to automatically create waypoints for ground units in the active zone
@@ -62,6 +62,20 @@ local gameMsgs = {
   start = {
     {'SUPPORT THE WAR ON THE GROUND!', 'support_troops.ogg'},
   },
+  troops_dropped = {
+    {'TROOPS DROPPED INTO ZONE!', 'troops_dropped_active.ogg'},
+    {'TROOPS DROPPED INTO ALPHA!', 'troops_dropped_alpha.ogg'},
+    {'TROOPS DROPPED INTO BRAVO!', 'troops_dropped_bravo.ogg'},
+    {'TROOPS DROPPED INTO CHARLIE!', 'troops_dropped_charlie.ogg'},
+    {'TROOPS DROPPED INTO DELTA!', 'troops_dropped_delta.ogg'},
+  },
+  get_troops_to_zone = {
+    {'GET OUR TROOPS TO THE NEXT ZONE!', 'get_troops_next_zone.ogg'},
+    {'GET OUR TROOPS TO ALPHA!', 'get_troops_alpha.ogg'},
+    {'GET OUR TROOPS TO BRAVO!', 'get_troops_bravo.ogg'},
+    {'GET OUR TROOPS TO CHARLIE!', 'get_troops_charlie.ogg'},
+    {'GET OUR TROOPS TO DELTA!', 'get_troops_delta.ogg'},
+  },
   
     
 }
@@ -104,6 +118,29 @@ local function getObjectVolume(obj)
   local height = (obj:getDesc().box.max.y + math.abs(obj:getDesc().box.min.y))
   local depth = (obj:getDesc().box.max.z + math.abs(obj:getDesc().box.min.z))
   return length * height * depth
+end
+
+local function getDistance(point1, point2)
+  local x1 = point1.x
+  local y1 = point1.y
+  local z1 = point1.z
+  local x2 = point2.x
+  local y2 = point2.y
+  local z2 = point2.z
+  local dX = math.abs(x1-x2)
+  local dZ = math.abs(z1-z2)
+  local distance = math.sqrt(dX*dX + dZ*dZ)
+  return distance
+end
+
+local function isUnitInZone(unit, zone_name)
+  local zone = trigger.misc.getZone(zone_name)
+  local distance = getDistance(unit:getPoint(), zone.point)
+  if distance <= zone.radius then
+    return true
+  else
+    return false
+  end
 end
 
 
@@ -205,6 +242,14 @@ function RotorOps.deployTroops(quantity, target_group_obj)
   if coalition == 2 then side = "blue" end
   local point = valid_unit:getPoint() 
   ctld.spawnGroupAtPoint(side, quantity, point, 1000)
+  
+  -- voiceover trigger stuff
+  for index, zone in pairs(RotorOps.zones)
+  do
+    if isUnitInZone(valid_unit, zone.name) then 
+      gameMsg(gameMsgs.troops_dropped, index)
+    end
+  end
 end
 
 function RotorOps.chargeEnemy(vars)
@@ -351,11 +396,11 @@ end
 
 function RotorOps.aiTask(group_name, task, zone)
    if tableHasKey(RotorOps.ai_tasks, group_name) == true then  --if we already have this group id in our list of timers
-     debugMsg("timer already active, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
+     --debugMsg("timer already exists, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
      RotorOps.ai_tasks[group_name].ai_task = task
      RotorOps.ai_tasks[group_name].zone = zone
    else 
-     debugMsg("adding timer: "..group_name.." task: "..task) 
+     --debugMsg("adding timer: "..group_name.." task: "..task) 
      local vars = {}
      vars.group_name = group_name
      --vars.last_task = task
@@ -406,7 +451,6 @@ function RotorOps.aiExecute(vars)
     update_interval = math.random(50,70)
     RotorOps.chargeEnemy(vars) --takes a group object, not name
   elseif task == "move_to_zone" then  
-    --placeholder only, we currently use sendUnitsToZone function
     update_interval = math.random(90,120)
     RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
   end  
@@ -591,7 +635,7 @@ function RotorOps.sendUnitsToZone(units_table, zone, _formation, _final_heading,
   local force_offroad = _force_offroad or false
   local groups = RotorOps.groupsFromUnits(units_table)
   for index, group in pairs(groups) do
-    debugMsg("sending to zone: "..zone.." grp: "..group)
+    --debugMsg("sending to zone: "..zone.." grp: "..group.." speed:"..speed)
     mist.groupToPoint(group, zone, formation, final_heading, speed, force_offroad)
     RotorOps.aiTask(group, "move_to_zone", zone)
   end
@@ -643,18 +687,16 @@ function RotorOps.setActiveZone(new_index)
   end
   
   if new_index ~= old_index then  --the active zone is changing
-    
     ctld.activatePickupZone(RotorOps.zones[old_index].name)
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
-    RotorOps.active_zone_index = new_index
-    trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active)
+    
     if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
-    if new_index > old_index then gameMsg(gameMsgs.push, new_index) end
-    
-    
+    --if new_index > old_index then gameMsg(gameMsgs.push, new_index) end    
+    if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
   end
   
-  
+  RotorOps.active_zone_index = new_index
+  trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active)
   RotorOps.active_zone = RotorOps.zones[new_index].name
   --debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
   
@@ -763,7 +805,7 @@ function RotorOps.startConflict()
   missionCommands.removeItem(commandDB['start_conflict']) 
   --commandDB['push_zone'] = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotorOps.pushZone)
   --commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotorOps.fallBack)
-  commandDB['clear_zone'] = missionCommands.addCommand( "Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
+  commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
   
   staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
   --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].name})
