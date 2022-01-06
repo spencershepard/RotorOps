@@ -2,3 +2,4 @@
 assert(loadfile("C:\\RotorOps\\mist_4_4_90.lua"))()
 assert(loadfile("C:\\RotorOps\\CTLD.lua"))()
 assert(loadfile("C:\\RotorOps\\RotorOps.lua"))()
+assert(loadfile("C:\\RotorOps\\Splash_Damage_2_0.lua"))()

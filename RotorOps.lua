@@ -7,7 +7,7 @@ RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left 
 RotorOps.ai_active_zone = true --allow the script to automatically create waypoints for ground units in the active zone
 
 
-RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3} --zone level user flags will use these values
+RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3, most_remain = 4, half_remain = 5, quarter_remain = 6 } --zone level user flags will use these values.  _remain flags compare the active red ground units vs their initial numbers
 
 RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3} --game level user flag will use these values
 
@@ -29,6 +29,8 @@ env.info("ROTOR OPS STARTED")
 local staged_units --table of ground units that started in the staging zone
 local commandDB = {} 
 local game_message_buffer = {}
+local active_zone_initial_enemy_units
+
 RotorOps.ai_red_infantry_groups = {} 
 RotorOps.ai_blue_infantry_groups = {} 
 RotorOps.ai_red_vehicle_groups = {} 
@@ -150,12 +152,14 @@ function RotorOps.groupsFromUnits(units, table)
 
   --local groupIndex = {}
   for i = 1, #units do 
-   if hasValue(groups, units[i]:getGroup():getName()) == false then 
-       --debugMsg("added: "..units[i]:getGroup():getName())
-       --groups[units[i]:getGroup():getName()] = true
-       --groupIndex[#groupIndex + 1] = groups[units[i]:getGroup():getName()]
-       groups[#groups + 1] = units[i]:getGroup():getName()
-   else --debugMsg(units[i]:getGroup():getName().." was already in the table")
+   if units[i]:isExist() then
+     if hasValue(groups, units[i]:getGroup():getName()) == false then 
+         --debugMsg("added: "..units[i]:getGroup():getName())
+         --groups[units[i]:getGroup():getName()] = true
+         --groupIndex[#groupIndex + 1] = groups[units[i]:getGroup():getName()]
+         groups[#groups + 1] = units[i]:getGroup():getName()
+     else --debugMsg(units[i]:getGroup():getName().." was already in the table")
+     end
    end
   end
   return groups
@@ -269,6 +273,7 @@ function RotorOps.chargeEnemy(vars)
  
  local volS
    if vars.zone then 
+     debugMsg("CHARGE ENEMY at zone: "..vars.zone)
      local sphere = trigger.misc.getZone(vars.zone)
      volS = {
        id = world.VolumeType.SPHERE,
@@ -277,7 +282,8 @@ function RotorOps.chargeEnemy(vars)
          radius = sphere.radius
        }
      }
-     else 
+   else 
+       debugMsg("CHARGE ENEMY in radius: "..search_radius)
        volS = {
        id = world.VolumeType.SPHERE,
        params = {
@@ -293,9 +299,9 @@ function RotorOps.chargeEnemy(vars)
  local ifFound = function(foundItem, val)
   --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
  -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
-  if foundItem:getCoalition() == enemy_coal then
+  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
     enemy_unit = foundItem
-    trigger.action.outText("found enemy! "..foundItem:getTypeName(), 5) 
+    --debugMsg("found enemy! "..foundItem:getTypeName()) 
     
     path[1] = mist.ground.buildWP(start_point, '', 5) 
     path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
@@ -452,7 +458,18 @@ function RotorOps.aiExecute(vars)
     RotorOps.chargeEnemy(vars) --takes a group object, not name
   elseif task == "move_to_zone" then  
     update_interval = math.random(90,120)
-    RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
+    local formation = 'cone'
+    local final_heading = nil
+    local speed = RotorOps.ground_speed
+    local force_offroad = false
+    mist.groupToPoint(group_name, zone, formation, final_heading, speed, force_offroad)
+  elseif task == "move_to_active_zone" then  
+    update_interval = math.random(90,120)
+    local formation = 'cone'
+    local final_heading = nil
+    local speed = RotorOps.ground_speed
+    local force_offroad = false
+    mist.groupToPoint(group_name, RotorOps.active_zone, formation, final_heading, speed, force_offroad)
   end  
   
 --end
@@ -494,44 +511,20 @@ end
 function RotorOps.assessUnitsInZone(var)
    if RotorOps.game_state ~= RotorOps.game_states.in_progress then return end
    --find and sort units found in the active zone
-   local red_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})  --consider adding other unit types
+   local red_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})  
    local red_infantry = RotorOps.sortOutInfantry(red_ground_units).infantry
    local red_vehicles = RotorOps.sortOutInfantry(red_ground_units).not_infantry
-   local blue_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})  --consider adding other unit types
+   local blue_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
    local blue_infantry = RotorOps.sortOutInfantry(blue_ground_units).infantry
    local blue_vehicles = RotorOps.sortOutInfantry(blue_ground_units).not_infantry
    
-   --are all zones clear?
-   local all_zones_clear = true
-   for key, value in pairs(RotorOps.zones) do 
-      local zone_status = trigger.misc.getUserFlag(RotorOps.zones[key].zone_status_flag)
-      if zone_status ~= RotorOps.zone_states.cleared then
-        all_zones_clear = false
-      end
-   end
-   
-     if #red_ground_units <= RotorOps.max_units_left then
-       RotorOps.clearActiveZone()
-     end
-     
-        --is the active zone cleared?  
-     local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
-     local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
-     ---we should grab these after the clearActiveZone below
-   
-   if all_zones_clear then
-     RotorOps.gameWon()
-     return
-   end
-   
-   --ground unit ai stuff
+-------
+--   --ground unit ai stuff
    RotorOps.ai_red_infantry_groups = RotorOps.groupsFromUnits(red_infantry)
    RotorOps.ai_blue_infantry_groups = RotorOps.groupsFromUnits(blue_infantry)
    RotorOps.ai_red_vehicle_groups = RotorOps.groupsFromUnits(red_vehicles)
    RotorOps.ai_blue_vehicle_groups = RotorOps.groupsFromUnits(blue_vehicles)
    
-   
--------
 
   for index, group in pairs(RotorOps.ai_red_infantry_groups) do 
     if group then
@@ -544,9 +537,71 @@ function RotorOps.assessUnitsInZone(var)
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
     end
   end
-
-
+  
+  for index, group in pairs(RotorOps.ai_blue_vehicle_groups) do 
+    if group then
+      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
+      debugMsg("active_zone="..RotorOps.active_zone)
+    end
+  end
+  
+  -----
+   local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
+   local active_zone_status = trigger.misc.getUserFlag(active_zone_status_flag)
    
+      --set user flags based on quantities of enemy units remaining
+   if not active_zone_initial_enemy_units then
+     debugMsg("taking stock of the active zone")
+     active_zone_initial_enemy_units = red_ground_units
+   end
+   
+   local enemy_remain_status
+   if #red_ground_units < #active_zone_initial_enemy_units * 0.75 then
+     enemy_remain_status = RotorOps.zone_states.most_remain
+     debugMsg("most remain at "..RotorOps.active_zone)
+   end
+   if #red_ground_units < #active_zone_initial_enemy_units * 0.5 then
+     enemy_remain_status = RotorOps.zone_states.half_remain
+     debugMsg("half remain at "..RotorOps.active_zone)
+   end
+   if #red_ground_units < #active_zone_initial_enemy_units * 0.25 then
+     enemy_remain_status = RotorOps.zone_states.quarter_remain
+     debugMsg("quarter remain at "..RotorOps.active_zone)
+   end
+   
+     
+     if #red_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
+       active_zone_initial_enemy_units = nil
+       trigger.action.setUserFlag(active_zone_status_flag, RotorOps.zone_states.cleared)  --set the zone's flag to cleared
+       gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
+       if RotorOps.auto_push then
+         RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
+         local staged_groups = RotorOps.groupsFromUnits(staged_units)
+         for index, group in pairs(staged_groups) do
+           RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone
+         end
+       end  
+     elseif enemy_remain_status then
+       trigger.action.setUserFlag(active_zone_status_flag, enemy_remain_status)  --set the zones flage to indicate the status of remaining enemies
+     end
+     
+   --are all zones clear?
+   local all_zones_clear = true
+   for key, value in pairs(RotorOps.zones) do 
+      local zone_status = trigger.misc.getUserFlag(RotorOps.zones[key].zone_status_flag)
+      if zone_status ~= RotorOps.zone_states.cleared then
+        all_zones_clear = false
+      end
+   end
+   
+   if all_zones_clear then
+    changeGameState(RotorOps.game_states.won)
+    gameMsg(gameMsgs.success)
+    return --we won't reset our timer to fire this function again
+   end
+   
+
+
    --zone status display stuff
    local message = ""
    local header = ""
@@ -626,46 +681,22 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
 end
 
 
-
-
-function RotorOps.sendUnitsToZone(units_table, zone, _formation, _final_heading, _speed, _force_offroad)
-  local formation = _formation or 'cone'
-  local final_heading = _final_heading or nil
-  local speed = _speed or RotorOps.ground_speed
-  local force_offroad = _force_offroad or false
-  local groups = RotorOps.groupsFromUnits(units_table)
-  for index, group in pairs(groups) do
-    --debugMsg("sending to zone: "..zone.." grp: "..group.." speed:"..speed)
-    mist.groupToPoint(group, zone, formation, final_heading, speed, force_offroad)
-    RotorOps.aiTask(group, "move_to_zone", zone)
-  end
-end
-
+--[[
 function RotorOps.clearActiveZone()
   local active_zone_status_flag = RotorOps.zones[RotorOps.active_zone_index].zone_status_flag
   trigger.action.setUserFlag(active_zone_status_flag, RotorOps.zone_states.cleared)  --set the zone's flag to cleared
   gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
   if RotorOps.auto_push then
-    RotorOps.pushZone()
+    RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
+    local staged_groups = RotorOps.groupsFromUnits(staged_units)
+    for index, group in pairs(staged_groups) do
+      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name)
+    end
   end
 end
-
-function RotorOps.pushZone()
-  RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
-end
-
-function RotorOps.fallBack()
-  RotorOps.setActiveZone(RotorOps.active_zone_index - 1)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[RotorOps.active_zone_index].name)
-end
+]]--
 
 
-
-function RotorOps.gameWon()
-  changeGameState(RotorOps.game_states.won)
-  gameMsg(gameMsgs.success)
-end
 
 function RotorOps.spawnInfantryAtZone(vars)
   local side = vars.side
@@ -686,7 +717,11 @@ function RotorOps.setActiveZone(new_index)
     new_index = 1 
   end
   
+  RotorOps.active_zone_index = new_index
+  RotorOps.active_zone = RotorOps.zones[new_index].name
+  
   if new_index ~= old_index then  --the active zone is changing
+    trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active) --set the new zone to active
     ctld.activatePickupZone(RotorOps.zones[old_index].name)
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     
@@ -695,9 +730,7 @@ function RotorOps.setActiveZone(new_index)
     if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
   end
   
-  RotorOps.active_zone_index = new_index
-  trigger.action.setUserFlag(RotorOps.zones[new_index].zone_status_flag, RotorOps.zone_states.active)
-  RotorOps.active_zone = RotorOps.zones[new_index].name
+
   --debugMsg("active zone: "..RotorOps.active_zone.."  old zone: "..RotorOps.zones[old_index].name)  
   
   RotorOps.drawZones()
@@ -803,19 +836,20 @@ function RotorOps.startConflict()
   --make some changes to the radio menu
   local conflict_zones_menu = commandDB['conflict_zones_menu']
   missionCommands.removeItem(commandDB['start_conflict']) 
-  --commandDB['push_zone'] = missionCommands.addCommand( "Push to next zone", conflict_zones_menu , RotorOps.pushZone)
-  --commandDB['fall_back'] = missionCommands.addCommand( "Fall back to prev zone"  , conflict_zones_menu , RotorOps.fallBack)
-  commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
+  --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
   
-  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
-  --local helicopters = mist.getUnitsInZones(mist.makeUnitTable({'[all][helicopter]'}), {RotorOps.zones[1].name})
-  --RotorOps.sendUnitsToZone(helicopters, RotorOps.zones[2].name, nil, nil, 90)
-  RotorOps.sendUnitsToZone(staged_units, RotorOps.zones[1].name)
   RotorOps.setActiveZone(1)
   gameMsg(gameMsgs.start)
   gameMsg(gameMsgs.push, 1)
   processMsgBuffer()
   RotorOps.aiActiveZone()
+  
+  staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
+  local staged_groups = RotorOps.groupsFromUnits(staged_units)
+  for index, group in pairs(staged_groups) do
+    RotorOps.aiTask(group,"move_to_active_zone")
+  end
+  
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
 
