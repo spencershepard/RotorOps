@@ -251,7 +251,11 @@ function RotorOps.deployTroops(quantity, target_group_obj)
   for index, zone in pairs(RotorOps.zones)
   do
     if isUnitInZone(valid_unit, zone.name) then 
-      gameMsg(gameMsgs.troops_dropped, index)
+      if side == "red" then
+        gameMsg(gameMsgs.troops_dropped, index)
+      else
+        gameMsg(gameMsgs.friendly_troops_dropped, index)
+      end
     end
   end
 end
@@ -432,7 +436,7 @@ function RotorOps.aiExecute(vars)
   
   --we should remove inactive/dead groups and cancel timer here
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
-    debugMsg("group no longer exists")
+    --debugMsg("group no longer exists")
     return
   end  
   
@@ -540,8 +544,7 @@ function RotorOps.assessUnitsInZone(var)
   
   for index, group in pairs(RotorOps.ai_blue_vehicle_groups) do 
     if group then
-      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
-      debugMsg("active_zone="..RotorOps.active_zone)
+      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
     end
   end
   
@@ -551,7 +554,7 @@ function RotorOps.assessUnitsInZone(var)
    
       --set user flags based on quantities of enemy units remaining
    if not active_zone_initial_enemy_units then
-     debugMsg("taking stock of the active zone")
+     --debugMsg("taking stock of the active zone")
      active_zone_initial_enemy_units = red_ground_units
    end
    
@@ -611,7 +614,8 @@ function RotorOps.assessUnitsInZone(var)
    else
      header = "[BATTLE FOR "..RotorOps.active_zone .. "]   " 
    end
-   body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles." 
+   --body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles."
+   body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles."..trigger.misc.getUserFlag(active_zone_status_flag)
 
    message = header .. body
    if RotorOps.zone_status_display then 
