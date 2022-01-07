@@ -10,6 +10,7 @@ RotorOps.ai_active_zone = true --allow the script to automatically create waypoi
 RotorOps.zone_states = {not_started = 0, active = 1, cleared = 2, started = 3, most_remain = 4, half_remain = 5, quarter_remain = 6 } --zone level user flags will use these values.  _remain flags compare the active red ground units vs their initial numbers
 
 RotorOps.game_states = {not_started = 0, in_progress = 1, won = 2, lost = 3} --game level user flag will use these values
+--RotorOps.game_states = {not_started = 0, alpha = 1, bravo = 2, charlie = 3, delta = 4, game_won = 100} --game level user flag will use these values
 
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P'} --players flying these will have ctld transport access
 
@@ -277,7 +278,7 @@ function RotorOps.chargeEnemy(vars)
  
  local volS
    if vars.zone then 
-     debugMsg("CHARGE ENEMY at zone: "..vars.zone)
+     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
      local sphere = trigger.misc.getZone(vars.zone)
      volS = {
        id = world.VolumeType.SPHERE,
@@ -445,7 +446,7 @@ function RotorOps.aiExecute(vars)
   if task == "patrol" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
-    vars.radius = 150
+    vars.radius = 500
     RotorOps.patrolRadius(vars) --takes a group object, not name
     update_interval = math.random(40,70)
   elseif task == "aggressive" then 
@@ -556,6 +557,7 @@ function RotorOps.assessUnitsInZone(var)
    if not active_zone_initial_enemy_units then
      --debugMsg("taking stock of the active zone")
      active_zone_initial_enemy_units = red_ground_units
+     trigger.action.setUserFlag(active_zone_status_flag, RotorOps.zone_states.active)  --set the zone's flag to active ---patch solution...would this work if there were no enemies in zone??
    end
    
    local enemy_remain_status
@@ -614,8 +616,7 @@ function RotorOps.assessUnitsInZone(var)
    else
      header = "[BATTLE FOR "..RotorOps.active_zone .. "]   " 
    end
-   --body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles."
-   body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles."..trigger.misc.getUserFlag(active_zone_status_flag)
+   body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles."
 
    message = header .. body
    if RotorOps.zone_status_display then 
@@ -853,6 +854,7 @@ function RotorOps.startConflict()
   for index, group in pairs(staged_groups) do
     RotorOps.aiTask(group,"move_to_active_zone")
   end
+
   
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
