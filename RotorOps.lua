@@ -543,23 +543,19 @@ function RotorOps.assessUnitsInZone(var)
    if #active_zone_initial_enemy_units == 0 then active_zone_initial_enemy_units = 1 end --prevent divide by zero
    local defenders_remaining_percent = math.floor((#red_ground_units / #active_zone_initial_enemy_units) * 100) 
      
-     if #red_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
-       active_zone_initial_enemy_units = nil
-       defenders_remaining_percent = 0
-       trigger.action.setUserFlag(defenders_status_flag, 0)  --set the zone's flag to cleared
-       gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
+   if #red_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
+     active_zone_initial_enemy_units = nil
+     defenders_remaining_percent = 0
+     trigger.action.setUserFlag(defenders_status_flag, 0)  --set the zone's flag to cleared
+     gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
+     
+     if RotorOps.auto_push then                                 --push units to the next zone
+       RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
+     end  
        
-       if RotorOps.auto_push then                                 --push units to the next zone
-         RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
-         local staged_groups = RotorOps.groupsFromUnits(staged_units)
-         for index, group in pairs(staged_groups) do
-           RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone
-         end
-       end  
-       
-     else 
-       trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flage to indicate the status of remaining enemies
-     end
+   else 
+     trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flag to indicate the status of remaining enemies
+   end
      
    --are all zones clear?
    local all_zones_clear = true
@@ -684,6 +680,11 @@ function RotorOps.setActiveZone(new_index)
     changeGameState(new_index)
     if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
     if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
+    
+    local staged_groups = RotorOps.groupsFromUnits(staged_units)
+    for index, group in pairs(staged_groups) do
+      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone
+    end
   end
   
 
@@ -789,17 +790,13 @@ function RotorOps.startConflict()
   --missionCommands.removeItem(commandDB['start_conflict']) 
   --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
   
-  RotorOps.setActiveZone(1)
+  
   gameMsg(gameMsgs.start)
   gameMsg(gameMsgs.push, 1)
   processMsgBuffer()
   
   staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
-  local staged_groups = RotorOps.groupsFromUnits(staged_units)
-  for index, group in pairs(staged_groups) do
-    RotorOps.aiTask(group,"move_to_active_zone")
-  end
-
+  RotorOps.setActiveZone(1)
   
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
 end
