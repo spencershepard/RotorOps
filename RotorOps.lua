@@ -444,7 +444,7 @@ function RotorOps.aiExecute(vars)
   --debugMsg("tasking: "..group_name.." : "..task .." zone:"..zone) 
   
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
-    debugMsg("group no longer exists")
+    --debugMsg("group no longer exists")
     RotorOps.ai_tasks[group_name] = nil
     return
   end  
