@@ -17,13 +17,29 @@ This is really up to the mission designer. Transporting troops is not required f
 ### What about attack helicopters?  
 The constantly moving infantry is easier to see than the statues we are used to seeing.  Destroying defending enemy vehicles so that our troops and vehicles can survive, and intercepting enemy reinforcements may be crucial to mission success.  
 
-## How do I create a Conflict mission?
+### How do I create a Conflict mission?
 Just open a demo mission in the DCS mission editor and drop units into the Conflict Zones.  These are trigger areas drawn in the mission editor that will automatically control the ground forces that enter them.  This means that you do not need to worry about creating waypoints; enemy vehicles and infantry will seek each other out automatically.  Move the Conflict Zones or change their size, add friendly or enemy units (remember, no waypoints needed).
 
 Optional USER FLAGS are available to trigger events based on the status of individual zones and the game as a whole.  Simple DO SCRIPT waypoint actions are available to drop troops from friendly or enemy AI helicopters or ground vehicles.
 
-# RotorOps Mission Creator Wiki: https://github.com/spencershepard/RotorOps/wiki
+## RotorOps Mission Creator Guide: https://github.com/spencershepard/RotorOps/wiki
 
+***
+
+## Get in touch!
+
+
+![alt text](https://discord.com/assets/cb48d2a8d4991281d7a6a95d2f58195e.svg?raw=true)
+
+https://discord.gg/HFqjrZV9xD
+
+
+
+### Developers
+We welcome contributors to this new project!  Please get in touch on Discord with new ideas or pickup/create an issue in this repo.   
+
+
+***
 RotorOps uses MIST and integrates CTLD:
 
 https://github.com/mrSkortch/MissionScriptingTools
