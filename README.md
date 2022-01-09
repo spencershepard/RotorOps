@@ -22,7 +22,7 @@ Just open a demo mission in the DCS mission editor and drop units into the Confl
 
 Optional USER FLAGS are available to trigger events based on the status of individual zones and the game as a whole.  Simple DO SCRIPT waypoint actions are available to drop troops from friendly or enemy AI helicopters or ground vehicles.
 
-## RotorOps Mission Creator Guide: https://github.com/spencershepard/RotorOps/wiki
+## RotorOps Mission Creator Guide: https://github.com/spencershepard/RotorOps/wiki/RotorOps:-Mission-Creator-Guide
 
 ***
 
