@@ -218,7 +218,7 @@ end
 ----USEFUL PUBLIC FUNCTIONS FOR THE MISSION EDITOR---
 
 --Spawn/clone a group onto the location of one unit in the group. This is similar to deployTroops, but it does not use CTLD. You must provide a source group to copy.
-function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spawn on other group units
+function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn on other group units
   local valid_unit = RotorOps.getValidUnitFromGroup(grp)
   if not valid_unit then return end
   local vars = {} 
@@ -231,7 +231,7 @@ function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spaw
   local new_grp_table = mist.teleportToPoint(vars) 
   
   if new_grp_table then
-      RotorOps.aiTask({grp = new_grp, ai_task=ai_task})
+      RotorOps.aiTask(new_grp_table, ai_task)
   else debugMsg("Infantry failed to spawn. ")  
   end
 end
@@ -683,7 +683,7 @@ function RotorOps.setActiveZone(new_index)
     
     local staged_groups = RotorOps.groupsFromUnits(staged_units)
     for index, group in pairs(staged_groups) do
-      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone
+      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
     end
   end
   
