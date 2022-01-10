@@ -1,4 +1,5 @@
 RotorOps = {}
+RotorOps.version = "1.0.10"
 
 --RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for ease of use)
 RotorOps.voice_overs = true
@@ -29,8 +30,8 @@ RotorOps.ai_red_vehicle_groups = {}
 RotorOps.ai_blue_vehicle_groups = {} 
 RotorOps.ai_tasks = {} 
 
-trigger.action.outText("ROTOR OPS STARTED", 5)
-env.info("ROTOR OPS STARTED")
+trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
+env.info("ROTOR OPS STARTED: "..RotorOps.version)
 
 local staged_units --table of ground units that started in the staging zone
 local commandDB = {} 
@@ -438,9 +439,9 @@ function RotorOps.aiExecute(vars)
   local last_task = vars.last_task
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
-  local zone = vars.zone
+  local zone = RotorOps.ai_tasks[group_name].zone
 
-  if vars.zone then zone = vars.zone end
+--  if vars.zone then zone = vars.zone end
   --debugMsg("tasking: "..group_name.." : "..task .." zone:"..zone) 
   
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
