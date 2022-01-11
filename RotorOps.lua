@@ -7,7 +7,7 @@ RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
-RotorOps.ctld_sound_effects = true --sound effects for troop pickup/dropoffs
+RotorOps.ctld_sound_effects = false --sound effects for troop pickup/dropoffs
 
 
 --RotorOps settings that are proabably safe to change
@@ -82,18 +82,16 @@ local gameMsgs = {
     
 }
 
+local sound_effects = {
+  ["troops"] = {
+    ["pickup"] = {},
+    ["dropoff"] = {},
+  }
+}
 
 
-local function gameMsg(event, _index)  
-  local index = 1 
-  if _index ~= nill then
-    index = _index + 1 
-  end
-  if tableHasKey(event, index) then
-    game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
-  else env.info("ROTOR OPS could not find entry for "..key)
-  end
-end
+
+
 
 
 local function processMsgBuffer(vars)
@@ -108,10 +106,19 @@ local function processMsgBuffer(vars)
 end
 
 
-function RotorOps.registerCtldCallbacks()
+function RotorOps.registerCtldCallbacks(var)
 ctld.addCallback(function(_args)
-
-    trigger.action.outText(_args.action,10)
+    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    local action = _args.action
+    local unit = _args.unit
+    local picked_troops = _args.onboard
+    local dropped_troops = _args.unloaded
+    trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    if action == "load_troops" or action == "extract_troops" then
+      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.pickup[math.random(1, #sound_effects.troops.pickup)])
+    elseif action == "unload_troops_zone" or action == "dropped_troops" then
+      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.dropoff[math.random(1, #sound_effects.troops.pickup)])
+    end
 
 end)
 end
@@ -230,7 +237,16 @@ function RotorOps.getValidUnitFromGroup(grp)
  return first_valid_unit
 end
 
-
+local function gameMsg(event, _index)  
+  local index = 1 
+  if _index ~= nill then
+    index = _index + 1 
+  end
+  if tableHasKey(event, index) then
+    game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
+  else env.info("ROTOR OPS could not find entry for "..key)
+  end
+end
 
 ----USEFUL PUBLIC FUNCTIONS FOR THE MISSION EDITOR---
 
@@ -789,7 +805,7 @@ function RotorOps.setupConflict(_game_state_flag)
   RotorOps.game_state_flag = _game_state_flag
   changeGameState(RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
-  
+  local timer_id = timer.scheduleFunction(RotorOps.registerCtldCallbacks, 1, timer.getTime() + 5) 
 end
 
 
