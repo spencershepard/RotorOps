@@ -7,7 +7,7 @@ RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
-
+RotorOps.ctld_sound_effects = false --sound effects for troop pickup/dropoffs
 
 --RotorOps settings that are proabably safe to change
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access
@@ -74,9 +74,34 @@ local gameMsgs = {
     {'GET OUR TROOPS TO CHARLIE!', 'get_troops_charlie.ogg'},
     {'GET OUR TROOPS TO DELTA!', 'get_troops_delta.ogg'},
   },
-  
-    
+
 }
+
+
+local sound_effects = {
+  ["troops"] = {
+    ["pickup"] = {},
+    ["dropoff"] = {},
+  }
+}
+
+
+function RotorOps.registerCtldCallbacks(var)
+ctld.addCallback(function(_args)
+    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    local action = _args.action
+    local unit = _args.unit
+    local picked_troops = _args.onboard
+    local dropped_troops = _args.unloaded
+    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    if action == "load_troops" or action == "extract_troops" then
+      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.pickup[math.random(1, #sound_effects.troops.pickup)])
+    elseif action == "unload_troops_zone" or action == "dropped_troops" then
+      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.dropoff[math.random(1, #sound_effects.troops.pickup)])
+    end
+
+end)
+end
 
 ---UTILITY FUNCTIONS---
 
@@ -770,7 +795,9 @@ function RotorOps.setupConflict(_game_state_flag)
   RotorOps.game_state = RotorOps.game_states.not_started
   trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
-  
+  if RotorOps.ctld_sound_effects == true then
+    local timer_id = timer.scheduleFunction(RotorOps.registerCtldCallbacks, 1, timer.getTime() + 5) 
+  end
 end
 
 
