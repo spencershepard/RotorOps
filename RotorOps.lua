@@ -7,6 +7,7 @@ RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
+RotorOps.ctld_sound_effects = true --sound effects for troop pickup/dropoffs
 
 
 --RotorOps settings that are proabably safe to change
@@ -38,6 +39,9 @@ local commandDB = {}
 local game_message_buffer = {}
 local active_zone_initial_enemy_units
 
+
+
+---VOICEOVERS AND SOUND EFFECTS---
 
 local gameMsgs = {
   push = {
@@ -77,6 +81,42 @@ local gameMsgs = {
   
     
 }
+
+
+
+local function gameMsg(event, _index)  
+  local index = 1 
+  if _index ~= nill then
+    index = _index + 1 
+  end
+  if tableHasKey(event, index) then
+    game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
+  else env.info("ROTOR OPS could not find entry for "..key)
+  end
+end
+
+
+local function processMsgBuffer(vars)
+  if #game_message_buffer > 0 then
+    local message = table.remove(game_message_buffer, 1)
+    trigger.action.outText(message[1], 10, true)
+    if RotorOps.voice_overs then
+      trigger.action.outSound(message[2])
+    end
+  end
+  local id = timer.scheduleFunction(processMsgBuffer, 1, timer.getTime() + 5)
+end
+
+
+function RotorOps.registerCtldCallbacks()
+ctld.addCallback(function(_args)
+
+    trigger.action.outText(_args.action,10)
+
+end)
+end
+
+
 
 ---UTILITY FUNCTIONS---
 
@@ -153,30 +193,6 @@ function RotorOps.groupsFromUnits(units, table)
    end
   end
   return groups
-end
-
-
-local function gameMsg(event, _index)  
-  local index = 1 
-  if _index ~= nill then
-    index = _index + 1 
-  end
-  if tableHasKey(event, index) then
-    game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
-  else env.info("ROTOR OPS could not find entry for "..key)
-  end
-end
-
-
-local function processMsgBuffer(vars)
-  if #game_message_buffer > 0 then
-    local message = table.remove(game_message_buffer, 1)
-    trigger.action.outText(message[1], 10, true)
-    if RotorOps.voice_overs then
-      trigger.action.outSound(message[2])
-    end
-  end
-  local id = timer.scheduleFunction(processMsgBuffer, 1, timer.getTime() + 5)
 end
 
 
