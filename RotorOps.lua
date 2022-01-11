@@ -569,7 +569,8 @@ function RotorOps.assessUnitsInZone(var)
    
    --is the game finished?
    if all_zones_clear then
-    RotorOps.changeGameState(RotorOps.game_states.won)
+    RotorOps.game_state = RotorOps.game_states.won
+    trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.won)
     gameMsg(gameMsgs.success)
     return --we won't reset our timer to fire this function again
    end
@@ -655,12 +656,6 @@ end
 
 
 
-function RotorOps.changeGameState(new_state)
-  RotorOps.game_state = new_state
-  trigger.action.setUserFlag(RotorOps.game_state_flag, new_state)
-end
-
-
 function RotorOps.setActiveZone(new_index) 
   local old_index = RotorOps.active_zone_index
   if new_index > #RotorOps.zones then 
@@ -678,7 +673,8 @@ function RotorOps.setActiveZone(new_index)
       ctld.activatePickupZone(RotorOps.zones[old_index].name)
     end
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
-    RotorOps.changeGameState(new_index)
+    RotorOps.game_state = new_index
+    trigger.action.setUserFlag(RotorOps.game_state_flag, new_index)
     if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
     if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
     
@@ -771,7 +767,8 @@ function RotorOps.setupConflict(_game_state_flag)
   RotorOps.setupCTLD()
   --RotorOps.setupRadioMenu()
   RotorOps.game_state_flag = _game_state_flag
-  RotorOps.changeGameState(RotorOps.game_states.not_started)
+  RotorOps.game_state = RotorOps.game_states.not_started
+  trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   
 end
