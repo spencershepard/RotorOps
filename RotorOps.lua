@@ -1,4 +1,5 @@
 RotorOps = {}
+RotorOps.version = "1.0.11"
 
 --RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for ease of use)
 RotorOps.voice_overs = true
@@ -29,8 +30,8 @@ RotorOps.ai_red_vehicle_groups = {}
 RotorOps.ai_blue_vehicle_groups = {} 
 RotorOps.ai_tasks = {} 
 
-trigger.action.outText("ROTOR OPS STARTED", 5)
-env.info("ROTOR OPS STARTED")
+trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
+env.info("ROTOR OPS STARTED: "..RotorOps.version)
 
 local staged_units --table of ground units that started in the staging zone
 local commandDB = {} 
@@ -218,7 +219,7 @@ end
 ----USEFUL PUBLIC FUNCTIONS FOR THE MISSION EDITOR---
 
 --Spawn/clone a group onto the location of one unit in the group. This is similar to deployTroops, but it does not use CTLD. You must provide a source group to copy.
-function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spawn on other group units
+function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn on other group units
   local valid_unit = RotorOps.getValidUnitFromGroup(grp)
   if not valid_unit then return end
   local vars = {} 
@@ -231,7 +232,7 @@ function RotorOps.spawnInfantryOnGrp(grp, src_grp_name, ai_task) --allow to spaw
   local new_grp_table = mist.teleportToPoint(vars) 
   
   if new_grp_table then
-      RotorOps.aiTask({grp = new_grp, ai_task=ai_task})
+      RotorOps.aiTask(new_grp_table, ai_task)
   else debugMsg("Infantry failed to spawn. ")  
   end
 end
@@ -438,9 +439,9 @@ function RotorOps.aiExecute(vars)
   local last_task = vars.last_task
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
-  local zone = vars.zone
+  local zone = RotorOps.ai_tasks[group_name].zone
 
-  if vars.zone then zone = vars.zone end
+--  if vars.zone then zone = vars.zone end
   --debugMsg("tasking: "..group_name.." : "..task .." zone:"..zone) 
   
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
@@ -568,7 +569,7 @@ function RotorOps.assessUnitsInZone(var)
    
    --is the game finished?
    if all_zones_clear then
-    changeGameState(RotorOps.game_states.won)
+    RotorOps.changeGameState(RotorOps.game_states.won)
     gameMsg(gameMsgs.success)
     return --we won't reset our timer to fire this function again
    end
@@ -654,7 +655,7 @@ end
 
 
 
-local function changeGameState(new_state)
+function RotorOps.changeGameState(new_state)
   RotorOps.game_state = new_state
   trigger.action.setUserFlag(RotorOps.game_state_flag, new_state)
 end
@@ -677,13 +678,13 @@ function RotorOps.setActiveZone(new_index)
       ctld.activatePickupZone(RotorOps.zones[old_index].name)
     end
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
-    changeGameState(new_index)
+    RotorOps.changeGameState(new_index)
     if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
     if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
     
     local staged_groups = RotorOps.groupsFromUnits(staged_units)
     for index, group in pairs(staged_groups) do
-      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone
+      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
     end
   end
   
@@ -770,7 +771,7 @@ function RotorOps.setupConflict(_game_state_flag)
   RotorOps.setupCTLD()
   --RotorOps.setupRadioMenu()
   RotorOps.game_state_flag = _game_state_flag
-  changeGameState(RotorOps.game_states.not_started)
+  RotorOps.changeGameState(RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   
 end
