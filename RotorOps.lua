@@ -19,6 +19,7 @@ RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mi
 RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing?  
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
+RotorOps.exclude_ai_group_name = "noai"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
 
 
 ---[[END OF OPTIONS]]---
@@ -131,11 +132,10 @@ RotorOps.gameMsgs = {
 
 
 local sound_effects = {
-  ["troops"] = {
-    ["pickup"] = {},
-    ["dropoff"] = {},
-  }
+    ["troop_pickup"] = {},
+    ["troop_dropoff"] = {},
 }
+
 
 
 function RotorOps.registerCtldCallbacks(var)
@@ -368,6 +368,9 @@ function RotorOps.aiTask(grp, task, zone)
    else
     group_name = Group.getName(grp)
    end 
+   if string.find(group_name:lower(), RotorOps.exclude_ai_group_name:lower()) then  --exclude groups that the user specifies with a special group name
+     return
+   end
    if tableHasKey(RotorOps.ai_tasks, group_name) == true then  --if we already have this group in our list to manage
      --debugMsg("timer already exists, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
      RotorOps.ai_tasks[group_name].ai_task = task
@@ -554,7 +557,7 @@ function RotorOps.aiExecute(vars)
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 5000 
-    update_interval = math.random(20,40)
+    update_interval = math.random(60,90)
     RotorOps.chargeEnemy(vars) --takes a group object, not name
   elseif task == "clear_zone" then 
     local vars = {}
@@ -699,27 +702,24 @@ function RotorOps.assessUnitsInZone(var)
    
   
   --APCs unload
-  local function unloadAPCs(units_table)
+  local function unloadAPCs()
+    local units_table = attacking_vehicles
     for index, vehicle in pairs(units_table) do
-      if vehicle:hasAttribute("Infantry carriers") then 
+      if vehicle:hasAttribute("Infantry carriers") and RotorOps.isUnitInZone(vehicle, RotorOps.active_zone) then --if a vehicle is an APC and in zone
           local apc_name = vehicle:getName()
-          trigger.action.outText("found apc: "..apc_name, 5) 
           
-          if tableHasKey(apcs, apc_name) == true then
-            trigger.action.outText("table has key", 5) 
+          if tableHasKey(apcs, apc_name) == true then  --if we have this apc in our table already 
             
-            for key, apc_details in pairs(apcs[apc_name]) do 
-              if hasValue(apc_details, RotorOps.active_zone) then
-                trigger.action.outText("we've already dropped troops in this zone", 5)
-              else
+            for key, apc_details in pairs(apcs[apc_name]) do   
+              if hasValue(apc_details, RotorOps.active_zone) then     --if our apc table has the current zone
+
+              else                                       --our apc table does not have the current zone
                 apcs[apc_name].deployed_zones = {RotorOps.active_zone,}
-                trigger.action.outText("dropping troops", 5)
                 RotorOps.deployTroops(4, vehicle:getGroup(), false)
               end
             end
             
-          else
-            trigger.action.outText("we've never dropped troops, drop some", 5) 
+          else                                          --we don't have the apc in our table
             RotorOps.deployTroops(4, vehicle:getGroup())
             apcs[apc_name] = {['deployed_zones'] = {RotorOps.active_zone,}}
           end
@@ -729,7 +729,7 @@ function RotorOps.assessUnitsInZone(var)
   end
   
   if RotorOps.apcs_spawn_infantry then
-   local id = timer.scheduleFunction(unloadAPCs, attacking_vehicles, timer.getTime() + 30)
+   local id = timer.scheduleFunction(unloadAPCs, nil, timer.getTime() + 60)
   end
    
   
@@ -827,10 +827,12 @@ function RotorOps.setActiveZone(new_index)
   RotorOps.active_zone = RotorOps.zones[new_index].name
   
   if new_index ~= old_index then  --the active zone is changing
-    if old_index > 0 then 
-      ctld.activatePickupZone(RotorOps.zones[old_index].name)
+    if not RotorOps.defending then
+      if old_index > 0 then 
+        ctld.activatePickupZone(RotorOps.zones[old_index].name)  --make the captured zone a pickup zone
+      end
+      ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     end
-    ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     RotorOps.game_state = new_index
     trigger.action.setUserFlag(RotorOps.game_state_flag, new_index)
     if new_index > old_index then 
@@ -908,7 +910,7 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
 end
 
 function RotorOps.stagingZone(_name)
-  RotorOps.addPickupZone(_name, "blue", -1, "yes", 0)
+  RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
   RotorOps.staging_zone = _name
 end
 
@@ -961,8 +963,11 @@ function RotorOps.startConflict()
   if staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
     RotorOps.defending = true
     RotorOps.gameMsg(RotorOps.gameMsgs.start_defense)
+    ctld.activatePickupZone(RotorOps.zones[#RotorOps.zones].name)  --make the last zone a pickup zone for defenders
+    ctld.deactivatePickupZone(RotorOps.staging_zone) 
   else
     RotorOps.gameMsg(RotorOps.gameMsgs.start)
+    ctld.activatePickupZone(RotorOps.staging_zone)
   end
   
   RotorOps.setActiveZone(1)
