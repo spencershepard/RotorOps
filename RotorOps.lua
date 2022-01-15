@@ -1,22 +1,33 @@
 RotorOps = {}
-RotorOps.version = "1.0.11"
+RotorOps.version = "1.0.12"
 
---RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for ease of use)
+
+---[[ROTOROPS OPTIONS]]---
+--- Protip: change these options from the mission editor rather than changing the script file itself.  See documentation on github for details.
+
+
+--RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for portability). You can change these while the script is running, at any time.
 RotorOps.voice_overs = true
 RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
-RotorOps.ctld_sound_effects = false --sound effects for troop pickup/dropoffs
+RotorOps.apcs_spawn_infantry = true  --apcs will unload troops when arriving to a new zone
 
---RotorOps settings that are proabably safe to change
+--RotorOps settings that are safe to change only before calling setupConflict()
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access
-RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing?
+RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing?  
 RotorOps.CTLD_crates = false 
+RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
+
+
+---[[END OF OPTIONS]]---
+
+
 
 
 --RotorOps variables that are safe to read only
-RotorOps.game_states = {not_started = 0, alpha_active = 1, bravo_active = 2, charlie_active = 3, delta_active = 4, won = 99} --game level user flag will use these values
+RotorOps.game_states = {not_started = 0, alpha_active = 1, bravo_active = 2, charlie_active = 3, delta_active = 4, lost = 98, won = 99} --game level user flag will use these values
 RotorOps.game_state = 0 
 RotorOps.zones = {}
 RotorOps.active_zone = "" --name of the active zone
@@ -24,11 +35,12 @@ RotorOps.active_zone_index = 0
 RotorOps.game_state_flag = 1  --user flag to store the game state
 RotorOps.staging_zone = ""
 RotorOps.ctld_pickup_zones = {} --keep track of ctld zones we've added, mainly for map markup
-RotorOps.ai_red_infantry_groups = {} 
-RotorOps.ai_blue_infantry_groups = {} 
-RotorOps.ai_red_vehicle_groups = {} 
-RotorOps.ai_blue_vehicle_groups = {} 
+RotorOps.ai_defending_infantry_groups = {} 
+RotorOps.ai_attacking_infantry_groups = {} 
+RotorOps.ai_defending_vehicle_groups = {} 
+RotorOps.ai_attacking_vehicle_groups = {} 
 RotorOps.ai_tasks = {} 
+RotorOps.defending = false
 
 trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
@@ -36,10 +48,11 @@ env.info("ROTOR OPS STARTED: "..RotorOps.version)
 local staged_units --table of ground units that started in the staging zone
 local commandDB = {} 
 local game_message_buffer = {}
-local active_zone_initial_enemy_units
+local active_zone_initial_defenders
+local apcs = {} --table to keep track of infantry vehicles
 
 
-local gameMsgs = {
+RotorOps.gameMsgs = {
   push = {
     {'ALL GROUND UNITS, PUSH TO THE ACTIVE ZONE!', 'push_next_zone.ogg'},
     {'ALL GROUND UNITS, PUSH TO ALPHA!', 'push_alpha.ogg'},
@@ -74,6 +87,45 @@ local gameMsgs = {
     {'GET OUR TROOPS TO CHARLIE!', 'get_troops_charlie.ogg'},
     {'GET OUR TROOPS TO DELTA!', 'get_troops_delta.ogg'},
   },
+  jtac = {
+    {'JTAC DROPPED!', 'jtac_dropped.ogg'},
+  },
+  enemy_almost_cleared = {
+    {'ENEMY HAS NEARLY CAPTURED THE ZONE!', 'enemy_almost_cleared.ogg'},
+    {'ENEMY HAS NEARLY CAPTURED THE ZONE!', 'enemy_decimating_forces.ogg'},
+    {'ENEMY HAS NEARLY CAPTURED THE ZONE!', 'enemy_destroying_ground.ogg'},
+  },
+  almost_cleared = {
+    {'WE HAVE NEARLY CLEARED THE ZONE!', 'almost_cleared.ogg'},
+    {'WE HAVE NEARLY CLEARED THE ZONE!', 'theyre_weak.ogg'},
+    {'WE HAVE NEARLY CLEARED THE ZONE!', 'tearing_them_up.ogg'},
+  },
+  enemy_pushing = {
+    {'ENEMY PUSHING TO THE NEXT ZONE!', 'enemy_pushing_zone.ogg'},
+    {'ENEMY PUSHING TO ALPHA!', 'enemy_pushing_alpha.ogg'},
+    {'ENEMY PUSHING TO BRAVO!', 'enemy_pushing_bravo.ogg'},
+    {'ENEMY PUSHING TO CHARLIE!', 'enemy_pushing_charlie.ogg'},
+    {'ENEMY PUSHING TO DELTA!', 'enemy_pushing_delta.ogg'},
+  },
+  start_defense = {
+    {'SUPPORT THE WAR ON THE GROUND!  PUSH BACK AGAINST THE ENEMY!', 'push_back.ogg'},
+  },
+  failure = {
+    {'GROUND MISSION FAILED!', 'mission_failure.ogg'},
+  },
+  friendly_troops_dropped = {
+    {'FRIENDLY TROOPS DROPPED INTO ZONE!', 'friendly_troops_dropped_active.ogg'},
+  },
+  hold_ground = {
+    {'HOLD GROUND TO WIN!', 'hold_our_ground.ogg'},
+  },
+  enemy_cleared_zone = {
+    {'ENEMY TOOK THE ACTIVE ZONE!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK ALPHA!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK BRAVO!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK CHARLIE!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK DELTA!', 'enemy_destroying_us.ogg'},
+  },
 
 }
 
@@ -88,16 +140,22 @@ local sound_effects = {
 
 function RotorOps.registerCtldCallbacks(var)
 ctld.addCallback(function(_args)
-    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
     local action = _args.action
     local unit = _args.unit
     local picked_troops = _args.onboard
     local dropped_troops = _args.unloaded
-    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
     if action == "load_troops" or action == "extract_troops" then
-      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.pickup[math.random(1, #sound_effects.troops.pickup)])
+      --trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.pickup[math.random(1, #sound_effects.troops.pickup)])
     elseif action == "unload_troops_zone" or action == "dropped_troops" then
-      trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.dropoff[math.random(1, #sound_effects.troops.pickup)])
+      --trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troops.dropoff[math.random(1, #sound_effects.troops.pickup)])
+      if RotorOps.isUnitInZone(unit, RotorOps.active_zone) then
+        RotorOps.gameMsg(RotorOps.gameMsgs.friendly_troops_dropped)
+      end
+      if dropped_troops.jtac == true then
+        RotorOps.gameMsg(RotorOps.gameMsgs.jtac)
+      end
     end
 
 end)
@@ -123,7 +181,12 @@ end
 
 
 local function tableHasKey(table,key)
+  if table then
     return table[key] ~= nil
+  else 
+    env.warning("table parameter not provided")
+    return nil
+  end
 end
 
 
@@ -156,7 +219,7 @@ local function getDistance(point1, point2)
   return distance
 end
 
-local function isUnitInZone(unit, zone_name)
+function RotorOps.isUnitInZone(unit, zone_name)
   local zone = trigger.misc.getZone(zone_name)
   local distance = getDistance(unit:getPoint(), zone.point)
   if distance <= zone.radius then
@@ -181,14 +244,18 @@ function RotorOps.groupsFromUnits(units, table)
 end
 
 
-local function gameMsg(event, _index)  
+function RotorOps.gameMsg(event, _index)
+  if not event then 
+    env.warning("event parameter is nil")
+    return 
+  end  
   local index = 1 
-  if _index ~= nill then
+  if _index ~= nil then
     index = _index + 1 
   end
   if tableHasKey(event, index) then
     game_message_buffer[#game_message_buffer + 1] = {event[index][1], event[index][2]}
-  else env.info("ROTOR OPS could not find entry for "..key)
+  else env.warning("ROTOR OPS could not find entry for "..event)
   end
 end
 
@@ -264,7 +331,7 @@ end
 
 
 --Easy way to deploy troops from a vehicle with waypoint action.  Spawns from the first valid unit found in a group
-function RotorOps.deployTroops(quantity, target_group)
+function RotorOps.deployTroops(quantity, target_group, announce)
   local target_group_obj
   if type(target_group) == 'string' then
     target_group_obj = Group.getByName(target_group)
@@ -282,11 +349,11 @@ function RotorOps.deployTroops(quantity, target_group)
   -- voiceover trigger stuff
   for index, zone in pairs(RotorOps.zones)
   do
-    if isUnitInZone(valid_unit, zone.name) then 
+    if RotorOps.isUnitInZone(valid_unit, zone.name) and announce == true then 
       if side == "red" then
-        gameMsg(gameMsgs.troops_dropped, index)
+        RotorOps.gameMsg(RotorOps.gameMsgs.troops_dropped, index)
       else
-        gameMsg(gameMsgs.friendly_troops_dropped, index)
+        RotorOps.gameMsg(RotorOps.gameMsgs.friendly_troops_dropped)
       end
     end
   end
@@ -480,9 +547,9 @@ function RotorOps.aiExecute(vars)
   if task == "patrol" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
-    vars.radius = 500
+    vars.radius = 300
     RotorOps.patrolRadius(vars) --takes a group object, not name
-    update_interval = math.random(40,70)
+    update_interval = math.random(150,200)
   elseif task == "aggressive" then 
     local vars = {}
     vars.grp = Group.getByName(group_name)
@@ -526,61 +593,85 @@ end
 function RotorOps.assessUnitsInZone(var)
    if RotorOps.game_state == RotorOps.game_states.not_started then return end
    
-   --find and sort units found in the active zone
-   local red_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})  
-   local red_infantry = RotorOps.sortOutInfantry(red_ground_units).infantry
-   local red_vehicles = RotorOps.sortOutInfantry(red_ground_units).not_infantry
-   local blue_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
-   local blue_infantry = RotorOps.sortOutInfantry(blue_ground_units).infantry
-   local blue_vehicles = RotorOps.sortOutInfantry(blue_ground_units).not_infantry
+  
+   local defending_ground_units
+   local defending_infantry
+   local defending_vehicles
+   local attacking_ground_units
+   local attacking_infantry
+   local attacking_vehicles
    
---ground unit ai stuff
-   RotorOps.ai_red_infantry_groups = RotorOps.groupsFromUnits(red_infantry)
-   RotorOps.ai_blue_infantry_groups = RotorOps.groupsFromUnits(blue_infantry)
-   RotorOps.ai_red_vehicle_groups = RotorOps.groupsFromUnits(red_vehicles)
-   RotorOps.ai_blue_vehicle_groups = RotorOps.groupsFromUnits(blue_vehicles)
+
+
+    --find and sort units found in the active zone  
+   if RotorOps.defending then 
+     defending_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})  
+     defending_infantry = RotorOps.sortOutInfantry(defending_ground_units).infantry
+     defending_vehicles = RotorOps.sortOutInfantry(defending_ground_units).not_infantry
+     attacking_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})
+     attacking_infantry = RotorOps.sortOutInfantry(attacking_ground_units).infantry
+     attacking_vehicles = RotorOps.sortOutInfantry(attacking_ground_units).not_infantry
+   else  --attacking
+     defending_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})  
+     defending_infantry = RotorOps.sortOutInfantry(defending_ground_units).infantry
+     defending_vehicles = RotorOps.sortOutInfantry(defending_ground_units).not_infantry
+     attacking_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
+     attacking_infantry = RotorOps.sortOutInfantry(attacking_ground_units).infantry
+     attacking_vehicles = RotorOps.sortOutInfantry(attacking_ground_units).not_infantry
+   end
    
-  for index, group in pairs(RotorOps.ai_red_infantry_groups) do 
+   
+   --ground unit ai stuff
+     RotorOps.ai_defending_infantry_groups = RotorOps.groupsFromUnits(defending_infantry)
+     RotorOps.ai_defending_vehicle_groups = RotorOps.groupsFromUnits(defending_vehicles)
+     RotorOps.ai_attacking_infantry_groups = RotorOps.groupsFromUnits(attacking_infantry)
+     RotorOps.ai_attacking_vehicle_groups = RotorOps.groupsFromUnits(attacking_vehicles)
+   
+  for index, group in pairs(RotorOps.ai_defending_infantry_groups) do 
     if group then
       RotorOps.aiTask(group, "patrol")
     end
   end
   
-  for index, group in pairs(RotorOps.ai_blue_infantry_groups) do 
+  for index, group in pairs(RotorOps.ai_attacking_infantry_groups) do 
     if group then
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
     end
   end
   
-  for index, group in pairs(RotorOps.ai_blue_vehicle_groups) do 
+  for index, group in pairs(RotorOps.ai_attacking_vehicle_groups) do 
     if group then
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
     end
   end
+
   
 
    --let's compare the defending units in zone vs their initial numbers and set a game flag
-   if not active_zone_initial_enemy_units then
+   if not active_zone_initial_defenders then
      --debugMsg("taking stock of the active zone")
-     active_zone_initial_enemy_units = red_ground_units
+     active_zone_initial_defenders = defending_ground_units
    end
    
    local defenders_status_flag = RotorOps.zones[RotorOps.active_zone_index].defenders_status_flag
-   if #active_zone_initial_enemy_units == 0 then active_zone_initial_enemy_units = 1 end --prevent divide by zero
-   local defenders_remaining_percent = math.floor((#red_ground_units / #active_zone_initial_enemy_units) * 100) 
+   --if #active_zone_initial_defenders == 0 then active_zone_initial_defenders = 1 end --prevent divide by zero
+   local defenders_remaining_percent = math.floor((#defending_ground_units / #active_zone_initial_defenders) * 100) 
      
-   if #red_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
-     active_zone_initial_enemy_units = nil
+   if #defending_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
+     active_zone_initial_defenders = nil
      defenders_remaining_percent = 0
      trigger.action.setUserFlag(defenders_status_flag, 0)  --set the zone's flag to cleared
-     gameMsg(gameMsgs.cleared, RotorOps.active_zone_index)
-     
+     if RotorOps.defending == true then
+       RotorOps.gameMsg(RotorOps.gameMsgs.enemy_cleared_zone, RotorOps.active_zone_index)
+     else
+       RotorOps.gameMsg(RotorOps.gameMsgs.cleared, RotorOps.active_zone_index)
+     end
      if RotorOps.auto_push then                                 --push units to the next zone
        RotorOps.setActiveZone(RotorOps.active_zone_index + 1)
      end  
        
    else 
-     trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flag to indicate the status of remaining enemies
+     trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flag to indicate the status of remaining defenders
    end
      
    --are all zones clear?
@@ -594,24 +685,66 @@ function RotorOps.assessUnitsInZone(var)
    
    --is the game finished?
    if all_zones_clear then
-    RotorOps.game_state = RotorOps.game_states.won
-    trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.won)
-    gameMsg(gameMsgs.success)
+    if RotorOps.defending == true then 
+      RotorOps.game_state = RotorOps.game_states.lost
+      trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.lost)
+      RotorOps.gameMsg(RotorOps.gameMsgs.failure)
+    else
+      RotorOps.game_state = RotorOps.game_states.won
+      trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.won)
+      RotorOps.gameMsg(RotorOps.gameMsgs.success)
+    end
     return --we won't reset our timer to fire this function again
    end
    
-
+  
+  --APCs unload
+  local function unloadAPCs(units_table)
+    for index, vehicle in pairs(units_table) do
+      if vehicle:hasAttribute("Infantry carriers") then 
+          local apc_name = vehicle:getName()
+          trigger.action.outText("found apc: "..apc_name, 5) 
+          
+          if tableHasKey(apcs, apc_name) == true then
+            trigger.action.outText("table has key", 5) 
+            
+            for key, apc_details in pairs(apcs[apc_name]) do 
+              if hasValue(apc_details, RotorOps.active_zone) then
+                trigger.action.outText("we've already dropped troops in this zone", 5)
+              else
+                apcs[apc_name].deployed_zones = {RotorOps.active_zone,}
+                trigger.action.outText("dropping troops", 5)
+                RotorOps.deployTroops(4, vehicle:getGroup(), false)
+              end
+            end
+            
+          else
+            trigger.action.outText("we've never dropped troops, drop some", 5) 
+            RotorOps.deployTroops(4, vehicle:getGroup())
+            apcs[apc_name] = {['deployed_zones'] = {RotorOps.active_zone,}}
+          end
+          
+      end
+    end
+  end
+  
+  if RotorOps.apcs_spawn_infantry then
+   local id = timer.scheduleFunction(unloadAPCs, attacking_vehicles, timer.getTime() + 30)
+  end
+   
+  
 
    --zone status display
    local message = ""
    local header = ""
    local body = ""
-   if defenders_remaining_percent == 0 then
-     header = "["..RotorOps.active_zone .. " CLEARED!]   " 
-   else
-     header = "[BATTLE FOR "..RotorOps.active_zone .. "]   " 
+   if RotorOps.defending == true then
+     header = "[DEFEND "..RotorOps.active_zone .. "]   " 
+     body = "RED: " ..#attacking_infantry.. " infantry, " .. #attacking_vehicles .. " vehicles.  BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"
+   else 
+     header = "[ATTACK "..RotorOps.active_zone .. "]   " 
+     body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"   
    end
-   body = "RED: " ..#red_infantry.. " infantry, " .. #red_vehicles .. " vehicles.  BLUE: "..#blue_infantry.. " infantry, " .. #blue_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"
 
    message = header .. body
    if RotorOps.zone_status_display then 
@@ -700,13 +833,21 @@ function RotorOps.setActiveZone(new_index)
     ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     RotorOps.game_state = new_index
     trigger.action.setUserFlag(RotorOps.game_state_flag, new_index)
-    if new_index < old_index then gameMsg(gameMsgs.fallback, new_index) end
-    if new_index > old_index then gameMsg(gameMsgs.get_troops_to_zone, new_index) end 
+    if new_index > old_index then 
+      if RotorOps.defending == true then
+        RotorOps.gameMsg(RotorOps.gameMsgs.enemy_pushing, new_index)
+      else
+        RotorOps.gameMsg(RotorOps.gameMsgs.push, new_index)
+        RotorOps.gameMsg(RotorOps.gameMsgs.get_troops_to_zone, new_index) 
+      end
+    end 
     
     local staged_groups = RotorOps.groupsFromUnits(staged_units)
     for index, group in pairs(staged_groups) do
       RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
     end
+    
+
   end
   
 
@@ -737,15 +878,14 @@ function RotorOps.setupCTLD()
    }
    
    ctld.loadableGroups = {  
+    {name = "Small Standard Group (4)", inf = 2, mg = 1, at = 1 },
     {name = "Standard Group (8)", inf = 4, mg = 2, at = 2 }, -- will make a loadable group with 6 infantry, 2 MGs and 2 anti-tank for both coalitions
     {name = "Anti Air (5)", inf = 2, aa = 3  },
     {name = "Anti Tank (8)", inf = 2, at = 6  },
     {name = "Mortar Squad (6)", mortar = 6 },
-    {name = "Small Standard Group (4)", inf = 2, mg = 1, at = 1 },
-    {name = "JTAC Group (5)", inf = 4, jtac = 1 },
-    {name = "Single JTAC (1)", jtac = 1 },
-    {name = "Small Platoon (16)", inf = 10, mg = 3, at = 3 },
-    {name = "Platoon (24)", inf = 12, mg = 4, at = 3, aa = 1 },
+    {name = "JTAC Group (4)", inf = 3, jtac = 1 },
+    {name = "Small Platoon (16)", inf = 9, mg = 3, at = 3, aa = 1 },
+    {name = "Platoon (24)", inf = 10, mg = 5, at = 6, aa = 3 },
     
 }
 end
@@ -793,9 +933,10 @@ function RotorOps.setupConflict(_game_state_flag)
   --RotorOps.setupRadioMenu()
   RotorOps.game_state_flag = _game_state_flag
   RotorOps.game_state = RotorOps.game_states.not_started
+  processMsgBuffer()
   trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
-  if RotorOps.ctld_sound_effects == true then
+  if RotorOps.CTLD_sound_effects == true then
     local timer_id = timer.scheduleFunction(RotorOps.registerCtldCallbacks, 1, timer.getTime() + 5) 
   end
 end
@@ -814,13 +955,16 @@ function RotorOps.startConflict()
   --local conflict_zones_menu = commandDB['conflict_zones_menu']
   --missionCommands.removeItem(commandDB['start_conflict']) 
   --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
-  
-  
-  gameMsg(gameMsgs.start)
-  gameMsg(gameMsgs.push, 1)
-  processMsgBuffer()
-  
+
   staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
+  
+  if staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
+    RotorOps.defending = true
+    RotorOps.gameMsg(RotorOps.gameMsgs.start_defense)
+  else
+    RotorOps.gameMsg(RotorOps.gameMsgs.start)
+  end
+  
   RotorOps.setActiveZone(1)
   
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
