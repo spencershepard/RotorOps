@@ -47,11 +47,13 @@ trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
 
 RotorOps.staged_units = {} --table of ground units that started in the staging zone
+RotorOps.eventHandler = {}
 local commandDB = {} 
 local game_message_buffer = {}
 local active_zone_initial_defenders
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
+
 
 
 RotorOps.gameMsgs = {
@@ -136,6 +138,17 @@ local sound_effects = {
     ["troop_pickup"] = {'troops_load_ao.ogg', 'troops_load_ready.ogg', 'troops_load_to_action.ogg',force_offroad = true},
     ["troop_dropoff"] = {'troops_unload_thanks.ogg', 'troops_unload_everybody_off.ogg', 'troops_unload_get_off.ogg', 'troops_unload_here_we_go.ogg', 'troops_unload_moving_out.ogg',},
 }
+
+function RotorOps.eventHandler:onEvent(event)
+   if (world.event.S_EVENT_ENGINE_STARTUP  == event.id) then  --play some sound files when a player starts engines
+    local initaitor = event.initiator:getGroup():getID()
+    if RotorOps.defending then
+      trigger.action.outSoundForGroup(initaitor , RotorOps.gameMsgs.enemy_pushing[RotorOps.active_zone_index + 1][2])
+    else
+      trigger.action.outSoundForGroup(initaitor , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
+    end
+   end
+end
 
 
 
@@ -661,6 +674,7 @@ function RotorOps.assessUnitsInZone(var)
      --debugMsg("taking stock of the active zone")
      active_zone_initial_defenders = defending_ground_units
      low_units_message_fired = false
+     env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone)
    end
    
    
@@ -751,10 +765,12 @@ function RotorOps.assessUnitsInZone(var)
       
       if should_deploy then
        local function timedDeploy()
-         RotorOps.deployTroops(4, vehicle:getGroup(), false)
+         if vehicle:isExist() then
+           RotorOps.deployTroops(4, vehicle:getGroup(), false)
+         end
        end
         
-       local id = timer.scheduleFunction(timedDeploy, nil, timer.getTime() + math.random(850, 860))
+       local id = timer.scheduleFunction(timedDeploy, nil, timer.getTime() + math.random(90, 180))
       end
     
     end
@@ -770,6 +786,7 @@ function RotorOps.assessUnitsInZone(var)
   if not low_units_message_fired then
     if defenders_remaining_percent <= 40 then
       low_units_message_fired = true
+      env.info("ROTOR OPS: low units remaining in zone")
       if RotorOps.defending then
         RotorOps.gameMsg(RotorOps.gameMsgs.enemy_almost_cleared, math.random(1, #RotorOps.gameMsgs.enemy_almost_cleared))
       else
@@ -873,14 +890,18 @@ function RotorOps.setActiveZone(new_index)
   RotorOps.active_zone = RotorOps.zones[new_index].name
   
   if new_index ~= old_index then  --the active zone is changing
+    
     if not RotorOps.defending then
+    
       if old_index > 0 then 
         ctld.activatePickupZone(RotorOps.zones[old_index].name)  --make the captured zone a pickup zone
       end
       ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
     end
+
     RotorOps.game_state = new_index
     trigger.action.setUserFlag(RotorOps.game_state_flag, new_index)
+    
     if new_index > old_index then 
       if RotorOps.defending == true then
         RotorOps.gameMsg(RotorOps.gameMsgs.enemy_pushing, new_index)
@@ -1014,7 +1035,6 @@ function RotorOps.startConflict()
   if RotorOps.staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
     RotorOps.defending = true
     RotorOps.gameMsg(RotorOps.gameMsgs.start_defense)
-    debugMsg(RotorOps.zones[#RotorOps.zones].name)
     ctld.activatePickupZone(RotorOps.zones[#RotorOps.zones].name)  --make the last zone a pickup zone for defenders
     ctld.deactivatePickupZone(RotorOps.staging_zone) 
   else
@@ -1025,7 +1045,11 @@ function RotorOps.startConflict()
   RotorOps.setActiveZone(1)
   
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
+  world.addEventHandler(RotorOps.eventHandler)
 end
+
+
+
 
 
 
