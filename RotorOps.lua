@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.2.1"
+RotorOps.version = "1.2.2"
 
 
 ---[[ROTOROPS OPTIONS]]---
@@ -975,6 +975,10 @@ end
 
 
 function RotorOps.addZone(_name, _zone_defenders_flag) 
+  if trigger.misc.getZone(_name) == nil then
+    trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
+    env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
+  end
   table.insert(RotorOps.zones, {name = _name, defenders_status_flag = _zone_defenders_flag})
   trigger.action.setUserFlag(_zone_defenders_flag, 101)
   RotorOps.drawZones()
@@ -982,6 +986,10 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
 end
 
 function RotorOps.stagingZone(_name)
+  if trigger.misc.getZone(_name) == nil then
+    trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
+    env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
+  end
   RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
   RotorOps.staging_zone = _name
 end
@@ -1031,6 +1039,12 @@ function RotorOps.startConflict()
   --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
 
   RotorOps.staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
+  
+  if RotorOps.staged_units[1] == nil then
+    trigger.action.outText("RotorOps failed: You must place ground units in the staging and conflict zones!" , 60, false)
+    env.warning("No units in staging zone!  Check RotorOps setup!")
+    return
+  end
   
   if RotorOps.staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
     RotorOps.defending = true
