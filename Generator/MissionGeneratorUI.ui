@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
+    <width>720</width>
     <height>480</height>
    </rect>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>720</width>
+    <height>480</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>RotorOps Mission Generator</string>
@@ -17,50 +23,28 @@
    <iconset>
     <normaloff>assets/icon.ico</normaloff>assets/icon.ico</iconset>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color: white;</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QComboBox" name="map_comboBox">
-    <property name="geometry">
-     <rect>
-      <x>170</x>
-      <y>40</y>
-      <width>311</width>
-      <height>31</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QComboBox" name="scenario_comboBox">
     <property name="geometry">
      <rect>
-      <x>170</x>
-      <y>90</y>
+      <x>130</x>
+      <y>30</y>
       <width>311</width>
       <height>31</height>
      </rect>
-    </property>
-   </widget>
-   <widget class="QLabel" name="map_label">
-    <property name="geometry">
-     <rect>
-      <x>90</x>
-      <y>40</y>
-      <width>71</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>12</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Map:</string>
     </property>
    </widget>
    <widget class="QLabel" name="scenario_label">
     <property name="geometry">
      <rect>
-      <x>60</x>
-      <y>90</y>
+      <x>30</x>
+      <y>30</y>
       <width>101</width>
       <height>31</height>
      </rect>
@@ -77,8 +61,8 @@
    <widget class="QPushButton" name="generateButton">
     <property name="geometry">
      <rect>
-      <x>470</x>
-      <y>360</y>
+      <x>550</x>
+      <y>380</y>
       <width>141</width>
       <height>41</height>
      </rect>
@@ -98,11 +82,14 @@ padding: 4px;</string>
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>-100</x>
-      <y>-10</y>
+      <x>-590</x>
+      <y>180</y>
       <width>1111</width>
       <height>501</height>
      </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-radius: 5</string>
     </property>
     <property name="text">
      <string/>
@@ -111,25 +98,101 @@ padding: 4px;</string>
      <pixmap>assets/background.PNG</pixmap>
     </property>
    </widget>
+   <widget class="QTextBrowser" name="description_textBrowser">
+    <property name="geometry">
+     <rect>
+      <x>455</x>
+      <y>30</y>
+      <width>251</width>
+      <height>111</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-radius: 5px;</string>
+    </property>
+    <property name="html">
+     <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:7.8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Provide close air support for our convoys as we take back Las Vegas from the enemy!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="logistics_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>80</y>
+      <width>201</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Smoke Active Conflict Zone</string>
+    </property>
+   </widget>
    <zorder>label</zorder>
-   <zorder>map_comboBox</zorder>
    <zorder>scenario_comboBox</zorder>
-   <zorder>map_label</zorder>
    <zorder>scenario_label</zorder>
    <zorder>generateButton</zorder>
+   <zorder>description_textBrowser</zorder>
+   <zorder>logistics_checkBox</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>640</width>
+     <width>720</width>
      <height>26</height>
     </rect>
    </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_generateMission">
+   <property name="text">
+    <string>_generateMission</string>
+   </property>
+  </action>
+  <action name="action_scenarioSelected">
+   <property name="text">
+    <string>_scenarioSelected</string>
+   </property>
+  </action>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>generateButton</sender>
+   <signal>clicked()</signal>
+   <receiver>action_generateMission</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>633</x>
+     <y>421</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>589</x>
+     <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>scenario_comboBox</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>action_scenarioSelected</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>285</x>
+     <y>71</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

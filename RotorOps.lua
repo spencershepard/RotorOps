@@ -347,6 +347,14 @@ function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn
   end
 end
 
+--Spawn infantry in a trigger zone. Uses CTLD but may use another method in the future. Side is "red" or "blue"
+function RotorOps.spawnInfantryInZone(zone, side, vars)
+  local group = {mg=1,at=0,aa=0,inf=4,mortar=0}
+  if vars.group then
+    group = vars.group 
+  end
+  ctld.spawnGroupAtTrigger(side, group ,zone, 2000)
+end
 
 --Easy way to deploy troops from a vehicle with waypoint action.  Spawns from the first valid unit found in a group
 function RotorOps.deployTroops(quantity, target_group, announce)
