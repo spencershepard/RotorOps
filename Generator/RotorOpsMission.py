@@ -73,6 +73,12 @@ class RotorOpsMission:
             tz = self.m.triggers.add_triggerzone(self.conflict_zones[zone_key].position, self.conflict_zones[zone_key].size, name=self.conflict_zones[zone_key].name)
             print(tz.position)
 
+        for s_zone in self.staging_zones:
+            tz = self.m.triggers.add_triggerzone(self.staging_zones[s_zone].position,
+                                                 self.staging_zones[s_zone].size,
+                                                 name=self.staging_zones[s_zone].name)
+            print(tz.position)
+
         self.addPlayerHelos()
         self.m.save("RotorOps_" + self.template_name + ".miz")
 
@@ -118,6 +124,9 @@ class RotorOpsMission:
         for c_zone in self.conflict_zones:
             zone_flag = self.conflict_zones[c_zone].flag
             mytrig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.addZone('" + c_zone + "'," + str(zone_flag) + ")")))
+
+        mytrig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.setupConflict('" + str(game_flag) + "')")))
+
         self.m.triggerrules.triggers.append(mytrig)
 
         #Add the third trigger
@@ -151,43 +160,5 @@ class RotorOpsMission:
         mytrig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
         mytrig.actions.append(dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
         self.m.triggerrules.triggers.append(mytrig)
-
-map_dict = {
-    "Caucasus": dcs.terrain.caucasus.Caucasus(),
-    "Persian_Gulf": dcs.terrain.persiangulf.PersianGulf(),
-    "Nevada": dcs.terrain.nevada.Nevada(),
-    "Normandy": dcs.terrain.normandy.Normandy(),
-    "The_Channel": dcs.terrain.thechannel.TheChannel(),
-    "Syria": dcs.terrain.syria.Syria(),
-    "Mariana": dcs.terrain.marianaislands.MarianaIslands(),
-}
-
-e_types = [
-            dcs.countries.Russia.Vehicle.Armor.T_72B,
-            dcs.countries.Russia.Vehicle.Armor.BMP_3,
-            dcs.countries.Russia.Vehicle.Artillery.SAU_Akatsia,
-            dcs.countries.Russia.Vehicle.Unarmed.GAZ_3308,
-            dcs.countries.Russia.Vehicle.Armor.T_80UD]
-
-
-def generateTemplates():
-    for theater in map_dict:
-        print(theater)
-        RotorOpsMission(theater, map_dict[theater]).generateMission()
-
-def generateSingle():
-    sm = RotorOpsMission("Test_Nevada", dcs.terrain.nevada.Nevada(), dcs.terrain.nevada.Boulder_City())
-    sm.addZone(sm.conflict_zones, RotorOpsMission.RotorOpsZone("ALPHA", 100, dcs.terrain.nevada.McCarran_International().position, 5000))
-    sm.addZone(sm.conflict_zones,
-               RotorOpsMission.RotorOpsZone("BRAVO", 101, dcs.terrain.nevada.Groom_Lake.position, 5000))
-    sm.addZone(sm.staging_zones, RotorOpsMission.RotorOpsZone("STAGING", None, dcs.terrain.nevada.Boulder_City().position, 4000))
-    sm.addGroundUnits(sm.conflict_zones["ALPHA"], dcs.countries.Russia, e_types)
-    sm.addGroundUnits(sm.staging_zones["STAGING"], dcs.countries.USA, e_types)
-    sm.scriptTriggerSetup()
-
-    sm.generateMission()
-
-generateSingle()
-
 
 
