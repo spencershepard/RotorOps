@@ -4,29 +4,27 @@ import dcs
 import os
 import random
 
-output_directory = "C:/RotorOps/Mission Templates"
-source_template = "C:/RotorOps/Generator/template_source.miz"
-sound_directory = "C:/RotorOps/sound/embedded"
-script_directory = "C:/RotorOps"
-
 
 class RotorOpsMission:
-    conflict_zone_size = 6000
-    staging_zone_size = 3000
+
     conflict_zones = {}
     staging_zones = {}
+    spawn_zones = {}
     scripts = {}
     conflict_defense = False
 
 
-    def __init__(self, template_name: str, terrain: dcs.terrain, friendly_airport):
+    def __init__(self):
         self.m = dcs.mission.Mission()
-        #self.m.load_file(source_template)
-        self.template_name = template_name
-        self.m.terrain = terrain
-        self.friendly_airport = friendly_airport
-        self.addResources()
-
+        self.friendly_airport = dcs.terrain.caucasus.Nalchik()
+        os.chdir("../")
+        self.home_dir = os.getcwd()
+        self.scenarios_dir = self.home_dir + "\Generator\Battlefields"
+        self.forces_dir = self.home_dir + "\Generator\Forces"
+        self.script_directory = self.home_dir
+        self.sound_directory = self.home_dir + "\sound\embedded"
+        self.output_dir = self.home_dir + "\Generator\Output"
+        self.assets_dir = self.home_dir + "\Generator/assets"
 
 
     class RotorOpsZone:
@@ -36,10 +34,13 @@ class RotorOpsMission:
             self.position = position
             self.size = size
 
+    def getMission(self):
+        return self.m
+
     def addZone(self, zone_dict, zone: RotorOpsZone):
         zone_dict[zone.name] = zone
 
-    def addResources(self):
+    def addResources(self, sound_directory, script_directory):
         # add all of our required sounds
         os.chdir(sound_directory)
         path = os.getcwd()
@@ -64,28 +65,78 @@ class RotorOpsMission:
                 print(filename)
                 self.scripts[filename] = self.m.map_resource.add_resource_file(filename)
 
-    def generateMission(self):
-        os.chdir(output_directory)
-        print(self.template_name)
+    def getUnitsFromMiz(self, filename):
+        red_forces = []
+        blue_forces = []
+        os.chdir(self.home_dir)
+        os.chdir(self.forces_dir)
+        print("Looking for Forces files in '", os.getcwd(), "' :")
+        source_mission = dcs.mission.Mission()
+        source_mission.load_file(filename)
+
+        for country_name in source_mission.coalition.get("red").countries:
+            country_obj = source_mission.coalition.get("red").countries[country_name]
+            for vehicle_group in country_obj.vehicle_group:
+                red_forces.append(vehicle_group)
+        for country_name in source_mission.coalition.get("blue").countries:
+            country_obj = source_mission.coalition.get("blue").countries[country_name]
+            for vehicle_group in country_obj.vehicle_group:
+                blue_forces.append(vehicle_group)
+        return {"red": red_forces, "blue": blue_forces}
+
+    def generateMission(self, scenario_filename, red_forces_filename, blue_forces_filename, data):
+        os.chdir(self.scenarios_dir)
+        print("Looking for mission files in '", os.getcwd(), "' :")
+        #sm = ROps.RotorOpsMission(dcs.terrain.caucasus.Nalchik)  # get rid of friendly airport req
+
+        path = os.getcwd()
+        dir_list = os.listdir(path)
+        print("Looking for mission files in '", path, "' :")
+        self.m.load_file(scenario_filename)
+
+        red_forces = self.getUnitsFromMiz(red_forces_filename)["red"]
+        blue_forces = self.getUnitsFromMiz(blue_forces_filename)["blue"]
+
+        # create target mission
+        # sm = ROps.RotorOpsMission("Output filename", source_mission.terrain, dcs.terrain.caucasus.Nalchik())  #we should use red/blue airports here
+
+        # add zones to target mission
         print(self.m.triggers.zones())
-        for zone_key in self.conflict_zones:
-            print(self.conflict_zones[zone_key].name)
-            tz = self.m.triggers.add_triggerzone(self.conflict_zones[zone_key].position, self.conflict_zones[zone_key].size, name=self.conflict_zones[zone_key].name)
-            print(tz.position)
+        for zone in self.m.triggers.zones():
+            if zone.name == "ALPHA":
+                self.addZone(self.conflict_zones, self.RotorOpsZone("ALPHA", 101, zone.position, zone.radius))
+            elif zone.name == "BRAVO":
+                self.addZone(self.conflict_zones, self.RotorOpsZone("BRAVO", 102, zone.position, zone.radius))
+            elif zone.name == "CHARLIE":
+                self.addZone(self.conflict_zones, self.RotorOpsZone("CHARLIE", 103, zone.position, zone.radius))
+            elif zone.name == "DELTA":
+                self.addZone(self.conflict_zones, self.RotorOpsZone("DELTA", 104, zone.position, zone.radius))
+            elif zone.name.rfind("STAGING") >= 0:
+                self.addZone(self.staging_zones, self.RotorOpsZone(zone.name, None, zone.position, zone.radius))
+            elif zone.name.rfind("SPAWN") >= 0:
+                self.addZone(self.spawn_zones, self.RotorOpsZone(zone.name, None, zone.position, zone.radius))
 
-        for s_zone in self.staging_zones:
-            tz = self.m.triggers.add_triggerzone(self.staging_zones[s_zone].position,
-                                                 self.staging_zones[s_zone].size,
-                                                 name=self.staging_zones[s_zone].name)
-            print(tz.position)
+        self.addResources(self.sound_directory, self.script_directory)
+        self.scriptTriggerSetup()
 
-        self.addPlayerHelos()
-        self.m.save("RotorOps_" + self.template_name + ".miz")
+        # for zone_key in self.conflict_zones:
+        #     print(self.conflict_zones[zone_key].name)
+        #     tz = self.m.triggers.add_triggerzone(self.conflict_zones[zone_key].position, self.conflict_zones[zone_key].size, name=self.conflict_zones[zone_key].name)
+        #     print(tz.position)
+        #
+        # for s_zone in self.staging_zones:
+        #     tz = self.m.triggers.add_triggerzone(self.staging_zones[s_zone].position,
+        #                                          self.staging_zones[s_zone].size,
+        #                                          name=self.staging_zones[s_zone].name)
+        #    print(tz.position)
+
+        #self.addPlayerHelos()
+        os.chdir(self.output_dir)
+        return self.m.save("RotorOpsGenerateMission.miz")
 
 
     def addPlayerHelos(self):
-        fg = self.m.flight_group_from_airport(self.m.country("USA"), "Player Helos",
-                                         dcs.helicopters.UH_1H, self.friendly_airport, group_size=2)
+        fg = self.m.flight_group_from_airport(self.m.country("USA"), "Player Helos", dcs.helicopters.UH_1H, self.friendly_airport, group_size=2)
         fg.units[0].set_player()
         self.friendly_airport.set_coalition("blue")
 
