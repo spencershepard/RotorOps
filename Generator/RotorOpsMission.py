@@ -4,6 +4,8 @@ import dcs
 import os
 import random
 
+import RotorOpsUnits
+
 
 class RotorOpsMission:
 
@@ -11,15 +13,16 @@ class RotorOpsMission:
     staging_zones = {}
     spawn_zones = {}
     scripts = {}
-    conflict_defense = False
 
 
     def __init__(self):
         self.m = dcs.mission.Mission()
+        self.old_blue = self.m.coalition.get("blue").dict()
+        self.old_red = self.m.coalition.get("red").dict()
         self.friendly_airport = dcs.terrain.caucasus.Nalchik()
         os.chdir("../")
         self.home_dir = os.getcwd()
-        self.scenarios_dir = self.home_dir + "\Generator\Battlefields"
+        self.scenarios_dir = self.home_dir + "\Generator\Scenarios"
         self.forces_dir = self.home_dir + "\Generator\Forces"
         self.script_directory = self.home_dir
         self.sound_directory = self.home_dir + "\sound\embedded"
@@ -72,33 +75,39 @@ class RotorOpsMission:
         os.chdir(self.forces_dir)
         print("Looking for Forces files in '", os.getcwd(), "' :")
         source_mission = dcs.mission.Mission()
-        source_mission.load_file(filename)
+        try:
+            source_mission.load_file(filename)
 
-        for country_name in source_mission.coalition.get("red").countries:
-            country_obj = source_mission.coalition.get("red").countries[country_name]
-            for vehicle_group in country_obj.vehicle_group:
-                red_forces.append(vehicle_group)
-        for country_name in source_mission.coalition.get("blue").countries:
-            country_obj = source_mission.coalition.get("blue").countries[country_name]
-            for vehicle_group in country_obj.vehicle_group:
-                blue_forces.append(vehicle_group)
-        return {"red": red_forces, "blue": blue_forces}
+            for country_name in source_mission.coalition.get("red").countries:
+                country_obj = source_mission.coalition.get("red").countries[country_name]
+                for vehicle_group in country_obj.vehicle_group:
+                    red_forces.append(vehicle_group)
+            for country_name in source_mission.coalition.get("blue").countries:
+                country_obj = source_mission.coalition.get("blue").countries[country_name]
+                for vehicle_group in country_obj.vehicle_group:
+                    blue_forces.append(vehicle_group)
+            return {"red": red_forces, "blue": blue_forces}
+        except:
+            print("Failed to load units from " + filename)
 
-    def generateMission(self, scenario_filename, red_forces_filename, blue_forces_filename, data):
+
+    def generateMission(self, data):
+        #get the template mission file
+
         os.chdir(self.scenarios_dir)
         print("Looking for mission files in '", os.getcwd(), "' :")
-        #sm = ROps.RotorOpsMission(dcs.terrain.caucasus.Nalchik)  # get rid of friendly airport req
 
-        path = os.getcwd()
-        dir_list = os.listdir(path)
-        print("Looking for mission files in '", path, "' :")
-        self.m.load_file(scenario_filename)
+        self.m.load_file(data["scenario_filename"])
 
-        red_forces = self.getUnitsFromMiz(red_forces_filename)["red"]
-        blue_forces = self.getUnitsFromMiz(blue_forces_filename)["blue"]
+        #Load the default coalitions for simplicity
+        self.m.coalition.get("blue").load_from_dict(self.m, self.old_blue)
+        self.m.coalition.get("red").load_from_dict(self.m, self.old_red)
 
-        # create target mission
-        # sm = ROps.RotorOpsMission("Output filename", source_mission.terrain, dcs.terrain.caucasus.Nalchik())  #we should use red/blue airports here
+
+        red_forces = self.getUnitsFromMiz(data["red_forces_filename"])["red"]
+        blue_forces = self.getUnitsFromMiz(data["blue_forces_filename"])["blue"]
+
+
 
         # add zones to target mission
         print(self.m.triggers.zones())
@@ -116,44 +125,61 @@ class RotorOpsMission:
             elif zone.name.rfind("SPAWN") >= 0:
                 self.addZone(self.spawn_zones, self.RotorOpsZone(zone.name, None, zone.position, zone.radius))
 
+        #add files and triggers necessary for RotorOps.lua script
         self.addResources(self.sound_directory, self.script_directory)
         self.scriptTriggerSetup()
 
-        # for zone_key in self.conflict_zones:
-        #     print(self.conflict_zones[zone_key].name)
-        #     tz = self.m.triggers.add_triggerzone(self.conflict_zones[zone_key].position, self.conflict_zones[zone_key].size, name=self.conflict_zones[zone_key].name)
-        #     print(tz.position)
-        #
-        # for s_zone in self.staging_zones:
-        #     tz = self.m.triggers.add_triggerzone(self.staging_zones[s_zone].position,
-        #                                          self.staging_zones[s_zone].size,
-        #                                          name=self.staging_zones[s_zone].name)
-        #    print(tz.position)
+        #Add defending ground units
+        for zone_name in self.conflict_zones:
+            # for group in red_forces:
+            #     self.addGroundGroups(self.conflict_zones[zone_name], self.m.country('Russia'), group.units, data["red_quantity"])
+            for i in range(0, data["red_quantity"]):
+                self.addGroundGroups(self.conflict_zones[zone_name], self.m.country('Russia'), random.choice(red_forces).units, data["red_quantity"])
 
-        #self.addPlayerHelos()
+        #Add attacking ground units
+        for zone_name in self.staging_zones:
+            for group in blue_forces:
+                self.addGroundGroups(self.staging_zones[zone_name], self.m.country('USA'), group.units, data["blue_quantity"])
+
+        self.addPlayerHelos()
+
+        #Save the mission file
         os.chdir(self.output_dir)
-        return self.m.save("RotorOpsGenerateMission.miz")
+        output_filename = "ROps " + data["scenario_filename"]
+        success = self.m.save(output_filename)
+        return {"success": success, "filename": output_filename, "directory": self.output_dir} #let the UI know the result
+
+    def addGroundGroups(self, zone, _country, unit_list, quantity):
+        unit_types = []
+        for unit in unit_list:
+            if dcs.vehicles.vehicle_map[unit.type]:
+                unit_types.append(dcs.vehicles.vehicle_map[unit.type])
+        country = self.m.country(_country.name)
+        pos1 = zone.position.point_from_heading(5, 500)
+        for i in range(0, quantity):
+            self.m.vehicle_group_platoon(
+                country,
+                zone.name + '-GND',
+                unit_types,
+                pos1.random_point_within(zone.size / 2, 500),
+                heading=random.randint(0, 359),
+                formation=dcs.unitgroup.VehicleGroup.Formation.Scattered,
+            )
 
 
     def addPlayerHelos(self):
-        fg = self.m.flight_group_from_airport(self.m.country("USA"), "Player Helos", dcs.helicopters.UH_1H, self.friendly_airport, group_size=2)
-        fg.units[0].set_player()
-        self.friendly_airport.set_coalition("blue")
+        usa = self.m.country('USA')
+        self.m.coalition.get('blue').add_country(usa) #probably don't need to do this anymore since we're just reloading default coalitions now
 
-    def addGroundUnits(self, zone, _country, unit_types):
-        country = self.m.country(_country.name)
-        pos1 = zone.position.point_from_heading(5, 500)
-        self.m.vehicle_group(country, zone.name + ' Tgt', random.choice(unit_types), pos1)
-        for i in range(1, 5):
-            self.m.vehicle_group(
-                country,
-                zone.name + ' Tgt' + str(i),
-                random.choice(unit_types),
-                pos1.random_point_within(self.conflict_zone_size / 2, 500),
-                random.randint(0, 359),
-                random.randint(2, 6),
-                dcs.unitgroup.VehicleGroup.Formation.Scattered
-            )
+        for airport in self.m.terrain.airports:
+            airportobj = self.m.terrain.airports[airport]
+            if airportobj.coalition == "BLUE":
+                fg = self.m.flight_group_from_airport(usa, "Player Helos", dcs.helicopters.UH_1H,
+                                                      self.m.terrain.airports[airport], group_size=2)
+
+        #fg.units[0].set_player()
+        #self.friendly_airport.set_coalition("blue")
+
 
     def scriptTriggerSetup(self):
         game_flag = 100

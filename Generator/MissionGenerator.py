@@ -25,7 +25,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.populateScenarios()
         self.populateForces()
 
-        self.label.setPixmap(QtGui.QPixmap(self.m.assets_dir + "/background.PNG"))
+        self.background_label.setPixmap(QtGui.QPixmap(self.m.assets_dir + "/background.PNG"))
 
 
     def connectSignalsSlots(self):
@@ -46,7 +46,7 @@ class Window(QMainWindow, Ui_MainWindow):
             if filename.endswith(".miz"):
                 mizfound = True
                 scenarios.append(filename)
-                self.scenario_comboBox.addItem(filename)
+                self.scenario_comboBox.addItem(filename.removesuffix('.miz'))
 
     def populateForces(self):
         os.chdir(self.m.forces_dir)
@@ -58,8 +58,8 @@ class Window(QMainWindow, Ui_MainWindow):
             if filename.endswith(".miz"):
                 mizfound = True
                 forces_files.append(filename)
-                self.redforces_comboBox.addItem(filename)
-                self.blueforces_comboBox.addItem(filename)
+                self.redforces_comboBox.addItem(filename.removesuffix('.miz'))
+                self.blueforces_comboBox.addItem(filename.removesuffix('.miz'))
 
 
     def scenarioChanged(self):
@@ -106,10 +106,17 @@ class Window(QMainWindow, Ui_MainWindow):
         red_forces_filename = forces_files[self.redforces_comboBox.currentIndex()]
         blue_forces_filename = forces_files[self.blueforces_comboBox.currentIndex()]
         scenario_filename = scenarios[self.scenario_comboBox.currentIndex()]
-
-        success = self.m.generateMission(scenario_filename, red_forces_filename, blue_forces_filename, None)
-        if success:
+        data = {
+                "scenario_filename": scenario_filename,
+                "red_forces_filename": red_forces_filename,
+                "blue_forces_filename": blue_forces_filename,
+                "red_quantity": self.redqty_spinBox.value(),
+                "blue_quantity": self.blueqty_spinBox.value(),
+                }
+        result = self.m.generateMission(data)
+        if result["success"]:
             print("Mission generated.")
+            self.status_label.setText(result["filename"] + "'  successfully generated in " + result["directory"])
 
     # def findAndReplace(self):
     #     dialog = FindReplaceDialog(self)

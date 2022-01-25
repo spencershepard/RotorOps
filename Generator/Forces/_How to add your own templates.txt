@@ -1,0 +1,9 @@
+You can add your own unit templates in this directory and they will appear in the mission generator.
+
+1) Create an empty mission on Caucasus 
+2) Add ground unit groups.
+3) Save the mission in this directory.
+
+Tips:
+-Drop your templates in the RotorOps Discord if you'd like to have them added in a release for everyone.
+-The mission generator will only extract blue ground units from the template when selected from the "Blue Forces" menu, and vice versa.
