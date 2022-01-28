@@ -8,15 +8,21 @@ RotorOps.version = "1.2.2"
 
 --RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for portability). You can change these while the script is running, at any time.
 RotorOps.voice_overs = true
-RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
+RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones. Doesn't have much effect since always limited by slowest vehicle in group
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
 RotorOps.apcs_spawn_infantry = false  --apcs will unload troops when arriving to a new zone
+RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing? 
+
+RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn events remaining in the active zone
+RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
+RotorOps.inf_spawn_trigger_percent = 70 --infantry has a chance of spawning if the percentage of defenders remaining in zone is less than this value
+RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
+
 
 --RotorOps settings that are safe to change only before calling setupConflict()
-RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access
-RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing?  
+RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access 
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "noai"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
@@ -53,6 +59,7 @@ local game_message_buffer = {}
 local active_zone_initial_defenders
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
+local inf_spawn_zones = {}
 
 
 
@@ -348,13 +355,44 @@ function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn
 end
 
 --Spawn infantry in a trigger zone. Uses CTLD but may use another method in the future. Side is "red" or "blue"
-function RotorOps.spawnInfantryInZone(zone, side, vars)
-  local group = {mg=1,at=0,aa=0,inf=4,mortar=0}
-  if vars.group then
-    group = vars.group 
-  end
-  ctld.spawnGroupAtTrigger(side, group ,zone, 2000)
-end
+--function RotorOps.spawnInfantryInZone(vars)
+--    --local group = {mg=1,at=0,aa=0,inf=4,mortar=0}
+--
+--    local _triggerName = vars.zone
+--    local _groupSide = vars.side
+--    local _number = vars.qty
+--    local _searchRadius = 500
+--  
+--    local _spawnTrigger = trigger.misc.getZone(_triggerName) -- trigger to use as reference position
+--
+--    if _spawnTrigger == nil then
+--        env.warning("ERROR: Cant find zone called " .. _triggerName)
+--        return
+--    end
+--
+--    local _country
+--    if _groupSide == "red" then
+--        _groupSide = 1
+--        _country = 0
+--    else
+--        _groupSide = 2
+--        _country = 2
+--    end
+--
+--    if _searchRadius < 0 then
+--        _searchRadius = 0
+--    end
+--
+--    local _pos2 = { x = _spawnTrigger.point.x, y = _spawnTrigger.point.z }
+--    local _alt = land.getHeight(_pos2)
+--    local _pos3 = { x = _pos2.x, y = _alt, z = _pos2.y }
+--
+--    local _groupDetails = ctld.generateTroopTypes(_groupSide, _number, _country)
+--
+--    local _droppedTroops = ctld.spawnDroppedGroup(_pos3, _groupDetails, false, _searchRadius);
+--    --debugMsg(_groupDetails.groupName)
+--    return _groupDetails.groupName  --_ { units = _troops, groupId = _groupId, groupName = string.format("%s %i", _groupName, _groupId), side = _side, country = _country, weight = _weight, jtac = _hasJTAC }
+--end
 
 --Easy way to deploy troops from a vehicle with waypoint action.  Spawns from the first valid unit found in a group
 function RotorOps.deployTroops(quantity, target_group, announce)
@@ -682,7 +720,18 @@ function RotorOps.assessUnitsInZone(var)
      --debugMsg("taking stock of the active zone")
      active_zone_initial_defenders = defending_ground_units
      low_units_message_fired = false
-     env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone)
+     
+     --sort infantry spawn zones and spawn quantity
+     inf_spawn_zones = {}
+     for zone, zoneobj in pairs(mist.DBs.zonesByName) do 
+       if string.find(zone, RotorOps.active_zone) and string.find(zone:lower(), "spawn") then --if we find a zone that has the active zone name and the word spawn
+         inf_spawn_zones[#inf_spawn_zones + 1] = zone 
+         env.info("ROTOR OPS: spawn zone found:"..zone)
+       end
+     end
+     RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * #inf_spawn_zones
+
+     env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
    end
    
    
@@ -789,6 +838,25 @@ function RotorOps.assessUnitsInZone(var)
    unloadAPCs()  --this should really be an aitask
   end
   
+  --spawn infantry in infantry spawn zones
+  local function spawnInfantry()
+   if math.random(0, 100) <= RotorOps.inf_spawn_chance then
+      local rand_index = math.random(1, #inf_spawn_zones)
+      local zone = inf_spawn_zones[rand_index]
+
+      if RotorOps.defending then
+        ctld.spawnGroupAtTrigger("blue", 5, zone, 1000)
+      else
+        ctld.spawnGroupAtTrigger("red", 5, zone, 1000)
+      end
+
+      RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
+      env.info("ROTOR OPS: Spawned infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
+  end
+  
+  if RotorOps.inf_spawns_avail > 0 and defenders_remaining_percent <= RotorOps.inf_spawn_trigger_percent then
+    spawnInfantry()
+  end
   
   --voiceovers based on remaining defenders
   if not low_units_message_fired then
@@ -823,6 +891,7 @@ function RotorOps.assessUnitsInZone(var)
    end
    local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 10)
 end
+
 
 
 
@@ -1001,6 +1070,7 @@ function RotorOps.stagingZone(_name)
   RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
   RotorOps.staging_zone = _name
 end
+
 
 
 --function to automatically add transport craft to ctld, rather than having to define each in the mission editor
