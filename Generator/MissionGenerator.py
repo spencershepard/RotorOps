@@ -24,6 +24,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.connectSignalsSlots()
         self.populateScenarios()
         self.populateForces()
+        self.populateSlotSelection()
 
         self.background_label.setPixmap(QtGui.QPixmap(self.m.assets_dir + "/background.PNG"))
 
@@ -60,6 +61,10 @@ class Window(QMainWindow, Ui_MainWindow):
                 forces_files.append(filename)
                 self.redforces_comboBox.addItem(filename.removesuffix('.miz'))
                 self.blueforces_comboBox.addItem(filename.removesuffix('.miz'))
+
+    def populateSlotSelection(self):
+        for type in ROps.RotorOpsMission.client_helos:
+            self.slot_template_comboBox.addItem(type.id)
 
 
     def scenarioChanged(self):
@@ -116,7 +121,8 @@ class Window(QMainWindow, Ui_MainWindow):
         result = self.m.generateMission(data)
         if result["success"]:
             print("Mission generated.")
-            self.status_label.setText(result["filename"] + "'  successfully generated in " + result["directory"])
+            #self.status_label.setText(result["filename"] + "'  successfully generated in " + result["directory"])
+            self.statusbar.showMessage(result["filename"] + "'  successfully generated in " + result["directory"], 10000)
 
     # def findAndReplace(self):
     #     dialog = FindReplaceDialog(self)
