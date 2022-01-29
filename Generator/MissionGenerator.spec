@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(['MissionGenerator.py'],
-             pathex=[],
+             pathex=['../'],
              binaries=[],
              datas=[],
              hiddenimports=[],

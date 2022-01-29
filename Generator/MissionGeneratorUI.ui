@@ -41,6 +41,18 @@
       <height>31</height>
      </rect>
     </property>
+    <property name="toolTip">
+     <string/>
+    </property>
+    <property name="toolTipDuration">
+     <number>-1</number>
+    </property>
+    <property name="statusTip">
+     <string>Tip: You can create your own templates that include mission options like kneeboards, briefings, weather, static units, triggers, scripts, etc.</string>
+    </property>
+    <property name="whatsThis">
+     <string/>
+    </property>
    </widget>
    <widget class="QLabel" name="scenario_label">
     <property name="geometry">
@@ -115,6 +127,9 @@ p, li { white-space: pre-wrap; }
       <height>31</height>
      </rect>
     </property>
+    <property name="statusTip">
+     <string>Tip: You can create your own custom ground forces groups to be automatically generated.</string>
+    </property>
    </widget>
    <widget class="QLabel" name="scenario_label_2">
     <property name="geometry">
@@ -160,6 +175,9 @@ p, li { white-space: pre-wrap; }
       <width>291</width>
       <height>31</height>
      </rect>
+    </property>
+    <property name="statusTip">
+     <string>Tip: You can create your own custom ground forces groups to be automatically generated.</string>
     </property>
    </widget>
    <widget class="QLabel" name="background_label">
@@ -230,6 +248,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>12</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>How many groups should we generate?</string>
+    </property>
     <property name="minimum">
      <number>0</number>
     </property>
@@ -253,6 +274,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>12</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>How many groups should we generate?</string>
     </property>
     <property name="minimum">
      <number>0</number>
@@ -299,6 +323,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>9</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Enable an onscreen zone status display.  This helps keep focus on the active conflict zone.</string>
+    </property>
     <property name="text">
      <string>Game Status Display</string>
     </property>
@@ -323,6 +350,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>9</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Voiceovers from the ground commander. Helps keep focus on the active zone.</string>
+    </property>
     <property name="text">
      <string>Voiceovers</string>
     </property>
@@ -344,6 +374,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>11</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Enable CTLD logistics crates for building ground units and air defenses.</string>
+    </property>
     <property name="text">
      <string>Logistics Crates</string>
     </property>
@@ -361,6 +394,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>11</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string/>
     </property>
     <property name="text">
      <string>Friendly AWACS</string>
@@ -398,6 +434,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>10</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone.</string>
+    </property>
     <property name="text">
      <string>APCs Spawn Infantry</string>
     </property>
@@ -418,6 +457,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>11</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>Not yet implemented.</string>
     </property>
     <property name="text">
      <string>Enemy Transport Helicopters</string>
@@ -440,6 +482,9 @@ p, li { white-space: pre-wrap; }
       <pointsize>11</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Not yet implemented.</string>
+    </property>
     <property name="text">
      <string>Enemy Attack Helicopters</string>
     </property>
@@ -461,11 +506,14 @@ p, li { white-space: pre-wrap; }
       <pointsize>11</pointsize>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Not yet implemented.</string>
+    </property>
     <property name="text">
      <string>Enemy Fighter Planes</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="enemy_fighters_checkBox_2">
+   <widget class="QCheckBox" name="enemy_attack_planes_checkBox">
     <property name="enabled">
      <bool>false</bool>
     </property>
@@ -481,6 +529,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>11</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>Not yet implemented.</string>
     </property>
     <property name="text">
      <string>Enemy Ground Attack Planes</string>
@@ -499,6 +550,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>12</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>This value is multiplied by the number of spawn zones in the mission template.</string>
     </property>
     <property name="minimum">
      <number>0</number>
@@ -523,6 +577,9 @@ p, li { white-space: pre-wrap; }
      <font>
       <pointsize>9</pointsize>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>Not yet implemented.</string>
     </property>
     <property name="text">
      <string>Smoke Active Zone</string>
@@ -595,6 +652,9 @@ p, li { white-space: pre-wrap; }
       <height>31</height>
      </rect>
     </property>
+    <property name="statusTip">
+     <string>Default player/client spawn locations at a friendly airport.</string>
+    </property>
    </widget>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
@@ -632,6 +692,51 @@ p, li { white-space: pre-wrap; }
      <string>Infantry Spawns:</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="force_offroad_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>910</x>
+      <y>480</y>
+      <width>191</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>May help prevent long travel times or pathfinding issues.  Tip: You can change this dynamically from mission triggers.</string>
+    </property>
+    <property name="text">
+     <string>Force Offroad</string>
+    </property>
+    <property name="checked">
+     <bool>false</bool>
+    </property>
+    <property name="tristate">
+     <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="defense_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>60</x>
+      <y>90</y>
+      <width>181</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Defensive Mode</string>
+    </property>
+   </widget>
    <zorder>background_label</zorder>
    <zorder>scenario_comboBox</zorder>
    <zorder>scenario_label</zorder>
@@ -655,7 +760,7 @@ p, li { white-space: pre-wrap; }
    <zorder>enemy_transport_checkBox</zorder>
    <zorder>enemy_attack_helos_checkBox</zorder>
    <zorder>enemy_fighters_checkBox</zorder>
-   <zorder>enemy_fighters_checkBox_2</zorder>
+   <zorder>enemy_attack_planes_checkBox</zorder>
    <zorder>inf_spawn_spinBox</zorder>
    <zorder>smoke_checkBox</zorder>
    <zorder>scenario_label_5</zorder>
@@ -664,6 +769,8 @@ p, li { white-space: pre-wrap; }
    <zorder>slot_template_comboBox</zorder>
    <zorder>label_2</zorder>
    <zorder>scenario_label_6</zorder>
+   <zorder>force_offroad_checkBox</zorder>
+   <zorder>defense_checkBox</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -675,7 +782,11 @@ p, li { white-space: pre-wrap; }
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="acceptDrops">
+    <bool>false</bool>
+   </property>
+  </widget>
   <action name="action_generateMission">
    <property name="text">
     <string>_generateMission</string>

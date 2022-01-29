@@ -71,28 +71,23 @@ class RotorOpsMission:
 
         for filename in dir_list:
             if filename.endswith(".lua"):
-                print(filename)
+                print("Adding script to mission: " + filename)
                 self.scripts[filename] = self.m.map_resource.add_resource_file(filename)
 
-    def getUnitsFromMiz(self, filename):
-        red_forces = []
-        blue_forces = []
+    def getUnitsFromMiz(self, filename, side):
+        forces = []
         os.chdir(self.home_dir)
-        os.chdir(self.forces_dir)
-        print("Looking for Forces files in '", os.getcwd(), "' :")
+        os.chdir(self.forces_dir + "/" + side)
+        print("Looking for " + side + " Forces files in '", os.getcwd(), "' :")
         source_mission = dcs.mission.Mission()
         try:
             source_mission.load_file(filename)
 
-            for country_name in source_mission.coalition.get("red").countries:
-                country_obj = source_mission.coalition.get("red").countries[country_name]
+            for country_name in source_mission.coalition.get(side).countries:
+                country_obj = source_mission.coalition.get(side).countries[country_name]
                 for vehicle_group in country_obj.vehicle_group:
-                    red_forces.append(vehicle_group)
-            for country_name in source_mission.coalition.get("blue").countries:
-                country_obj = source_mission.coalition.get("blue").countries[country_name]
-                for vehicle_group in country_obj.vehicle_group:
-                    blue_forces.append(vehicle_group)
-            return {"red": red_forces, "blue": blue_forces}
+                    forces.append(vehicle_group)
+            return forces
         except:
             print("Failed to load units from " + filename)
 
@@ -110,13 +105,12 @@ class RotorOpsMission:
         self.m.coalition.get("red").load_from_dict(self.m, self.old_red)
 
 
-        red_forces = self.getUnitsFromMiz(data["red_forces_filename"])["red"]
-        blue_forces = self.getUnitsFromMiz(data["blue_forces_filename"])["blue"]
+        red_forces = self.getUnitsFromMiz(data["red_forces_filename"], "red")
+        blue_forces = self.getUnitsFromMiz(data["blue_forces_filename"], "blue")
 
 
 
         # add zones to target mission
-        print(self.m.triggers.zones())
         for zone in self.m.triggers.zones():
             if zone.name == "ALPHA":
                 self.addZone(self.conflict_zones, self.RotorOpsZone("ALPHA", 101, zone.position, zone.radius))
@@ -133,12 +127,11 @@ class RotorOpsMission:
 
         #add files and triggers necessary for RotorOps.lua script
         self.addResources(self.sound_directory, self.script_directory)
-        self.scriptTriggerSetup()
+        self.scriptTriggerSetup(data)
 
         #Add defending ground units
         for zone_name in self.conflict_zones:
             if red_forces:
-
                     self.addGroundGroups(self.conflict_zones[zone_name], self.m.country('Russia'), red_forces, data["red_quantity"])
 
         #Add attacking ground units
@@ -146,8 +139,6 @@ class RotorOpsMission:
             if blue_forces:
                 self.addGroundGroups(self.staging_zones[zone_name], self.m.country('USA'), blue_forces,
                                      data["blue_quantity"])
-                #for group in blue_forces:
-                    #self.addGroundGroups(self.staging_zones[zone_name], self.m.country('USA'), group.units, data["blue_quantity"])
 
         #Add player slots
         if False:
@@ -155,9 +146,10 @@ class RotorOpsMission:
         else:
             self.addMultiplayerHelos()
 
-        self.addFlights()
+        self.addFlights(data)
 
         #Save the mission file
+        print(self.m.triggers.zones())
         os.chdir(self.output_dir)
         output_filename = "ROps " + data["scenario_filename"]
         success = self.m.save(output_filename)
@@ -222,50 +214,59 @@ class RotorOpsMission:
 
 
 
-    def addFlights(self):
+    def addFlights(self, options):
         usa = self.m.country(dcs.countries.USA.name)
         friendly_airport = self.m.terrain.airports[self.getCoalitionAirports("blue")[0]]
+        enemy_airport = self.m.terrain.airports[self.getCoalitionAirports("red")[0]]
+
+
         awacs_frequency = 130
         tanker_frequency = 140
         orbit_rect = dcs.mapping.Rectangle(
             int(friendly_airport.position.x), int(friendly_airport.position.y - 100 * 1000), int(friendly_airport.position.x - 100 * 1000),
             int(friendly_airport.position.y))
 
-        pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-        awacs = self.m.awacs_flight(
-            usa,
-            "AWACS",
-            plane_type=dcs.planes.E_3A,
-            airport=None,
-            position=pos,
-            race_distance=race_dist, heading=heading,
-            altitude=random.randrange(4000, 5500, 100), frequency=awacs_frequency)
+        if options["f_awacs"]:
+            pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
+            awacs = self.m.awacs_flight(
+                usa,
+                "AWACS",
+                plane_type=dcs.planes.E_3A,
+                airport=None,
+                position=pos,
+                race_distance=race_dist, heading=heading,
+                altitude=random.randrange(4000, 5500, 100), frequency=awacs_frequency)
 
-        awacs_escort = self.m.escort_flight(usa, "AWACS Escort", dcs.countries.USA.Plane.F_15C, None, awacs, group_size=2)
-        awacs_escort.load_loadout("Combat Air Patrol") #not working for f-15
+            awacs_escort = self.m.escort_flight(usa, "AWACS Escort", dcs.countries.USA.Plane.F_15C, None, awacs, group_size=2)
+            awacs_escort.load_loadout("Combat Air Patrol") #not working for f-15
 
+        if options["f_tankers"]:
+            pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
+            refuel_net = self.m.refuel_flight(
+                usa,
+                "Tanker KC_130",
+                dcs.planes.KC130,
+                airport=None,
+                position=pos,
+                race_distance=race_dist, heading=heading,
+                altitude=random.randrange(4000, 5500, 100), speed=750, frequency=tanker_frequency)
 
-        pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-        refuel_net = self.m.refuel_flight(
-            usa,
-            "Tanker KC_130",
-            dcs.planes.KC130,
-            airport=None,
-            position=pos,
-            race_distance=race_dist, heading=heading,
-            altitude=random.randrange(4000, 5500, 100), speed=750, frequency=tanker_frequency)
+            pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
+            refuel_rod = self.m.refuel_flight(
+                usa,
+                "Tanker KC_135",
+                dcs.planes.KC_135,
+                airport=None,
+                position=pos,
+                race_distance=race_dist, heading=heading,
+                altitude=random.randrange(4000, 5500, 100), frequency=tanker_frequency, tacanchannel="12X")
 
-        pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-        refuel_rod = self.m.refuel_flight(
-            usa,
-            "Tanker KC_135",
-            dcs.planes.KC_135,
-            airport=None,
-            position=pos,
-            race_distance=race_dist, heading=heading,
-            altitude=random.randrange(4000, 5500, 100), frequency=tanker_frequency, tacanchannel="12X")
+    def scriptTriggerSetup(self, data):
 
-    def scriptTriggerSetup(self):
+        #get the boolean variable from ui data and convert to lua string
+        def lb(var):
+            return str(data[var]).lower()
+
         game_flag = 100
         #Add the first trigger
         mytrig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Scripts")
@@ -274,7 +275,15 @@ class RotorOpsMission:
         mytrig.actions.append(dcs.action.DoScriptFile(self.scripts["Splash_Damage_2_0.lua"]))
         mytrig.actions.append(dcs.action.DoScriptFile(self.scripts["CTLD.lua"]))
         mytrig.actions.append(dcs.action.DoScriptFile(self.scripts["RotorOps.lua"]))
-        mytrig.actions.append(dcs.action.DoScript(dcs.action.String(("--OPTIONS HERE!\n\nRotorOps.CTLD_crates = false\n\nRotorOps.CTLD_sound_effects = true\n\nRotorOps.force_offroad = false\n\nRotorOps.voice_overs = true\n\nRotorOps.apcs_spawn_infantry = false \n\n"))))
+        mytrig.actions.append(dcs.action.DoScript(dcs.action.String((
+            "--OPTIONS HERE!\n\n" +
+            "RotorOps.CTLD_crates = " + lb("crates") + "\n\n" +
+            "RotorOps.CTLD_sound_effects = true\n\n" +
+            "RotorOps.force_offroad = " + lb("force_offroad") + "\n\n" +
+            "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
+            "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
+            "RotorOps.inf_spawns_per_zone = " + lb("inf_spawn_qty") + "\n\n" +
+            "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n"))))
         self.m.triggerrules.triggers.append(mytrig)
 
         #Add the second trigger
