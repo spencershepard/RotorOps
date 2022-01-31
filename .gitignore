@@ -1,3 +1,10 @@
 
 .project
 sound/desktop.ini
+
+Generator/.idea
+Generator/__pycache__
+Generator/build
+Generator/venv
+Generator/Output
+Generator/dist

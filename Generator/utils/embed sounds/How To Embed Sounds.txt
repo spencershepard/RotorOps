@@ -1,0 +1,5 @@
+1) Place your .miz file in this directory.
+2) Run embed_sounds.exe
+3) A new file will be created in the same directory; a copy of your mission file with RotorOps sound files already embedded so you don't need to add manually.  
+
+Tip: You can use this tool to update your existing RotorOps missions with the current sound files.
