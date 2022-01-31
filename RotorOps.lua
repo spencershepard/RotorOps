@@ -1,5 +1,6 @@
 RotorOps = {}
-RotorOps.version = "1.2.2"
+RotorOps.version = "1.2.3"
+local debug = true
 
 
 ---[[ROTOROPS OPTIONS]]---
@@ -184,8 +185,10 @@ end
 ---UTILITY FUNCTIONS---
 
 local function debugMsg(text)
-  trigger.action.outText(text, 5)
-  env.info("ROTOROPS_DEBUG: "..text)
+  if(debug) then
+    --trigger.action.outText(text, 5)
+    env.info("ROTOROPS_DEBUG: "..text)
+  end
 end
 
 
@@ -456,6 +459,7 @@ end
 
 
 ---AI CORE BEHAVIOR--
+--
 
 
 function RotorOps.chargeEnemy(vars)
@@ -473,59 +477,127 @@ function RotorOps.chargeEnemy(vars)
  if grp:getCoalition() == 1 then enemy_coal = 2 end
  if grp:getCoalition() == 2 then enemy_coal = 1 end
  
- local volS
-   if vars.zone then 
-     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
-     local sphere = trigger.misc.getZone(vars.zone)
-     volS = {
-       id = world.VolumeType.SPHERE,
-       params = {
-         point = sphere.point, 
-         radius = sphere.radius
-       }
-     }
-   else 
-       --debugMsg("CHARGE ENEMY in radius: "..search_radius)
-       volS = {
+  local ifFound = function(foundItem, val)  ---dcs world.searchObjects method
+    local enemy_unit
+    local path = {} 
+    --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
+   -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+    if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
+      enemy_unit = foundItem
+      --debugMsg("found enemy! "..foundItem:getTypeName()) 
+      
+      path[1] = mist.ground.buildWP(start_point, '', 5) 
+      path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
+      mist.goRoute(grp, path)
+    else 
+  
+      --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
+    end
+    
+    return true
+   end
+ 
+
+ 
+   if vars.zone then     ---mist getUnitsInZones method
+     local units_in_zone = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {vars.zone}, "spherical")
+     local closest_dist = 10000
+     local closest_unit
+     for index, unit in pairs(units_in_zone) do
+       if unit:getCoalition() == enemy_coal then
+         local dist = mist.utils.get2DDist(start_point, unit:getPoint())
+         if dist < closest_dist then
+           closest_unit = unit
+           closest_dist = dist
+         end
+       end
+     end
+     
+     if closest_unit ~= nil then
+       local path = {} 
+       path[1] = mist.ground.buildWP(start_point, '', 5) 
+       path[2] = mist.ground.buildWP(closest_unit:getPoint(), '', 5) 
+       mist.goRoute(grp, path) 
+     end
+   
+   else    ---dcs world.searchObjects method
+     --debugMsg("CHARGE ENEMY in radius: "..search_radius)
+     local volS = {
        id = world.VolumeType.SPHERE,
        params = {
          point = first_valid_unit:getPoint(), 
          radius = search_radius
        }
      }
+     world.searchObjects(Object.Category.UNIT, volS, ifFound)
    end
- 
- 
- local enemy_unit
- local path = {} 
- local ifFound = function(foundItem, val)
-  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
- -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
-  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
-    enemy_unit = foundItem
-    --debugMsg("found enemy! "..foundItem:getTypeName()) 
-    
-    path[1] = mist.ground.buildWP(start_point, '', 5) 
-    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
-    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5) 
-  else 
-
-    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
-  end
-  
- return true
- end
- --default path if no units found
- if false then
-   --debugMsg("group going back to origin")  
-   path[1] = mist.ground.buildWP(start_point, '', 5) 
-   path[2] = mist.ground.buildWP(vars.spawn_point, '', 5)
-   
- end
- world.searchObjects(Object.Category.UNIT, volS, ifFound)
- mist.goRoute(grp, path)
 
 end
+
+
+--function RotorOps.chargeEnemy(vars)
+-- --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
+-- local grp = vars.grp
+-- local search_radius = vars.radius or 5000
+-- ----
+-- local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+-- 
+-- if first_valid_unit == nil then return end
+-- local start_point = first_valid_unit:getPoint()
+-- if not vars.spawn_point then vars.spawn_point = start_point end
+--
+-- local enemy_coal
+-- if grp:getCoalition() == 1 then enemy_coal = 2 end
+-- if grp:getCoalition() == 2 then enemy_coal = 1 end
+-- 
+-- local volS
+--   if vars.zone then 
+--     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
+--     local sphere = trigger.misc.getZone(vars.zone)
+--     volS = {
+--       id = world.VolumeType.SPHERE,
+--       params = {
+--         point = sphere.point, 
+--         radius = sphere.radius
+--       }
+--     }
+--   else 
+--       --debugMsg("CHARGE ENEMY in radius: "..search_radius)
+--       volS = {
+--       id = world.VolumeType.SPHERE,
+--       params = {
+--         point = first_valid_unit:getPoint(), 
+--         radius = search_radius
+--       }
+--     }
+--   end
+-- 
+-- 
+-- local enemy_unit
+-- local path = {} 
+-- local ifFound = function(foundItem, val)
+--  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
+-- -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+--  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
+--    enemy_unit = foundItem
+--    --debugMsg("found enemy! "..foundItem:getTypeName()) 
+--    
+--    path[1] = mist.ground.buildWP(start_point, '', 5) 
+--    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
+--    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5) 
+--    mist.goRoute(grp, path)
+--  else 
+--
+--    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
+--  end
+--  
+-- return true
+-- end
+--
+-- world.searchObjects(Object.Category.UNIT, volS, ifFound)
+-- 
+--
+--end
 
 
 function RotorOps.patrolRadius(vars)
@@ -597,21 +669,46 @@ end
 function RotorOps.aiExecute(vars)
   local update_interval = 60
   local last_task = vars.last_task
+  local last_zone = vars.last_zone
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
   local zone = RotorOps.ai_tasks[group_name].zone
 
 --  if vars.zone then zone = vars.zone end
-  --debugMsg("tasking: "..group_name.." : "..task .." zone:"..zone) 
+
   
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
-    --debugMsg("group no longer exists")
+    debugMsg(group_name.." no longer exists")
     RotorOps.ai_tasks[group_name] = nil
     return
   end  
   
- --if Group.getByName(group_name):getController():hasTask() == false then   --our implementation of hasTask does not seem to be working for vehicles
+  local same_zone = false
+  if zone ~= nil then
+    if zone ~= last_zone then
+      same_zone = true
+    end
+  end
   
+  local should_update = true
+  
+--  if task == last_task then
+--    should_update = false
+--  end
+--  
+--  if same_zone then
+--    should_update = false
+--  end
+--  
+--  if task == "patrol" then 
+--    should_update = true
+--  end  
+    
+  
+ if should_update then  --check to make sure we don't have the same task
+   
+  debugMsg("tasking: "..group_name.." : "..task) 
+ 
   if task == "patrol" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
@@ -645,8 +742,11 @@ function RotorOps.aiExecute(vars)
     local force_offroad = RotorOps.force_offroad
     mist.groupToPoint(group_name, RotorOps.active_zone, formation, final_heading, speed, force_offroad)
   end  
+ 
+ end
   
   vars.last_task = task
+  vars.last_zone = zone
    
   local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + update_interval)
 end
@@ -823,6 +923,7 @@ function RotorOps.assessUnitsInZone(var)
       if should_deploy then
        local function timedDeploy()
          if vehicle:isExist() then
+           env.info(vehicle:getName().." is deploying troops.")
            RotorOps.deployTroops(4, vehicle:getGroup(), false)
          end
        end

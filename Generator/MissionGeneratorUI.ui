@@ -467,7 +467,7 @@ p, li { white-space: pre-wrap; }
    </widget>
    <widget class="QCheckBox" name="enemy_attack_helos_checkBox">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="geometry">
      <rect>
@@ -515,7 +515,7 @@ p, li { white-space: pre-wrap; }
    </widget>
    <widget class="QCheckBox" name="enemy_attack_planes_checkBox">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="geometry">
      <rect>

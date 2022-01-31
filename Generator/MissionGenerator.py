@@ -4,6 +4,7 @@ import os
 import dcs
 import RotorOpsMission as ROps
 import RotorOpsUtils
+import RotorOpsUnits
 
 
 from PyQt5.QtWidgets import (
@@ -21,6 +22,15 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+            print('running in a PyInstaller bundle')
+            home_dir = os.getcwd()
+            os.chdir(home_dir + "/Generator")
+        else:
+            print('running in a normal Python process')
+            
+
         self.m = ROps.RotorOpsMission()
         self.setupUi(self)
         self.connectSignalsSlots()
@@ -36,8 +46,6 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def connectSignalsSlots(self):
         # self.action_Exit.triggered.connect(self.close)
-        # self.action_Find_Replace.triggered.connect(self.findAndReplace)
-        # self.action_About.triggered.connect(self.about)
         self.action_generateMission.triggered.connect(self.generateMissionAction)
         self.action_scenarioSelected.triggered.connect(self.scenarioChanged)
 
@@ -65,7 +73,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 combobox.addItem(filename.removesuffix('.miz'))
 
     def populateSlotSelection(self):
-        for type in ROps.RotorOpsMission.client_helos:
+        self.slot_template_comboBox.addItem("Multiple Slots")
+        for type in RotorOpsUnits.client_helos:
             self.slot_template_comboBox.addItem(type.id)
 
 
@@ -82,6 +91,13 @@ class Window(QMainWindow, Ui_MainWindow):
             conflict_zone_distance_sum = 0
             spawn_zones = 0
             conflict_zone_positions = []
+            #friendly_airports = source_mission.getCoalitionAirports("blue")
+            #enemy_airports = source_mission.getCoalitionAirports("red")
+            friendly_airports = True
+            enemy_airports = True
+
+            ## TODO: we should be creating a new instance of RotorOpsMission each time scenario is changed so we can access all methods and vars
+
             for zone in zones:
                 if zone.name == "STAGING":
                     staging_zones += 1
@@ -96,6 +112,18 @@ class Window(QMainWindow, Ui_MainWindow):
                     if index > 0:
                         conflict_zone_distance_sum += RotorOpsUtils.getDistance(conflict_zone_positions[index], conflict_zone_positions[index - 1])
 
+            def validateTemplate():
+                valid = True
+                if len(staging_zones) < 1:
+                    valid = False
+                if len(conflict_zones) < 1:
+                    valid = False
+                if not friendly_airports:
+                    valid = False
+                if not enemy_airports:
+                    valid = False
+                return valid
+
             if conflict_zones and staging_zones :
                 average_zone_size = conflict_zone_size_sum / conflict_zones
                 self.description_textBrowser.setText(
@@ -104,6 +132,7 @@ class Window(QMainWindow, Ui_MainWindow):
                     "Average Zone Size " + str(math.floor(average_zone_size)) + "m \n" +
                     "Infantry Spawn Zones: " + str(spawn_zones) + "\n" +
                     "Approx Distance: " + str(math.floor(RotorOpsUtils.convertMeterToNM(conflict_zone_distance_sum))) + "nm \n"
+                    #"Validity Check:" + str(validateTemplate())
                 )
         except:
             self.description_textBrowser.setText("File error occured.")
@@ -132,13 +161,19 @@ class Window(QMainWindow, Ui_MainWindow):
                 "voiceovers": self.voiceovers_checkBox.isChecked(),
                 "force_offroad": self.force_offroad_checkBox.isChecked(),
                 "game_display": self.game_status_checkBox.isChecked(),
-                "defense": self.defense_checkBox.isChecked(),
+                "defending": self.defense_checkBox.isChecked(),
+                "slots": self.slot_template_comboBox.currentText(),
                 }
-        #n = ROps.RotorOpsMission()
-        #result = n.generateMission(data)
+        os.chdir(self.m.home_dir + '/Generator')
+        n = ROps.RotorOpsMission()
+        result = n.generateMission(data)
         print("Generating mission with options:")
         print(str(data))
-        result = self.m.generateMission(data)
+
+        # generate the mission
+        #result = self.m.generateMission(data)
+
+        #display results
         if result["success"]:
             print(result["filename"] + "'  successfully generated in " + result["directory"])
             self.statusbar.showMessage(result["filename"] + "'  successfully generated in " + result["directory"], 10000)
@@ -157,28 +192,7 @@ class Window(QMainWindow, Ui_MainWindow):
                     "\n" +
                     "Have fun! \n"
                     )
-        x = msg.exec_()  # this will show our messagebox
-
-
-    # def findAndReplace(self):
-    #     dialog = FindReplaceDialog(self)
-    #     dialog.exec()
-    #
-    # def about(self):
-    #     QMessageBox.about(
-    #         self,
-    #         "About Sample Editor",
-    #         "<p>A sample text editor app built with:</p>"
-    #         "<p>- PyQt</p>"
-    #         "<p>- Qt Designer</p>"
-    #         "<p>- Python</p>",
-    #     )
-
-# class FindReplaceDialog(QDialog):
-#     def __init__(self, parent=None):
-#         super().__init__(parent)
-#         loadUi("ui/find_replace.ui", self)
-
+        x = msg.exec_()
 
 
 

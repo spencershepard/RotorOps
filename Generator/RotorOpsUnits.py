@@ -1,15 +1,26 @@
 import dcs
 
-red_armor_group = [
-            dcs.countries.Russia.Vehicle.Armor.T_72B,
-            dcs.countries.Russia.Vehicle.Armor.BMP_3,
-            dcs.countries.Russia.Vehicle.Artillery.SAU_Akatsia,
-            dcs.countries.Russia.Vehicle.Unarmed.GAZ_3308,
-            dcs.countries.Russia.Vehicle.Armor.T_80UD]
+client_helos = [
+    dcs.helicopters.UH_1H,
+    dcs.helicopters.Mi_8MT,
+    dcs.helicopters.Mi_24P,
+    dcs.helicopters.Ka_50,
+]
 
-red_unarmed_group = [
-            dcs.countries.Russia.Vehicle.Unarmed.GAZ_66,
-            dcs.countries.Russia.Vehicle.Unarmed.ZIL_135,
-            dcs.countries.Russia.Vehicle.Unarmed.Ural_4320T,
-            dcs.countries.Russia.Vehicle.Unarmed.GAZ_3308,
-            dcs.countries.Russia.Vehicle.Unarmed.Ural_375]
+e_attack_helos = [
+    dcs.helicopters.Mi_24P,
+    dcs.helicopters.Ka_50,
+    dcs.helicopters.Mi_28N,
+]
+
+e_transport_helos = [
+    dcs.helicopters.Mi_26,
+    dcs.helicopters.Mi_24P,
+    dcs.helicopters.Mi_8MT,
+]
+
+e_attack_planes = [
+    {'type': dcs.planes.Su_34, 'loadout': "APU-8 Vikhr-M*2,Kh-25ML,R-73*2,SPPU-22*2,Mercury LLTV Pod,MPS-410"},
+    {'type': dcs.planes.Su_25, 'loadout': "RKB-250*8,R-60M*2"},
+
+]
