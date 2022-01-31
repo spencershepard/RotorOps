@@ -1,0 +1,1 @@
+Your mission files will appear in this directory after using the mission generator!

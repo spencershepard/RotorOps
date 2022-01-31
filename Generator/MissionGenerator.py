@@ -29,7 +29,7 @@ class Window(QMainWindow, Ui_MainWindow):
             os.chdir(home_dir + "/Generator")
         else:
             print('running in a normal Python process')
-            
+
 
         self.m = ROps.RotorOpsMission()
         self.setupUi(self)
