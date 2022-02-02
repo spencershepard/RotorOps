@@ -290,6 +290,7 @@ class RotorOpsMission:
         def zone_attack(fg, unit_type):
             fg.set_skill(dcs.unit.Skill.Random)
             fg.late_activation = True
+            fg.points[0].tasks.append(dcs.task.OptROE(0))
             #fg.load_loadout(unit_type["loadout"])
             #task = dcs.task.CAS
             #loadout = dcs.planes.Su_25.loadout(task)
@@ -315,7 +316,7 @@ class RotorOpsMission:
                 "Enemy Attack Helicopters",
                 helo,
                 airport=enemy_airport,
-                maintask=dcs.task.GroundAttack,
+                maintask=dcs.task.CAS,
                 start_type=dcs.mission.StartType.Warm,
                 group_size=2)
             zone_attack(afg, helo)
@@ -325,7 +326,7 @@ class RotorOpsMission:
             afg = self.m.flight_group_from_airport(
                 russia, "Enemy Attack Planes", plane["type"],
                airport=enemy_airport,
-               maintask=dcs.task.GroundAttack,
+               maintask=dcs.task.CAS,
                start_type=dcs.mission.StartType.Warm,
                group_size=2)
             zone_attack(afg, plane)
