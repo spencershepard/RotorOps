@@ -1,0 +1,5 @@
+#build UI files
+pyuic5 -x MissionGeneratorUI.ui -o MissionGeneratorUI.py  
+
+#build exe
+pyinstaller MissionGenerator.spec --distpath ..\ -i='assets\icon.ico' 

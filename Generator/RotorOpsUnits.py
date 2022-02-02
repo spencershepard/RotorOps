@@ -23,5 +23,8 @@ e_attack_planes = [
     #{'type': dcs.planes.Su_34, 'loadout': "APU-8 Vikhr-M*2,Kh-25ML,R-73*2,SPPU-22*2,Mercury LLTV Pod,MPS-410"},
     #{'type': dcs.planes.Su_25, 'loadout': "RKB-250*8,R-60M*2"},
     {'type': dcs.planes.A_10C, 'loadout': ""}
+]
 
+e_zone_sams = [
+    dcs.vehicles.AirDefence.Strela_10M3,
 ]

@@ -438,6 +438,7 @@ end
 
 if (script_enable == 1) then
   gameMsg("SPLASH DAMAGE 2 SCRIPT RUNNING")
+  env.info("SPLASH DAMAGE 2 SCRIPT RUNNING")
   timer.scheduleFunction(function() 
       protectedCall(track_wpns)
       return timer.getTime() + refreshRate

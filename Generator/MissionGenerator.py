@@ -150,10 +150,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 "blue_quantity": self.blueqty_spinBox.value(),
                 "inf_spawn_qty": self.inf_spawn_spinBox.value(),
                 "apc_spawns_inf": self.apcs_spawn_checkBox.isChecked(),
-                "e_transport": self.enemy_transport_checkBox.isChecked(),
-                "e_attack_helos": self.enemy_attack_helos_checkBox.isChecked(),
-                "e_fighters": self.enemy_fighters_checkBox.isChecked(),
-                "e_attack_planes": self.enemy_attack_planes_checkBox.isChecked(),
+                "e_attack_helos": self.e_attack_helos_spinBox.value(),
+                "e_attack_planes": self.e_attack_planes_spinBox.value(),
                 "crates": self.logistics_crates_checkBox.isChecked(),
                 "f_awacs": self.awacs_checkBox.isChecked(),
                 "f_tankers": self.tankers_checkBox.isChecked(),
@@ -163,6 +161,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 "game_display": self.game_status_checkBox.isChecked(),
                 "defending": self.defense_checkBox.isChecked(),
                 "slots": self.slot_template_comboBox.currentText(),
+                "smoke_zone": self.smoke_checkBox.isChecked(),
+                "zone_protect_sams": self.zone_sams_checkBox.isChecked(),
                 }
         os.chdir(self.m.home_dir + '/Generator')
         n = ROps.RotorOpsMission()

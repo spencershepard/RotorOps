@@ -142,11 +142,35 @@ class RotorOpsMission:
             if red_forces:
                     self.addGroundGroups(red_zones[zone_name], self.m.country('Russia'), red_forces, options["red_quantity"])
 
+        if options["zone_protect_sams"]:
+            for zone_name in red_zones:
+                self.m.vehicle_group(
+                    self.m.country('Russia'),
+                    zone_name + " Protection SAM",
+                    random.choice(RotorOpsUnits.e_zone_sams),
+                    red_zones[zone_name].position,
+                    heading=random.randint(0, 359),
+                    group_size=6,
+                    formation=dcs.unitgroup.VehicleGroup.Formation.Star
+                )
+
         #Add blue ground units
         for zone_name in blue_zones:
             if blue_forces:
                 self.addGroundGroups(blue_zones[zone_name], self.m.country('USA'), blue_forces,
                                      options["blue_quantity"])
+
+        if options["zone_protect_sams"]:
+            for zone_name in blue_zones:
+                self.m.vehicle_group(
+                    self.m.country('USA'),
+                    zone_name + " Protection SAM",
+                    random.choice(RotorOpsUnits.e_zone_sams),
+                    blue_zones[zone_name].position,
+                    heading=random.randint(0, 359),
+                    group_size=6,
+                    formation=dcs.unitgroup.VehicleGroup.Formation.Star
+                )
 
         #Add player slots
         if options["slots"] == "Multiple Slots":
@@ -156,6 +180,7 @@ class RotorOpsMission:
                 if helicopter == options["slots"]:
                     self.addSinglePlayerHelos(dcs.helicopters.helicopter_map[helicopter])
 
+        #Add AI Flights
         self.addFlights(options)
 
         #Set the Editor Map View
@@ -189,6 +214,7 @@ class RotorOpsMission:
                 formation=dcs.unitgroup.VehicleGroup.Formation.Scattered,
             )
 
+
     def getCoalitionAirports(self, side: str):
         coalition_airports = []
         for airport_name in self.m.terrain.airports:
@@ -196,6 +222,14 @@ class RotorOpsMission:
             if airportobj.coalition == str.upper(side):
                 coalition_airports.append(airport_name)
         return coalition_airports
+
+    def getParking(self, airport, aircraft):
+        slot = airport.free_parking_slot(aircraft)
+        if slot:
+            return airport
+        else:
+            print("No parking available for " + aircraft.id + " at " + airport.name)
+            return None
 
 
     def addSinglePlayerHelos(self, helotype):
@@ -211,7 +245,7 @@ class RotorOpsMission:
         for airport_name in friendly_airports:
             for helotype in RotorOpsUnits.client_helos:
                 fg = self.m.flight_group_from_airport(self.m.country('USA'), airport_name + " " + helotype.id, helotype,
-                                                      self.m.terrain.airports[airport_name], group_size=1)
+                                                      self.getParking(self.m.terrain.airports[airport_name], helotype), group_size=1)
                 fg.units[0].set_client()
 
 
@@ -239,6 +273,8 @@ class RotorOpsMission:
             int(friendly_airport.position.x), int(friendly_airport.position.y - 100 * 1000), int(friendly_airport.position.x - 100 * 1000),
             int(friendly_airport.position.y))
 
+
+
         if options["f_awacs"]:
             awacs_name = "AWACS"
             awacs_freq = 266
@@ -247,13 +283,20 @@ class RotorOpsMission:
                 usa,
                 awacs_name,
                 plane_type=dcs.planes.E_3A,
-                airport=None,
+                airport=self.getParking(friendly_airport, dcs.planes.E_3A),
                 position=pos,
                 race_distance=race_dist, heading=heading,
                 altitude=random.randrange(4000, 5500, 100), frequency=awacs_freq)
 
-            awacs_escort = self.m.escort_flight(usa, "AWACS Escort", dcs.countries.USA.Plane.F_15C, None, awacs, group_size=2)
+            awacs_escort = self.m.escort_flight(
+                usa, "AWACS Escort",
+                dcs.countries.USA.Plane.F_15C,
+                airport=self.getParking(friendly_airport, dcs.countries.USA.Plane.F_15C),
+                group_to_escort=awacs,
+                group_size=2)
             awacs_escort.load_loadout("Combat Air Patrol") #not working for f-15
+
+            #add text to mission briefing with radio freq
             briefing = self.m.description_text() + "\n\n" + awacs_name + "  " + str(awacs_freq) + ".00 " + "\n"
             self.m.set_description_text(briefing)
 
@@ -269,21 +312,30 @@ class RotorOpsMission:
                 usa,
                 t1_name,
                 dcs.planes.KC130,
-                airport=None,
+                airport=self.getParking(friendly_airport, dcs.planes.KC130),
                 position=pos,
-                race_distance=race_dist, heading=heading,
-                altitude=random.randrange(4000, 5500, 100), speed=750, frequency=t1_freq, tacanchannel=t1_tac)
+                race_distance=race_dist,
+                heading=heading,
+                altitude=random.randrange(4000, 5500, 100),
+                start_type=dcs.mission.StartType.Warm,
+                speed=750,
+                frequency=t1_freq,
+                tacanchannel=t1_tac)
 
             pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
             refuel_rod = self.m.refuel_flight(
                 usa,
                 t2_name,
                 dcs.planes.KC_135,
-                airport=None,
+                airport=self.getParking(friendly_airport, dcs.planes.KC_135),
                 position=pos,
                 race_distance=race_dist, heading=heading,
-                altitude=random.randrange(4000, 5500, 100), frequency=t2_freq, tacanchannel=t2_tac)
+                altitude=random.randrange(4000, 5500, 100),
+                start_type=dcs.mission.StartType.Warm,
+                frequency=t2_freq,
+                tacanchannel=t2_tac)
 
+            #add text to mission briefing
             briefing = self.m.description_text() + "\n\n" + t1_name + "  " + str(t1_freq) + ".00  " + t1_tac + "\n" + t2_name + "  " + str(t2_freq) + ".00  " + t2_tac + "\n"
             self.m.set_description_text(briefing)
 
@@ -377,20 +429,42 @@ class RotorOpsMission:
         self.m.triggerrules.triggers.append(mytrig)
 
         #Add all zone-based triggers
-        for index, c_zone in enumerate(self.conflict_zones):
+        for index, zone_name in enumerate(self.conflict_zones):
 
-            z_active_trig = dcs.triggers.TriggerOnce(comment= c_zone + " Active")
+            z_active_trig = dcs.triggers.TriggerOnce(comment= zone_name + " Active")
             z_active_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
             z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("--Add any action you want here!")))
+            #Smoke action not working
+            # if options["smoke_zone"]:
+            #     z_active_trig.actions.append(dcs.action.Smoke(zone=zone_name, density=1, preset=1))
+                # if index > 0:
+                #     previous_zone = list(self.conflict_zones)[index - 1]
+                #     z_active_trig.actions.append(dcs.action.Smoke(zone=previous_zone, density=1, preset=0))
+            #Zone protection SAMs
+            if options["zone_protect_sams"]:
+                z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protection SAM'))")))
             self.m.triggerrules.triggers.append(z_active_trig)
 
-            zone_flag = self.conflict_zones[c_zone].flag
-            z_weak_trig = dcs.triggers.TriggerOnce(comment= c_zone + " Weak")
-            z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone_flag, 10))
-            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone_flag, random.randrange(20, 80)))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("--Add any action you want here!\n\n--Flag value represents the percentage of defending ground units remaining. ")))
-            if options["e_attack_helos"]:
-                z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("mist.respawnGroup('Enemy Attack Helicopters', true)")))
+        #Add attack helos triggers
+        for index in range(options["e_attack_helos"]):
+            random_zone_obj = random.choice(list(self.conflict_zones.items()))
+            zone = random_zone_obj[1]
+            z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Attack Helo")
+            z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone.flag, 1))
+            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 90)))
+            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("---Flag value represents the percentage of defending ground units remaining in zone. ")))
+            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("mist.respawnGroup('Enemy Attack Helicopters', true)")))
+            self.m.triggerrules.triggers.append(z_weak_trig)
+
+        #Add attack plane triggers
+        for index in range(options["e_attack_planes"]):
+            random_zone_obj = random.choice(list(self.conflict_zones.items()))
+            zone = random_zone_obj[1]
+            z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Attack Plane")
+            z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone.flag, 1))
+            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 90)))
+            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("---Flag value represents the percentage of defending ground units remaining in zone. ")))
+            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("mist.respawnGroup('Enemy Attack Planes', true)")))
             self.m.triggerrules.triggers.append(z_weak_trig)
 
         #Add game won/lost triggers
