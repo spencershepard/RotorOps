@@ -26,14 +26,13 @@ Optional USER FLAGS are available to trigger events based on the status of indiv
 
 ***
 
-## Get in touch!
-
-
-![alt text](https://discord.com/assets/cb48d2a8d4991281d7a6a95d2f58195e.svg?raw=true)
+### Get in touch!
 
 https://discord.gg/HFqjrZV9xD
 
+### Support Development
 
+https://www.patreon.com/spencershepard
 
 ### Developers
 We welcome contributors to this new project!  Please get in touch on Discord with new ideas or pickup/create an issue in this repo.   
