@@ -662,7 +662,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>This value is multiplied by the number of spawn zones in the mission template.</string>
+     <string>Approximate number of enemy attack helicopter group spawns.</string>
     </property>
     <property name="minimum">
      <number>0</number>
@@ -725,7 +725,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>This value is multiplied by the number of spawn zones in the mission template.</string>
+     <string>Approximate number of enemy attack plane group spawns.</string>
     </property>
     <property name="minimum">
      <number>0</number>
@@ -734,7 +734,7 @@ p, li { white-space: pre-wrap; }
      <number>50</number>
     </property>
     <property name="value">
-     <number>2</number>
+     <number>1</number>
     </property>
    </widget>
    <widget class="QCheckBox" name="zone_sams_checkBox">
@@ -752,7 +752,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed by a large explosion at zone center. </string>
+     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed.</string>
     </property>
     <property name="text">
      <string>Inactive Zone SAMs</string>

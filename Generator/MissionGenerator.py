@@ -177,22 +177,28 @@ class Window(QMainWindow, Ui_MainWindow):
         if result["success"]:
             print(result["filename"] + "'  successfully generated in " + result["directory"])
             self.statusbar.showMessage(result["filename"] + "'  successfully generated in " + result["directory"], 10000)
-        msg = QMessageBox()
-        msg.setWindowTitle("Mission Generated")
-        msg.setText("Awesome, your mission is ready! It's located in this directory: \n" +
-                    self.m.output_dir + "\n" +
-                    "\n" +
-                    "Next, you should use the DCS Mission Editor to fine tune unit placements.  Don't be afraid to edit the missions that this generator produces. \n" +
-                    "\n" +
-                    "There are no hidden script changes, everything is visible in the ME.  Triggers have been created to help you to add your own actions based on active zone and game status. \n" +
-                    "\n" +
-                    "Units can be changed or moved without issue.  Player slots can be changed or moved without issue. \n" +
-                    "\n" +
-                    "Don't forget, you can also create your own templates that can include any mission options, objects, or even scripts. \n" +
-                    "\n" +
-                    "Have fun! \n"
-                    )
-        x = msg.exec_()
+            msg = QMessageBox()
+            msg.setWindowTitle("Mission Generated")
+            msg.setText("Awesome, your mission is ready! It's located in this directory: \n" +
+                        self.m.output_dir + "\n" +
+                        "\n" +
+                        "Next, you should use the DCS Mission Editor to fine tune unit placements.  Don't be afraid to edit the missions that this generator produces. \n" +
+                        "\n" +
+                        "There are no hidden script changes, everything is visible in the ME.  Triggers have been created to help you to add your own actions based on active zone and game status. \n" +
+                        "\n" +
+                        "Units can be changed or moved without issue.  Player slots can be changed or moved without issue. \n" +
+                        "\n" +
+                        "Don't forget, you can also create your own templates that can include any mission options, objects, or even scripts. \n" +
+                        "\n" +
+                        "Have fun! \n"
+                        )
+            x = msg.exec_()
+        elif not result["success"]:
+            print(result["failure_msg"])
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText(result["failure_msg"])
+            x = msg.exec_()
 
 
 

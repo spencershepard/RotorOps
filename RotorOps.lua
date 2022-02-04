@@ -23,7 +23,7 @@ RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
 
 
 --RotorOps settings that are safe to change only before calling setupConflict()
-RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access 
+RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral', 'UH-60L'} --players flying these will have ctld transport access 
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "noai"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
@@ -138,6 +138,13 @@ RotorOps.gameMsgs = {
     {'ENEMY TOOK CHARLIE!', 'enemy_destroying_us.ogg'},
     {'ENEMY TOOK DELTA!', 'enemy_destroying_us.ogg'},
   },
+  attack_helos = {
+    {'ENEMY ATTACK HELICOPTERS INBOUND!', 'enemy_attack_choppers.ogg'},
+  },
+  attack_planes = {
+    {'ENEMY ATTACK PLANES INBOUND!', 'enemy_attack_planes.ogg'},
+  },
+  
 
 }
 
@@ -1243,6 +1250,32 @@ function RotorOps.startConflict()
 end
 
 
+function RotorOps.triggerSpawn(groupName, msg)
+  local group = Group.getByName(groupName)
+  if group and group:isExist() == true and #group:getUnits() > 0 and group:getUnits()[1]:getLife() > 1 and group:getUnits()[1]:isActive() then
+    env.info("RotorOps tried to respawn "..groupName.." but it's already active.")
+  else
+    local new_group = mist.respawnGroup(groupName, true)
+    if new_group then
+      RotorOps.gameMsg(msg)
+      env.info("RotorOps spawned "..groupName)
+      return new_group
+    end
+  end
+
+  return nil
+
+end
+
+
+function RotorOps.spawnAttackHelos()
+  RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos)
+end
+
+
+function RotorOps.spawnAttackPlanes()
+  RotorOps.triggerSpawn("Enemy Attack Planes", RotorOps.gameMsgs.attack_planes)
+end
 
 
 
