@@ -1,0 +1,20 @@
+You can add your own scenarios in this directory and they will appear in the mission generator.
+
+A scenario .miz file MUST have:
+
+1) Between 1-4 trigger zones called "ALPHA", "BRAVO", "CHARLIE", "DELTA"
+2) At least one trigger zone with a name that starts with "STAGING".
+3) A blue airport (recommend somewhere near your staging zone).
+4) A red airport (recommend somewhere near your last conflict zone).  
+
+Optional: 
+You can add smaller infantry spawning zones inside conflict zones.  Add near buildings to simulate infantry hiding within. Name them like "ALPHA_SPAWN", "ALPHA_SPAWN_2, etc.
+
+Tips:
+-The conflict game type can be played with blue forces on defense.  In this mode the last conflict zone is the only troop pickup zone.
+-Design your template so that it can be played in normal 'attacking' mode or 'defending' the conflict zone from enemy ground units starting from the staging zone.
+-Keep the zones fairly close together, both for helicopter and ground unit travel times. 
+-You can place static objects and units in a scenario template.
+-You can change mission briefing and other mission options in the template.
+-Drop your templates in the RotorOps Discord if you'd like to have them added in a release for everyone. Maintain a similar naming convention and be sure to credit yourself in the .miz name. 
+-Airfields can be captured with ground units.  You might consider placing conflict zones over neutral airfields and adding unarmed client slots.  

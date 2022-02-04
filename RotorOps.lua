@@ -1,5 +1,6 @@
 RotorOps = {}
-RotorOps.version = "1.2.1"
+RotorOps.version = "1.2.3"
+local debug = true
 
 
 ---[[ROTOROPS OPTIONS]]---
@@ -8,15 +9,21 @@ RotorOps.version = "1.2.1"
 
 --RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for portability). You can change these while the script is running, at any time.
 RotorOps.voice_overs = true
-RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones
+RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones. Doesn't have much effect since always limited by slowest vehicle in group
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
 RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left to prevent frustration with units getting stuck in buildings etc
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
 RotorOps.apcs_spawn_infantry = false  --apcs will unload troops when arriving to a new zone
+RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing? 
+
+RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn events remaining in the active zone
+RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
+RotorOps.inf_spawn_trigger_percent = 70 --infantry has a chance of spawning if the percentage of defenders remaining in zone is less than this value
+RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
+
 
 --RotorOps settings that are safe to change only before calling setupConflict()
-RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access
-RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing?  
+RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral'} --players flying these will have ctld transport access 
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "noai"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
@@ -53,6 +60,7 @@ local game_message_buffer = {}
 local active_zone_initial_defenders
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
+local inf_spawn_zones = {}
 
 
 
@@ -177,8 +185,10 @@ end
 ---UTILITY FUNCTIONS---
 
 local function debugMsg(text)
-  trigger.action.outText(text, 5)
-  env.info("ROTOROPS_DEBUG: "..text)
+  if(debug) then
+    --trigger.action.outText(text, 5)
+    env.info("ROTOROPS_DEBUG: "..text)
+  end
 end
 
 
@@ -347,6 +357,45 @@ function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn
   end
 end
 
+--Spawn infantry in a trigger zone. Uses CTLD but may use another method in the future. Side is "red" or "blue"
+--function RotorOps.spawnInfantryInZone(vars)
+--    --local group = {mg=1,at=0,aa=0,inf=4,mortar=0}
+--
+--    local _triggerName = vars.zone
+--    local _groupSide = vars.side
+--    local _number = vars.qty
+--    local _searchRadius = 500
+--  
+--    local _spawnTrigger = trigger.misc.getZone(_triggerName) -- trigger to use as reference position
+--
+--    if _spawnTrigger == nil then
+--        env.warning("ERROR: Cant find zone called " .. _triggerName)
+--        return
+--    end
+--
+--    local _country
+--    if _groupSide == "red" then
+--        _groupSide = 1
+--        _country = 0
+--    else
+--        _groupSide = 2
+--        _country = 2
+--    end
+--
+--    if _searchRadius < 0 then
+--        _searchRadius = 0
+--    end
+--
+--    local _pos2 = { x = _spawnTrigger.point.x, y = _spawnTrigger.point.z }
+--    local _alt = land.getHeight(_pos2)
+--    local _pos3 = { x = _pos2.x, y = _alt, z = _pos2.y }
+--
+--    local _groupDetails = ctld.generateTroopTypes(_groupSide, _number, _country)
+--
+--    local _droppedTroops = ctld.spawnDroppedGroup(_pos3, _groupDetails, false, _searchRadius);
+--    --debugMsg(_groupDetails.groupName)
+--    return _groupDetails.groupName  --_ { units = _troops, groupId = _groupId, groupName = string.format("%s %i", _groupName, _groupId), side = _side, country = _country, weight = _weight, jtac = _hasJTAC }
+--end
 
 --Easy way to deploy troops from a vehicle with waypoint action.  Spawns from the first valid unit found in a group
 function RotorOps.deployTroops(quantity, target_group, announce)
@@ -410,6 +459,7 @@ end
 
 
 ---AI CORE BEHAVIOR--
+--
 
 
 function RotorOps.chargeEnemy(vars)
@@ -427,59 +477,127 @@ function RotorOps.chargeEnemy(vars)
  if grp:getCoalition() == 1 then enemy_coal = 2 end
  if grp:getCoalition() == 2 then enemy_coal = 1 end
  
- local volS
-   if vars.zone then 
-     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
-     local sphere = trigger.misc.getZone(vars.zone)
-     volS = {
-       id = world.VolumeType.SPHERE,
-       params = {
-         point = sphere.point, 
-         radius = sphere.radius
-       }
-     }
-   else 
-       --debugMsg("CHARGE ENEMY in radius: "..search_radius)
-       volS = {
+  local ifFound = function(foundItem, val)  ---dcs world.searchObjects method
+    local enemy_unit
+    local path = {} 
+    --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
+   -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+    if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
+      enemy_unit = foundItem
+      --debugMsg("found enemy! "..foundItem:getTypeName()) 
+      
+      path[1] = mist.ground.buildWP(start_point, '', 5) 
+      path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
+      mist.goRoute(grp, path)
+    else 
+  
+      --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
+    end
+    
+    return true
+   end
+ 
+
+ 
+   if vars.zone then     ---mist getUnitsInZones method
+     local units_in_zone = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {vars.zone}, "spherical")
+     local closest_dist = 10000
+     local closest_unit
+     for index, unit in pairs(units_in_zone) do
+       if unit:getCoalition() == enemy_coal then
+         local dist = mist.utils.get2DDist(start_point, unit:getPoint())
+         if dist < closest_dist then
+           closest_unit = unit
+           closest_dist = dist
+         end
+       end
+     end
+     
+     if closest_unit ~= nil then
+       local path = {} 
+       path[1] = mist.ground.buildWP(start_point, '', 5) 
+       path[2] = mist.ground.buildWP(closest_unit:getPoint(), '', 5) 
+       mist.goRoute(grp, path) 
+     end
+   
+   else    ---dcs world.searchObjects method
+     --debugMsg("CHARGE ENEMY in radius: "..search_radius)
+     local volS = {
        id = world.VolumeType.SPHERE,
        params = {
          point = first_valid_unit:getPoint(), 
          radius = search_radius
        }
      }
+     world.searchObjects(Object.Category.UNIT, volS, ifFound)
    end
- 
- 
- local enemy_unit
- local path = {} 
- local ifFound = function(foundItem, val)
-  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
- -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
-  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
-    enemy_unit = foundItem
-    --debugMsg("found enemy! "..foundItem:getTypeName()) 
-    
-    path[1] = mist.ground.buildWP(start_point, '', 5) 
-    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
-    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5) 
-  else 
-
-    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
-  end
-  
- return true
- end
- --default path if no units found
- if false then
-   --debugMsg("group going back to origin")  
-   path[1] = mist.ground.buildWP(start_point, '', 5) 
-   path[2] = mist.ground.buildWP(vars.spawn_point, '', 5)
-   
- end
- world.searchObjects(Object.Category.UNIT, volS, ifFound)
- mist.goRoute(grp, path)
 
 end
+
+
+--function RotorOps.chargeEnemy(vars)
+-- --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
+-- local grp = vars.grp
+-- local search_radius = vars.radius or 5000
+-- ----
+-- local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+-- 
+-- if first_valid_unit == nil then return end
+-- local start_point = first_valid_unit:getPoint()
+-- if not vars.spawn_point then vars.spawn_point = start_point end
+--
+-- local enemy_coal
+-- if grp:getCoalition() == 1 then enemy_coal = 2 end
+-- if grp:getCoalition() == 2 then enemy_coal = 1 end
+-- 
+-- local volS
+--   if vars.zone then 
+--     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
+--     local sphere = trigger.misc.getZone(vars.zone)
+--     volS = {
+--       id = world.VolumeType.SPHERE,
+--       params = {
+--         point = sphere.point, 
+--         radius = sphere.radius
+--       }
+--     }
+--   else 
+--       --debugMsg("CHARGE ENEMY in radius: "..search_radius)
+--       volS = {
+--       id = world.VolumeType.SPHERE,
+--       params = {
+--         point = first_valid_unit:getPoint(), 
+--         radius = search_radius
+--       }
+--     }
+--   end
+-- 
+-- 
+-- local enemy_unit
+-- local path = {} 
+-- local ifFound = function(foundItem, val)
+--  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
+-- -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
+--  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
+--    enemy_unit = foundItem
+--    --debugMsg("found enemy! "..foundItem:getTypeName()) 
+--    
+--    path[1] = mist.ground.buildWP(start_point, '', 5) 
+--    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
+--    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5) 
+--    mist.goRoute(grp, path)
+--  else 
+--
+--    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
+--  end
+--  
+-- return true
+-- end
+--
+-- world.searchObjects(Object.Category.UNIT, volS, ifFound)
+-- 
+--
+--end
 
 
 function RotorOps.patrolRadius(vars)
@@ -551,21 +669,46 @@ end
 function RotorOps.aiExecute(vars)
   local update_interval = 60
   local last_task = vars.last_task
+  local last_zone = vars.last_zone
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
   local zone = RotorOps.ai_tasks[group_name].zone
 
 --  if vars.zone then zone = vars.zone end
-  --debugMsg("tasking: "..group_name.." : "..task .." zone:"..zone) 
+
   
   if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
-    --debugMsg("group no longer exists")
+    debugMsg(group_name.." no longer exists")
     RotorOps.ai_tasks[group_name] = nil
     return
   end  
   
- --if Group.getByName(group_name):getController():hasTask() == false then   --our implementation of hasTask does not seem to be working for vehicles
+  local same_zone = false
+  if zone ~= nil then
+    if zone ~= last_zone then
+      same_zone = true
+    end
+  end
   
+  local should_update = true
+  
+--  if task == last_task then
+--    should_update = false
+--  end
+--  
+--  if same_zone then
+--    should_update = false
+--  end
+--  
+--  if task == "patrol" then 
+--    should_update = true
+--  end  
+    
+  
+ if should_update then  --check to make sure we don't have the same task
+   
+  debugMsg("tasking: "..group_name.." : "..task) 
+ 
   if task == "patrol" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
@@ -599,8 +742,11 @@ function RotorOps.aiExecute(vars)
     local force_offroad = RotorOps.force_offroad
     mist.groupToPoint(group_name, RotorOps.active_zone, formation, final_heading, speed, force_offroad)
   end  
+ 
+ end
   
   vars.last_task = task
+  vars.last_zone = zone
    
   local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + update_interval)
 end
@@ -674,7 +820,18 @@ function RotorOps.assessUnitsInZone(var)
      --debugMsg("taking stock of the active zone")
      active_zone_initial_defenders = defending_ground_units
      low_units_message_fired = false
-     env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone)
+     
+     --sort infantry spawn zones and spawn quantity
+     inf_spawn_zones = {}
+     for zone, zoneobj in pairs(mist.DBs.zonesByName) do 
+       if string.find(zone, RotorOps.active_zone) and string.find(zone:lower(), "spawn") then --if we find a zone that has the active zone name and the word spawn
+         inf_spawn_zones[#inf_spawn_zones + 1] = zone 
+         env.info("ROTOR OPS: spawn zone found:"..zone)
+       end
+     end
+     RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * #inf_spawn_zones
+
+     env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
    end
    
    
@@ -766,6 +923,7 @@ function RotorOps.assessUnitsInZone(var)
       if should_deploy then
        local function timedDeploy()
          if vehicle:isExist() then
+           env.info(vehicle:getName().." is deploying troops.")
            RotorOps.deployTroops(4, vehicle:getGroup(), false)
          end
        end
@@ -781,6 +939,26 @@ function RotorOps.assessUnitsInZone(var)
    unloadAPCs()  --this should really be an aitask
   end
   
+  --spawn infantry in infantry spawn zones
+  local function spawnInfantry()
+   if math.random(0, 100) <= RotorOps.inf_spawn_chance then
+      local rand_index = math.random(1, #inf_spawn_zones)
+      local zone = inf_spawn_zones[rand_index]
+
+      if RotorOps.defending then
+        ctld.spawnGroupAtTrigger("blue", 5, zone, 1000)
+      else
+        ctld.spawnGroupAtTrigger("red", 5, zone, 1000)
+      end
+
+      RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
+      env.info("ROTOR OPS: Spawned infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
+    end
+  end
+  
+  if RotorOps.inf_spawns_avail > 0 and defenders_remaining_percent <= RotorOps.inf_spawn_trigger_percent then
+    spawnInfantry()
+  end
   
   --voiceovers based on remaining defenders
   if not low_units_message_fired then
@@ -815,6 +993,7 @@ function RotorOps.assessUnitsInZone(var)
    end
    local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 10)
 end
+
 
 
 
@@ -975,6 +1154,10 @@ end
 
 
 function RotorOps.addZone(_name, _zone_defenders_flag) 
+  if trigger.misc.getZone(_name) == nil then
+    trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
+    env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
+  end
   table.insert(RotorOps.zones, {name = _name, defenders_status_flag = _zone_defenders_flag})
   trigger.action.setUserFlag(_zone_defenders_flag, 101)
   RotorOps.drawZones()
@@ -982,9 +1165,14 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
 end
 
 function RotorOps.stagingZone(_name)
+  if trigger.misc.getZone(_name) == nil then
+    trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
+    env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
+  end
   RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
   RotorOps.staging_zone = _name
 end
+
 
 
 --function to automatically add transport craft to ctld, rather than having to define each in the mission editor
@@ -1031,6 +1219,12 @@ function RotorOps.startConflict()
   --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
 
   RotorOps.staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), {RotorOps.staging_zone})
+  
+  if RotorOps.staged_units[1] == nil then
+    trigger.action.outText("RotorOps failed: You must place ground units in the staging and conflict zones!" , 60, false)
+    env.warning("No units in staging zone!  Check RotorOps setup!")
+    return
+  end
   
   if RotorOps.staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
     RotorOps.defending = true
