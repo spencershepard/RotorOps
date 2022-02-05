@@ -1,6 +1,6 @@
 RotorOps = {}
-RotorOps.version = "1.2.3"
-local debug = true
+RotorOps.version = "1.2.4"
+local debug = false
 
 
 ---[[ROTOROPS OPTIONS]]---

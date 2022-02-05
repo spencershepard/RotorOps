@@ -146,7 +146,7 @@ class RotorOpsMission:
             for zone_name in red_zones:
                 self.m.vehicle_group(
                     self.m.country('Russia'),
-                    zone_name + " Protection SAM",
+                    zone_name + " Protection SAM NOAI",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     red_zones[zone_name].position,
                     heading=random.randint(0, 359),
@@ -160,11 +160,11 @@ class RotorOpsMission:
                 self.addGroundGroups(blue_zones[zone_name], self.m.country('USA'), blue_forces,
                                      options["blue_quantity"])
 
-        if options["zone_protect_sams"] and options["defending"]:
+        if options["zone_protect_sams"]:
             for zone_name in blue_zones:
                 self.m.vehicle_group(
                     self.m.country('USA'),
-                    zone_name + " Protection SAM",
+                    zone_name + " Protection SAM NOAI",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     blue_zones[zone_name].position,
                     heading=random.randint(0, 359),
