@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1140</width>
-    <height>826</height>
+    <width>1209</width>
+    <height>900</height>
    </rect>
   </property>
   <property name="font">
@@ -75,8 +75,8 @@
    <widget class="QPushButton" name="generateButton">
     <property name="geometry">
      <rect>
-      <x>940</x>
-      <y>720</y>
+      <x>1020</x>
+      <y>790</y>
       <width>141</width>
       <height>41</height>
      </rect>
@@ -183,8 +183,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="background_label">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>430</y>
+      <x>-30</x>
+      <y>490</y>
       <width>801</width>
       <height>371</height>
      </rect>
@@ -312,8 +312,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="game_status_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>510</y>
+      <x>1000</x>
+      <y>590</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -339,8 +339,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="voiceovers_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>570</y>
+      <x>1000</x>
+      <y>650</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -363,8 +363,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="logistics_crates_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>320</y>
+      <x>970</x>
+      <y>390</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -384,8 +384,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="awacs_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>350</y>
+      <x>970</x>
+      <y>420</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -401,12 +401,15 @@ p, li { white-space: pre-wrap; }
     <property name="text">
      <string>Friendly AWACS</string>
     </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
    </widget>
    <widget class="QCheckBox" name="tankers_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>380</y>
+      <x>970</x>
+      <y>450</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -419,11 +422,14 @@ p, li { white-space: pre-wrap; }
     <property name="text">
      <string>Friendly Tankers</string>
     </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
    </widget>
    <widget class="QCheckBox" name="apcs_spawn_checkBox">
     <property name="geometry">
      <rect>
-      <x>470</x>
+      <x>500</x>
       <y>400</y>
       <width>251</width>
       <height>31</height>
@@ -441,106 +447,10 @@ p, li { white-space: pre-wrap; }
      <string>APCs Spawn Infantry</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="enemy_transport_checkBox">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>320</y>
-      <width>251</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>11</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Not yet implemented.</string>
-    </property>
-    <property name="text">
-     <string>Enemy Transport Helicopters</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="enemy_attack_helos_checkBox">
-    <property name="enabled">
-     <bool>true</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>350</y>
-      <width>251</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>11</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Not yet implemented.</string>
-    </property>
-    <property name="text">
-     <string>Enemy Attack Helicopters</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="enemy_fighters_checkBox">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>380</y>
-      <width>251</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>11</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Not yet implemented.</string>
-    </property>
-    <property name="text">
-     <string>Enemy Fighter Planes</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="enemy_attack_planes_checkBox">
-    <property name="enabled">
-     <bool>true</bool>
-    </property>
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>410</y>
-      <width>251</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>11</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Not yet implemented.</string>
-    </property>
-    <property name="text">
-     <string>Enemy Ground Attack Planes</string>
-    </property>
-   </widget>
    <widget class="QSpinBox" name="inf_spawn_spinBox">
     <property name="geometry">
      <rect>
-      <x>680</x>
+      <x>710</x>
       <y>360</y>
       <width>71</width>
       <height>31</height>
@@ -567,8 +477,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="smoke_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>540</y>
+      <x>1000</x>
+      <y>620</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -628,7 +538,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>470</x>
+      <x>500</x>
       <y>360</y>
       <width>191</width>
       <height>31</height>
@@ -646,8 +556,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QComboBox" name="slot_template_comboBox">
     <property name="geometry">
      <rect>
-      <x>790</x>
-      <y>630</y>
+      <x>870</x>
+      <y>700</y>
       <width>291</width>
       <height>31</height>
      </rect>
@@ -659,8 +569,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>630</y>
+      <x>750</x>
+      <y>700</y>
       <width>111</width>
       <height>31</height>
      </rect>
@@ -677,7 +587,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="scenario_label_6">
     <property name="geometry">
      <rect>
-      <x>470</x>
+      <x>500</x>
       <y>320</y>
       <width>141</width>
       <height>31</height>
@@ -695,8 +605,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="force_offroad_checkBox">
     <property name="geometry">
      <rect>
-      <x>910</x>
-      <y>480</y>
+      <x>1000</x>
+      <y>560</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -737,6 +647,117 @@ p, li { white-space: pre-wrap; }
      <string>Defensive Mode</string>
     </property>
    </widget>
+   <widget class="QSpinBox" name="e_attack_helos_spinBox">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>330</y>
+      <width>51</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Approximate number of enemy attack helicopter group spawns.</string>
+    </property>
+    <property name="minimum">
+     <number>0</number>
+    </property>
+    <property name="maximum">
+     <number>50</number>
+    </property>
+    <property name="value">
+     <number>2</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="scenario_label_7">
+    <property name="geometry">
+     <rect>
+      <x>140</x>
+      <y>330</y>
+      <width>231</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Enemy Attack Helicopters</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="scenario_label_8">
+    <property name="geometry">
+     <rect>
+      <x>140</x>
+      <y>370</y>
+      <width>231</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Enemy Attack Planes</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="e_attack_planes_spinBox">
+    <property name="geometry">
+     <rect>
+      <x>70</x>
+      <y>370</y>
+      <width>51</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>12</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Approximate number of enemy attack plane group spawns.</string>
+    </property>
+    <property name="minimum">
+     <number>0</number>
+    </property>
+    <property name="maximum">
+     <number>50</number>
+    </property>
+    <property name="value">
+     <number>1</number>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="zone_sams_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>970</x>
+      <y>480</y>
+      <width>201</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed.</string>
+    </property>
+    <property name="text">
+     <string>Inactive Zone SAMs</string>
+    </property>
+   </widget>
    <zorder>background_label</zorder>
    <zorder>scenario_comboBox</zorder>
    <zorder>scenario_label</zorder>
@@ -757,10 +778,6 @@ p, li { white-space: pre-wrap; }
    <zorder>awacs_checkBox</zorder>
    <zorder>tankers_checkBox</zorder>
    <zorder>apcs_spawn_checkBox</zorder>
-   <zorder>enemy_transport_checkBox</zorder>
-   <zorder>enemy_attack_helos_checkBox</zorder>
-   <zorder>enemy_fighters_checkBox</zorder>
-   <zorder>enemy_attack_planes_checkBox</zorder>
    <zorder>inf_spawn_spinBox</zorder>
    <zorder>smoke_checkBox</zorder>
    <zorder>scenario_label_5</zorder>
@@ -771,13 +788,18 @@ p, li { white-space: pre-wrap; }
    <zorder>scenario_label_6</zorder>
    <zorder>force_offroad_checkBox</zorder>
    <zorder>defense_checkBox</zorder>
+   <zorder>e_attack_helos_spinBox</zorder>
+   <zorder>scenario_label_7</zorder>
+   <zorder>scenario_label_8</zorder>
+   <zorder>e_attack_planes_spinBox</zorder>
+   <zorder>zone_sams_checkBox</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1140</width>
+     <width>1209</width>
      <height>26</height>
     </rect>
    </property>
