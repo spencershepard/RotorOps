@@ -13,6 +13,9 @@ from PyQt5.QtWidgets import (
 from PyQt5 import QtGui
 from MissionGeneratorUI import Ui_MainWindow
 
+maj_version = 0
+minor_version = 3
+version_string = str(maj_version) + "." + str(minor_version)
 scenarios = []
 red_forces_files = []
 blue_forces_files = []
@@ -42,6 +45,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.background_label.setPixmap(QtGui.QPixmap(self.m.assets_dir + "/background.PNG"))
         self.statusbar.setStyleSheet(
             "QStatusBar{padding-left:5px;color:black;font-weight:bold;}")
+
+        self.version_label.setText("Version " + version_string)
 
 
     def connectSignalsSlots(self):
@@ -155,14 +160,13 @@ class Window(QMainWindow, Ui_MainWindow):
                 "crates": self.logistics_crates_checkBox.isChecked(),
                 "f_awacs": self.awacs_checkBox.isChecked(),
                 "f_tankers": self.tankers_checkBox.isChecked(),
-                "smoke_zone": self.smoke_checkBox.isChecked(),
                 "voiceovers": self.voiceovers_checkBox.isChecked(),
                 "force_offroad": self.force_offroad_checkBox.isChecked(),
                 "game_display": self.game_status_checkBox.isChecked(),
                 "defending": self.defense_checkBox.isChecked(),
                 "slots": self.slot_template_comboBox.currentText(),
-                "smoke_zone": self.smoke_checkBox.isChecked(),
                 "zone_protect_sams": self.zone_sams_checkBox.isChecked(),
+                "zone_farps": self.farp_buttonGroup.checkedButton().objectName(),
                 }
         os.chdir(self.m.home_dir + '/Generator')
         n = ROps.RotorOpsMission()

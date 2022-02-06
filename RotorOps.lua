@@ -1,6 +1,6 @@
 RotorOps = {}
-RotorOps.version = "1.2.4"
-local debug = false
+RotorOps.version = "1.2.5"
+local debug = true
 
 
 ---[[ROTOROPS OPTIONS]]---
@@ -20,13 +20,14 @@ RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn event
 RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
 RotorOps.inf_spawn_trigger_percent = 70 --infantry has a chance of spawning if the percentage of defenders remaining in zone is less than this value
 RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
+RotorOps.inf_spawn_messages = true --voiceovers and messages for infantry spawns
 
 
 --RotorOps settings that are safe to change only before calling setupConflict()
 RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral', 'UH-60L'} --players flying these will have ctld transport access 
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
-RotorOps.exclude_ai_group_name = "noai"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
+RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
 
 
 ---[[END OF OPTIONS]]---
@@ -49,6 +50,7 @@ RotorOps.ai_defending_vehicle_groups = {}
 RotorOps.ai_attacking_vehicle_groups = {} 
 RotorOps.ai_tasks = {} 
 RotorOps.defending = false
+RotorOps.staged_units_flag = 111
 
 trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
@@ -58,6 +60,7 @@ RotorOps.eventHandler = {}
 local commandDB = {} 
 local game_message_buffer = {}
 local active_zone_initial_defenders
+local initial_stage_units
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
 local inf_spawn_zones = {}
@@ -144,6 +147,20 @@ RotorOps.gameMsgs = {
   attack_planes = {
     {'ENEMY ATTACK PLANES INBOUND!', 'enemy_attack_planes.ogg'},
   },
+  attack_helos_prep = {
+    {'ENEMY ATTACK HELICOPTERS PREPARING FOR TAKEOFF!', 'e_attack_helicopters_preparing.ogg'},
+  },
+  attack_planes_prep = {
+    {'ENEMY ATTACK PLANES PREPARING FOR TAKEOFF!', 'e_attack_planes_preparing.ogg'},
+  },
+  infantry_spawned = {
+    {'ENEMY CONTACTS IN THE OPEN!', 'e_infantry_spawn1.ogg'},
+    {'ENEMY TROOPS LEAVING COVER!', 'e_infantry_spawn2.ogg'},
+    {'VISUAL ON ENEMY INFANTRY!', 'e_infantry_spawn3.ogg'},
+    {'ENEMY CONTACTS IN THE ACTIVE!', 'e_infantry_spawn4.ogg'},
+    {'ENEMY TROOPS IN THE ACTIVE!', 'e_infantry_spawn5.ogg'},
+    {'VISUAL ON ENEMY TROOPS!', 'e_infantry_spawn6.ogg'},
+  },
   
 
 }
@@ -155,6 +172,7 @@ local sound_effects = {
 }
 
 function RotorOps.eventHandler:onEvent(event)
+
    if (world.event.S_EVENT_ENGINE_STARTUP  == event.id) then  --play some sound files when a player starts engines
     local initaitor = event.initiator:getGroup():getID()
     if RotorOps.defending then
@@ -163,6 +181,16 @@ function RotorOps.eventHandler:onEvent(event)
       trigger.action.outSoundForGroup(initaitor , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
     end
    end
+   
+   if (world.event.S_EVENT_TAKEOFF  == event.id) then
+     local initiator_name = event.initiator:getGroup()
+     if initiator_name == "Enemy Attack Helicopters" then
+       RotorOps.gameMsg(RotorOps.gameMsgs.attack_helos)
+     elseif initiator_name == "Enemy Attack Planes" then
+       RotorOps.gameMsg(RotorOps.gameMsgs.attack_planes)
+     end
+   end
+   
 end
 
 
@@ -872,6 +900,19 @@ function RotorOps.assessUnitsInZone(var)
       end
    end
    
+   --update staged units remaining flag
+   local staged_units_remaining = {}
+   for index, unit in pairs(RotorOps.staged_units) do 
+     if unit:isExist() then
+       staged_units_remaining[#staged_units_remaining] = unit
+     end
+   end
+   local percent_staged_remain = 0
+   percent_staged_remain = math.floor((#staged_units_remaining / #RotorOps.staged_units) * 100) 
+   trigger.action.setUserFlag(RotorOps.staged_units_flag, percent_staged_remain)
+   debug("Staged units remaining: " + percent_staged_remain + "%")
+   
+   
    --is the game finished?
    if all_zones_clear then
     if RotorOps.defending == true then 
@@ -957,7 +998,7 @@ function RotorOps.assessUnitsInZone(var)
       else
         ctld.spawnGroupAtTrigger("red", 5, zone, 1000)
       end
-
+      RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
       RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
       env.info("ROTOR OPS: Spawned infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
     end
@@ -1126,6 +1167,11 @@ function RotorOps.setupCTLD()
   ctld.numberOfTroops = 24 --max loading size
   ctld.maximumSearchDistance = 4000 -- max distance for troops to search for enemy
   ctld.maximumMoveDistance = 0 -- max distance for troops to move from drop point if no enemy is nearby
+  ctld.maximumDistanceLogistic = 300
+  ctld.minimumHoverHeight = 5.0 -- Lowest allowable height for crate hover
+  ctld.maximumHoverHeight = 15.0 -- Highest allowable height for crate hover
+  ctld.maxDistanceFromCrate = 7 -- Maximum distance from from crate for hover
+  ctld.hoverTime = 5 -- Time to hold hover above a crate for loading in seconds
   
   ctld.unitLoadLimits = {
     -- Remove the -- below to turn on options
@@ -1269,12 +1315,12 @@ end
 
 
 function RotorOps.spawnAttackHelos()
-  RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos)
+  RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos_prep)
 end
 
 
 function RotorOps.spawnAttackPlanes()
-  RotorOps.triggerSpawn("Enemy Attack Planes", RotorOps.gameMsgs.attack_planes)
+  RotorOps.triggerSpawn("Enemy Attack Planes", RotorOps.gameMsgs.attack_planes_prep)
 end
 
 

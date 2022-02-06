@@ -3,6 +3,8 @@ from tokenize import String
 import dcs
 import os
 import random
+
+import RotorOpsGroups
 import RotorOpsUnits
 import time
 
@@ -119,9 +121,6 @@ class RotorOpsMission:
             elif zone.name.rfind("SPAWN") >= 0:
                 self.addZone(self.spawn_zones, self.RotorOpsZone(zone.name, None, zone.position, zone.radius))
 
-        #add files and triggers necessary for RotorOps.lua script
-        self.addResources(self.sound_directory, self.script_directory)
-        self.scriptTriggerSetup(options)
 
         blue_zones = self.staging_zones
         red_zones = self.conflict_zones
@@ -137,16 +136,21 @@ class RotorOpsMission:
                 self.m.terrain.airports[airport_name].set_blue()
 
 
-        #Add red ground units
+        #Populate Red zones with ground units
         for zone_name in red_zones:
             if red_forces:
                     self.addGroundGroups(red_zones[zone_name], self.m.country('Russia'), red_forces, options["red_quantity"])
 
-        if options["zone_protect_sams"]:
-            for zone_name in red_zones:
+            #Add blue FARPS
+            if options["zone_farps"] != "farp_never" and not options["defending"]:
+                RotorOpsGroups.VehicleTemplate.USA.invisible_farp(self.m, self.m.country('USA'),
+                                                              red_zones[zone_name].position,
+                                                              180, zone_name + " FARP", late_activation=True)
+
+            if options["zone_protect_sams"]:
                 self.m.vehicle_group(
                     self.m.country('Russia'),
-                    zone_name + " Protection SAM NOAI",
+                    "Static " + zone_name + " Protection SAM",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     red_zones[zone_name].position,
                     heading=random.randint(0, 359),
@@ -154,23 +158,36 @@ class RotorOpsMission:
                     formation=dcs.unitgroup.VehicleGroup.Formation.Star
                 )
 
-        #Add blue ground units
+
+
+        #Populate Blue zones with ground units
         for zone_name in blue_zones:
             if blue_forces:
                 self.addGroundGroups(blue_zones[zone_name], self.m.country('USA'), blue_forces,
                                      options["blue_quantity"])
 
-        if options["zone_protect_sams"]:
-            for zone_name in blue_zones:
-                self.m.vehicle_group(
+            #add logistics sites
+            if options["crates"] and zone_name in self.staging_zones:
+                RotorOpsGroups.VehicleTemplate.USA.logistics_site(self.m, self.m.country('USA'),
+                                                              blue_zones[zone_name].position,
+                                                              180, zone_name)
+
+
+
+
+
+            if options["zone_protect_sams"] and options["defending"]:
+                vg = self.m.vehicle_group(
                     self.m.country('USA'),
-                    zone_name + " Protection SAM NOAI",
+                    "Static " + zone_name + " Protection SAM",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     blue_zones[zone_name].position,
                     heading=random.randint(0, 359),
                     group_size=6,
                     formation=dcs.unitgroup.VehicleGroup.Formation.Star
                 )
+
+
 
         #Add player slots
         if options["slots"] == "Multiple Slots":
@@ -186,6 +203,10 @@ class RotorOpsMission:
         #Set the Editor Map View
         self.m.map.position = self.m.terrain.airports[self.getCoalitionAirports("blue")[0]].position
         self.m.map.zoom = 100000
+
+        #add files and triggers necessary for RotorOps.lua script
+        self.addResources(self.sound_directory, self.script_directory)
+        self.scriptTriggerSetup(options)
 
         #Save the mission file
         print(self.m.triggers.zones())
@@ -414,7 +435,7 @@ class RotorOpsMission:
                 helo,
                 airport=enemy_airport,
                 maintask=dcs.task.CAS,
-                start_type=dcs.mission.StartType.Warm,
+                start_type=dcs.mission.StartType.Cold,
                 group_size=2)
             zone_attack(afg, helo)
 
@@ -473,22 +494,49 @@ class RotorOpsMission:
         trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
         self.m.triggerrules.triggers.append(trig)
 
-        #Add all zone-based triggers
+        #Add generic zone-based triggers
         for index, zone_name in enumerate(self.conflict_zones):
-
             z_active_trig = dcs.triggers.TriggerOnce(comment= zone_name + " Active")
             z_active_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
             z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("--Add any action you want here!")))
-            #Smoke action not working
-            # if options["smoke_zone"]:
-            #     z_active_trig.actions.append(dcs.action.Smoke(zone=zone_name, density=1, preset=1))
-                # if index > 0:
-                #     previous_zone = list(self.conflict_zones)[index - 1]
-                #     z_active_trig.actions.append(dcs.action.Smoke(zone=previous_zone, density=1, preset=0))
-            #Zone protection SAMs
-            if options["zone_protect_sams"]:
-                z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protection SAM'))")))
             self.m.triggerrules.triggers.append(z_active_trig)
+
+        #Zone protection SAMs
+        if options["zone_protect_sams"]:
+            for index, zone_name in enumerate(self.conflict_zones):
+                z_sams_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " SAMs")
+                z_sams_trig.actions.append(dcs.action.DoScript(dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protection SAM'))")))
+                self.m.triggerrules.triggers.append(z_sams_trig)
+
+        #Zone FARPS always
+        if options["zone_farps"] == "farp_always" and not options["defending"] and index > 0:
+            for index, zone_name in enumerate(self.conflict_zones):
+                if index > 0:
+                    previous_zone = list(self.conflict_zones)[index - 1]
+                    if not self.m.country("USA").find_group(previous_zone + " FARP"):
+                        continue
+                    z_farps_trig = dcs.triggers.TriggerOnce(comment="Activate " + previous_zone + " FARP")
+                    z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
+                    z_farps_trig.actions.append(dcs.action.ActivateGroup(self.m.country("USA").find_group(previous_zone + " FARP").id))
+                    self.m.triggerrules.triggers.append(z_farps_trig)
+
+
+        #Zone FARPS conditional on staged units remaining
+        if options["zone_farps"] == "farp_gunits":
+            for index, zone_name in enumerate(self.conflict_zones):
+                if index > 0:
+                    previous_zone = list(self.conflict_zones)[index - 1]
+                    if not self.m.country("USA").find_group(previous_zone + " FARP"):
+                        continue
+                    z_farps_trig = dcs.triggers.TriggerOnce(comment= "Activate " + previous_zone + " FARP")
+                    z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
+                    z_farps_trig.rules.append(dcs.condition.FlagIsMore(111, 20))
+                    z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String("--The 100 flag indicates which zone is active.  The 111 flag value is the percentage of staged units remaining")))
+                    z_farps_trig.actions.append(
+                        dcs.action.ActivateGroup(self.m.country("USA").find_group(previous_zone + " FARP").id))
+                    self.m.triggerrules.triggers.append(z_farps_trig)
+
+
 
         #Add attack helos triggers
         for index in range(options["e_attack_helos"]):
