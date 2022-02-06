@@ -1032,8 +1032,9 @@ function RotorOps.assessUnitsInZone(var)
         ctld.spawnGroupAtTrigger("blue", 5, zone, 1000)
       else
         ctld.spawnGroupAtTrigger("red", 5, zone, 1000)
+        RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
       end
-      RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
+      
       RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
       env.info("ROTOR OPS: Spawned infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
     end

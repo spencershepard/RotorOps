@@ -22,6 +22,8 @@ Optional:
 Tips:
 -Position the center of conflict zones over an open area, as this position may be used to spawn units.
 -Position the center of staging zones over an open area of at least 1000 x 1000ft to provide space for logistics units. 
+Position the center of staging zones over an open area of at least 1000 x 1000ft to provide space for logistics units. 
+-For very scenery dense areas like forests or urban areas, smaller conflict zone sizes are highly recommended (eg 4000ft radius).  A zone center near a roadway may also help keep units moving smoothly. 
 -The conflict game type can be played with blue forces on defense.  In this mode the last conflict zone is the only troop pickup zone.
 -Design your template so that it can be played in normal 'attacking' mode or 'defending' the conflict zone from enemy ground units starting from the staging zone.
 -Keep the zones fairly close together, both for helicopter and ground unit travel times. 
