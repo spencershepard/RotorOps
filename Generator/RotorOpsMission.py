@@ -445,7 +445,7 @@ class RotorOpsMission:
                 russia, "Enemy Attack Planes", plane["type"],
                airport=enemy_airport,
                maintask=dcs.task.CAS,
-               start_type=dcs.mission.StartType.Warm,
+               start_type=dcs.mission.StartType.Cold,
                group_size=2)
             zone_attack(afg, plane)
 
@@ -471,6 +471,7 @@ class RotorOpsMission:
             "RotorOps.force_offroad = " + lb("force_offroad") + "\n\n" +
             "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
             "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
+            "RotorOps.inf_spawn_messages = " + lb("inf_spawn_msgs") + "\n\n" +
             "RotorOps.inf_spawns_per_zone = " + lb("inf_spawn_qty") + "\n\n" +
             "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n"))))
         self.m.triggerrules.triggers.append(trig)

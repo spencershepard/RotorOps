@@ -64,7 +64,10 @@ local initial_stage_units
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
 local inf_spawn_zones = {}
-
+local cooldown = {
+  ["attack_helo_msg"] = 0, 
+  ["attack_plane_msg"] = 0,
+}
 
 
 RotorOps.gameMsgs = {
@@ -171,24 +174,51 @@ local sound_effects = {
     ["troop_dropoff"] = {'troops_unload_thanks.ogg', 'troops_unload_everybody_off.ogg', 'troops_unload_get_off.ogg', 'troops_unload_here_we_go.ogg', 'troops_unload_moving_out.ogg',},
 }
 
-function RotorOps.eventHandler:onEvent(event)
 
-   if (world.event.S_EVENT_ENGINE_STARTUP  == event.id) then  --play some sound files when a player starts engines
-    local initaitor = event.initiator:getGroup():getID()
-    if RotorOps.defending then
-      trigger.action.outSoundForGroup(initaitor , RotorOps.gameMsgs.enemy_pushing[RotorOps.active_zone_index + 1][2])
-    else
-      trigger.action.outSoundForGroup(initaitor , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
+function RotorOps.getTime()
+  return timer.getAbsTime() - timer.getTime0() --time since mission started
+end
+
+
+
+function RotorOps.eventHandler:onEvent(event)
+   ---ENGINE STARTUP EVENTS
+   if (world.event.S_EVENT_ENGINE_STARTUP  == event.id) then  --play some sound files when a player starts engines  
+    local initiator = event.initiator:getGroup():getID()
+    
+    if #event.initiator:getGroup():getUnits() == 1 then --if there are no other units in the player flight group (preventing duplicated messages for ai wingman flights)
+      if RotorOps.defending then
+        trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.enemy_pushing[RotorOps.active_zone_index + 1][2])
+      else
+        trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
+      end
     end
+    
    end
    
+   ---TAKEOFF EVENTS
    if (world.event.S_EVENT_TAKEOFF  == event.id) then
-     local initiator_name = event.initiator:getGroup()
-     if initiator_name == "Enemy Attack Helicopters" then
-       RotorOps.gameMsg(RotorOps.gameMsgs.attack_helos)
-     elseif initiator_name == "Enemy Attack Planes" then
-       RotorOps.gameMsg(RotorOps.gameMsgs.attack_planes)
+     local initiator_name = event.initiator:getGroup():getName()
+     
+     if (initiator_name == "Enemy Attack Helicopters") then
+       --we use flights of two aircraft which triggers two events, but we only want to use one event so we use a cooldown timer
+       if ((RotorOps.getTime() - cooldown["attack_helo_msg"]) > 90) then
+         RotorOps.gameMsg(RotorOps.gameMsgs.attack_helos)
+         cooldown["attack_helo_msg"] = RotorOps.getTime()
+       else 
+         env.warning("RotorOps attack helo message skipped")
+       end
      end
+         
+     if initiator_name == "Enemy Attack Planes" then
+       if ((RotorOps.getTime() - cooldown["attack_plane_msg"]) > 90) then
+         RotorOps.gameMsg(RotorOps.gameMsgs.attack_planes)
+         cooldown["attack_plane_msg"] = RotorOps.getTime()
+       else 
+         env.warning("RotorOps attack plane message skipped")
+       end
+     end
+     
    end
    
 end
@@ -535,7 +565,12 @@ function RotorOps.chargeEnemy(vars)
 
  
    if vars.zone then     ---mist getUnitsInZones method
-     local units_in_zone = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {vars.zone}, "spherical")
+     local units_in_zone 
+     if enemy_coal == 1 then
+       units_in_zone = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {vars.zone}, "spherical")
+     elseif enemy_coal == 2 then
+       units_in_zone = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {vars.zone}, "spherical")
+     end
      local closest_dist = 10000
      local closest_unit
      for index, unit in pairs(units_in_zone) do
@@ -904,13 +939,13 @@ function RotorOps.assessUnitsInZone(var)
    local staged_units_remaining = {}
    for index, unit in pairs(RotorOps.staged_units) do 
      if unit:isExist() then
-       staged_units_remaining[#staged_units_remaining] = unit
+       staged_units_remaining[#staged_units_remaining + 1] = unit
      end
    end
    local percent_staged_remain = 0
    percent_staged_remain = math.floor((#staged_units_remaining / #RotorOps.staged_units) * 100) 
    trigger.action.setUserFlag(RotorOps.staged_units_flag, percent_staged_remain)
-   debug("Staged units remaining: " + percent_staged_remain + "%")
+   debugMsg("Staged units remaining: "..percent_staged_remain.."%")
    
    
    --is the game finished?

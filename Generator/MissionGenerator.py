@@ -167,6 +167,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "slots": self.slot_template_comboBox.currentText(),
                 "zone_protect_sams": self.zone_sams_checkBox.isChecked(),
                 "zone_farps": self.farp_buttonGroup.checkedButton().objectName(),
+                "inf_spawn_msgs": self.inf_spawn_voiceovers_checkBox.isChecked(),
                 }
         os.chdir(self.m.home_dir + '/Generator')
         n = ROps.RotorOpsMission()
