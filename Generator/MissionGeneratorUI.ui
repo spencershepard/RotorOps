@@ -183,8 +183,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="background_label">
     <property name="geometry">
      <rect>
-      <x>-30</x>
-      <y>490</y>
+      <x>-40</x>
+      <y>440</y>
       <width>801</width>
       <height>371</height>
      </rect>
@@ -255,7 +255,7 @@ p, li { white-space: pre-wrap; }
      <number>0</number>
     </property>
     <property name="maximum">
-     <number>50</number>
+     <number>8</number>
     </property>
     <property name="value">
      <number>3</number>
@@ -282,7 +282,7 @@ p, li { white-space: pre-wrap; }
      <number>0</number>
     </property>
     <property name="maximum">
-     <number>50</number>
+     <number>8</number>
     </property>
     <property name="value">
      <number>2</number>
@@ -312,8 +312,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="game_status_checkBox">
     <property name="geometry">
      <rect>
-      <x>1000</x>
-      <y>590</y>
+      <x>810</x>
+      <y>790</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -339,8 +339,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="voiceovers_checkBox">
     <property name="geometry">
      <rect>
-      <x>1000</x>
-      <y>650</y>
+      <x>810</x>
+      <y>820</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -363,8 +363,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="logistics_crates_checkBox">
     <property name="geometry">
      <rect>
-      <x>970</x>
-      <y>390</y>
+      <x>920</x>
+      <y>320</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -375,17 +375,20 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>Enable CTLD logistics crates for building ground units and air defenses.</string>
+     <string>Enable CTLD logistics crates for building ground units and air defenses.  Pickup logistics containers to create new logistics sites.</string>
     </property>
     <property name="text">
-     <string>Logistics Crates</string>
+     <string>Logistics</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QCheckBox" name="awacs_checkBox">
     <property name="geometry">
      <rect>
-      <x>970</x>
-      <y>420</y>
+      <x>920</x>
+      <y>350</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -408,8 +411,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="tankers_checkBox">
     <property name="geometry">
      <rect>
-      <x>970</x>
-      <y>450</y>
+      <x>920</x>
+      <y>380</y>
       <width>251</width>
       <height>31</height>
      </rect>
@@ -429,7 +432,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="apcs_spawn_checkBox">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>470</x>
       <y>400</y>
       <width>251</width>
       <height>31</height>
@@ -450,7 +453,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QSpinBox" name="inf_spawn_spinBox">
     <property name="geometry">
      <rect>
-      <x>710</x>
+      <x>680</x>
       <y>360</y>
       <width>71</width>
       <height>31</height>
@@ -468,34 +471,10 @@ p, li { white-space: pre-wrap; }
      <number>0</number>
     </property>
     <property name="maximum">
-     <number>50</number>
+     <number>20</number>
     </property>
     <property name="value">
      <number>2</number>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="smoke_checkBox">
-    <property name="geometry">
-     <rect>
-      <x>1000</x>
-      <y>620</y>
-      <width>191</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Not yet implemented.</string>
-    </property>
-    <property name="text">
-     <string>Smoke Active Zone</string>
-    </property>
-    <property name="checked">
-     <bool>true</bool>
     </property>
    </widget>
    <widget class="QLabel" name="scenario_label_5">
@@ -538,7 +517,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>470</x>
       <y>360</y>
       <width>191</width>
       <height>31</height>
@@ -557,7 +536,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>870</x>
-      <y>700</y>
+      <y>640</y>
       <width>291</width>
       <height>31</height>
      </rect>
@@ -570,7 +549,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>750</x>
-      <y>700</y>
+      <y>640</y>
       <width>111</width>
       <height>31</height>
      </rect>
@@ -587,7 +566,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="scenario_label_6">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>470</x>
       <y>320</y>
       <width>141</width>
       <height>31</height>
@@ -605,8 +584,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="force_offroad_checkBox">
     <property name="geometry">
      <rect>
-      <x>1000</x>
-      <y>560</y>
+      <x>810</x>
+      <y>760</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -668,7 +647,7 @@ p, li { white-space: pre-wrap; }
      <number>0</number>
     </property>
     <property name="maximum">
-     <number>50</number>
+     <number>8</number>
     </property>
     <property name="value">
      <number>2</number>
@@ -679,7 +658,7 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>140</x>
       <y>330</y>
-      <width>231</width>
+      <width>211</width>
       <height>31</height>
      </rect>
     </property>
@@ -697,7 +676,7 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>140</x>
       <y>370</y>
-      <width>231</width>
+      <width>201</width>
       <height>31</height>
      </rect>
     </property>
@@ -731,7 +710,7 @@ p, li { white-space: pre-wrap; }
      <number>0</number>
     </property>
     <property name="maximum">
-     <number>50</number>
+     <number>8</number>
     </property>
     <property name="value">
      <number>1</number>
@@ -740,8 +719,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="zone_sams_checkBox">
     <property name="geometry">
      <rect>
-      <x>970</x>
-      <y>480</y>
+      <x>920</x>
+      <y>410</y>
       <width>201</width>
       <height>31</height>
      </rect>
@@ -756,6 +735,139 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="text">
      <string>Inactive Zone SAMs</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="scenario_label_9">
+    <property name="geometry">
+     <rect>
+      <x>740</x>
+      <y>490</y>
+      <width>171</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Zone FARP Conditions:</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="inf_spawn_voiceovers_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>470</x>
+      <y>430</y>
+      <width>251</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone.</string>
+    </property>
+    <property name="text">
+     <string>Voiceovers on Infantry Spawn</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QRadioButton" name="farp_never">
+    <property name="geometry">
+     <rect>
+      <x>950</x>
+      <y>500</y>
+      <width>95</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Never spawn FARPs in defeated conflict zones.</string>
+    </property>
+    <property name="text">
+     <string>Never</string>
+    </property>
+    <attribute name="buttonGroup">
+     <string notr="true">farp_buttonGroup</string>
+    </attribute>
+   </widget>
+   <widget class="QRadioButton" name="farp_gunits">
+    <property name="geometry">
+     <rect>
+      <x>950</x>
+      <y>530</y>
+      <width>221</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Only spawn FARPs in defeated conflict zones if we have sufficient ground units remaining.</string>
+    </property>
+    <property name="text">
+     <string>20% Ground Units Remaining</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
+    <attribute name="buttonGroup">
+     <string notr="true">farp_buttonGroup</string>
+    </attribute>
+   </widget>
+   <widget class="QRadioButton" name="farp_always">
+    <property name="geometry">
+     <rect>
+      <x>950</x>
+      <y>560</y>
+      <width>221</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Always spawn a FARP in defeated conflict zones.</string>
+    </property>
+    <property name="text">
+     <string>Always</string>
+    </property>
+    <attribute name="buttonGroup">
+     <string notr="true">farp_buttonGroup</string>
+    </attribute>
+   </widget>
+   <widget class="QLabel" name="version_label">
+    <property name="geometry">
+     <rect>
+      <x>920</x>
+      <y>840</y>
+      <width>241</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Version string</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
     </property>
    </widget>
    <zorder>background_label</zorder>
@@ -779,7 +891,6 @@ p, li { white-space: pre-wrap; }
    <zorder>tankers_checkBox</zorder>
    <zorder>apcs_spawn_checkBox</zorder>
    <zorder>inf_spawn_spinBox</zorder>
-   <zorder>smoke_checkBox</zorder>
    <zorder>scenario_label_5</zorder>
    <zorder>forces_hint_label_2</zorder>
    <zorder>label</zorder>
@@ -793,6 +904,12 @@ p, li { white-space: pre-wrap; }
    <zorder>scenario_label_8</zorder>
    <zorder>e_attack_planes_spinBox</zorder>
    <zorder>zone_sams_checkBox</zorder>
+   <zorder>scenario_label_9</zorder>
+   <zorder>inf_spawn_voiceovers_checkBox</zorder>
+   <zorder>farp_never</zorder>
+   <zorder>farp_gunits</zorder>
+   <zorder>farp_always</zorder>
+   <zorder>version_label</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -865,4 +982,7 @@ p, li { white-space: pre-wrap; }
    </hints>
   </connection>
  </connections>
+ <buttongroups>
+  <buttongroup name="farp_buttonGroup"/>
+ </buttongroups>
 </ui>
