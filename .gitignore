@@ -7,3 +7,8 @@ Generator/__pycache__
 Generator/build
 Generator/venv
 Generator/dist
+Generator/generator.log
+MissionGenerator.exe
+incoming templates/
+Generator/utils/extract units/source.miz
+Generator/utils/extract units/units.txt

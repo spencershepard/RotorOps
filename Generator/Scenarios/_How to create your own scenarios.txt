@@ -3,7 +3,7 @@ You can add your own scenarios in this directory and they will appear in the mis
 
 A scenario .miz file MUST have:
 
-1) Between 1-4 trigger zones called "ALPHA", "BRAVO", "CHARLIE", "DELTA"
+1) Between 1-4 circular trigger zones called "ALPHA", "BRAVO", "CHARLIE", "DELTA"
 2) At least one trigger zone with a name that starts with "STAGING".
 3) A blue airport (recommend somewhere near/on-side your staging zone). 
 4) A red airport (recommend somewhere near/on-side your last conflict zone).  
@@ -13,16 +13,15 @@ A scenario .miz file MUST have:
 
 
 Optional: 
-7) USA FARP called "HELO_FARP" for automatic player placement.
+7) USA FARP called "HELO_FARP" for automatic player placement. (Strongly suggest using immortal and invisible options for support vehicles, and add "static" to the group name to keep them from moving)
 8) USA Carrier called "HELO_CARRIER" for automatic player placement.
 9) Infantry spawn zones inside conflict zones. Add near buildings to simulate infantry hiding within. Name trigger zones like "ALPHA_SPAWN", "ALPHA_SPAWN_2, etc.
 
 
 
 Tips:
--Position the center of conflict zones over an open area, as this position may be used to spawn units.
--Position the center of staging zones over an open area of at least 1000 x 1000ft to provide space for logistics units. 
-Position the center of staging zones over an open area of at least 1000 x 1000ft to provide space for logistics units. 
+-Position the center of conflict zones over an open area, as this position will be used to spawn units and FARPs.
+-Position the center of staging zones over an open area of at least 1000 x 1000ft to provide space for logistics zones.
 -For very scenery dense areas like forests or urban areas, smaller conflict zone sizes are highly recommended (eg 4000ft radius).  A zone center near a roadway may also help keep units moving smoothly. 
 -The conflict game type can be played with blue forces on defense.  In this mode the last conflict zone is the only troop pickup zone.
 -Design your template so that it can be played in normal 'attacking' mode or 'defending' the conflict zone from enemy ground units starting from the staging zone.
@@ -35,4 +34,5 @@ Position the center of staging zones over an open area of at least 1000 x 1000ft
 -Friendly AWACs and tankers will be placed at the blue airport if parking is available, otherwise they will start in the air.  
 -Enemy helicopters and planes will spawn at the red airport. 
 -Late activation FARPs might be useful for rearming far from the player spawn point.
-
+-In "Defense" or with "Swap sides" option, USA and Russia ships, helicopters, planes, and ground units will swap countries. Static objects may not. Test it out.
+-Turn off or limit civilian road traffic.
