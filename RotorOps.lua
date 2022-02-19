@@ -3,6 +3,7 @@ RotorOps.version = "1.2.6"
 local debug = true
 
 
+
 ---[[ROTOROPS OPTIONS]]---
 --- Protip: change these options from the mission editor rather than changing the script file itself.  See documentation on github for details.
 
@@ -15,6 +16,7 @@ RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left 
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
 RotorOps.apcs_spawn_infantry = false  --apcs will unload troops when arriving to a new zone
 RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing? 
+RotorOps.defending_vehicles_disperse = true
 
 RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn events remaining in the active zone
 RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
@@ -182,7 +184,7 @@ RotorOps.gameMsgs = {
 
 
 local sound_effects = {
-    ["troop_pickup"] = {'troops_load_ao.ogg', 'troops_load_ready.ogg', 'troops_load_to_action.ogg',force_offroad = true},
+    ["troop_pickup"] = {'troops_load_ao.ogg', 'troops_load_ready.ogg', 'troops_load_to_action.ogg',},
     ["troop_dropoff"] = {'troops_unload_thanks.ogg', 'troops_unload_everybody_off.ogg', 'troops_unload_get_off.ogg', 'troops_unload_here_we_go.ogg', 'troops_unload_moving_out.ogg',},
 }
 
@@ -246,11 +248,7 @@ function RotorOps.eventHandler:onEvent(event)
    
    ---BASE CAPTURE EVENTS  --doesn't work with FARPs..
    if (world.event.S_EVENT_BASE_CAPTURED == event.id) then
-     env.info("Base captured")
-     if (event.initiator:getCoalition() == 2) then
-       --RotorOps.gameMsg(RotorOps.gameMsgs.farp_established)
-       env.info("Blue forces captured a base")
-     end   
+     env.info("Base captured")   
      if (event.place:getCoalition() == 2) then
        env.info("Blue forces captured a base via place attribute")
      end
@@ -394,6 +392,7 @@ local function processMsgBuffer(vars)
   if #game_message_buffer > 0 then
     local message = table.remove(game_message_buffer, 1)
     trigger.action.outText(message[1], 10, true)
+    env.info("RotorOps: "..message[1])
     if RotorOps.voice_overs then
       trigger.action.outSound(message[2])
     end
@@ -476,7 +475,7 @@ function RotorOps.deployTroops(quantity, target_group, announce)
   local side = "red"
   if coalition == 2 then side = "blue" end
   local point = valid_unit:getPoint() 
-  ctld.spawnGroupAtPoint(side, quantity, point, 3000)
+  ctld.spawnGroupAtPoint(side, quantity, point, 1000)
   
   -- voiceover trigger stuff
   for index, zone in pairs(RotorOps.zones)
@@ -883,6 +882,14 @@ function RotorOps.assessUnitsInZone(var)
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
     end
   end
+  
+  for index, group in pairs(RotorOps.ai_defending_vehicle_groups) do 
+    if group then
+      Group.getByName(group):getController():setOption(AI.Option.Ground.id.DISPERSE_ON_ATTACK , RotorOps.defending_vehicles_disperse)
+    end
+  end
+  
+
 
   
    --FIRES ONCE PER ZONE ACTIVATION
@@ -1177,7 +1184,8 @@ function RotorOps.setActiveZone(new_index)
     
     local staged_groups = RotorOps.groupsFromUnits(RotorOps.staged_units)
     for index, group in pairs(staged_groups) do
-      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
+      timer.scheduleFunction(function()RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) end, {}, timer.getTime() + index) --add a second between calling aitask
+      --RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
     end
     
 
@@ -1197,7 +1205,7 @@ function RotorOps.setupCTLD()
     return
   end
   
-  ctld.Debug = false
+  --ctld.Debug = false
   ctld.enableCrates = RotorOps.CTLD_crates
   ctld.enabledFOBBuilding = false
   ctld.JTAC_lock = "vehicle"
@@ -1233,15 +1241,6 @@ function RotorOps.setupCTLD()
     {name = "Platoon (24)", inf = 10, mg = 5, at = 6, aa = 3 },
    }
     
---    ctld.dropOffZones = {
---        { "ALPHA", "none", 1 },
---        { "BRAVO", "none", 1 },
---        { "CHARLIE", "none", 1 },
---        { "DELTA", "none", 1 },
---    }
---    
---    ctld.transportPilotNames[#ctld.transportPilotNames + 1] = "Enemy Transport Helicopters Pilot #1"
---    ctld.transportPilotNames[#ctld.transportPilotNames + 1] = "Enemy Transport Helicopters Pilot #2"
 
     
 end
@@ -1272,7 +1271,7 @@ function RotorOps.stagingZone(_name)
     trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
     env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
   end
-  RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
+  RotorOps.addPickupZone(_name, RotorOps.pickup_zone_smoke, -1, "no", 0)
   RotorOps.staging_zone = _name
 end
 
@@ -1381,7 +1380,7 @@ end
 
 
 function RotorOps.farpEstablished(index)
-  env.info("RotorOps FARP established at"..RotorOps.zones[index].name)
+  env.info("RotorOps FARP established at "..RotorOps.zones[index].name)
   timer.scheduleFunction(function()RotorOps.gameMsg(RotorOps.gameMsgs.farp_established, index) end, {}, timer.getTime() + 15)
 end
 
@@ -1393,7 +1392,7 @@ function RotorOps.getEnemyZones()
   
     for index, zone in pairs(RotorOps.zones) do
       if index <= RotorOps.active_zone_index then
-        enemy_zones[#enemy_zones + 1] = zone
+        enemy_zones[#enemy_zones + 1] = zone.name
       end
     end
     
@@ -1413,7 +1412,23 @@ end
 
 
 function RotorOps.spawnTranspHelos(troops, max_drops)
+  local script_string = [[local this_grp = ...
+    this_grp:getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT , AI.Option.Air.val.REACTION_ON_THREAT.EVADE_FIRE)
+    this_grp:getController():setOption(AI.Option.Air.id.FLARE_USING , AI.Option.Air.val.FLARE_USING.WHEN_FLYING_NEAR_ENEMIES)]]
 
+  local setOptions = {
+    id = 'WrappedAction',
+    params = {
+      action = {
+        id = 'Script',
+        params = {
+          command = script_string,
+
+        },
+      },
+    },
+  }
+  
   local dropTroops = {
     id = 'WrappedAction',
     params = {
@@ -1433,8 +1448,14 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
   --debugTable(gp)
   
   local drop_zones = RotorOps.getEnemyZones()
+  if RotorOps.defending then
+    drop_zones = {RotorOps.active_zone}
+  end
   gp.route = {points = {}}
-  gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(initial_point, 'flyover', 80, 400, 'agl')
+  gp.route.points[1] = mist.heli.buildWP(initial_point, initial, 'flyover', 0, 0, 'agl')
+  gp.route.points[2] = mist.heli.buildWP(initial_point, initial, 'flyover', 100, 100, 'agl')
+  gp.route.points[2].task = setOptions
+   
   
   local failsafe = 100
   local drop_qty = 0
@@ -1446,7 +1467,7 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
       local drop_point = mist.getRandomPointInZone(zone_name, 300)     
        
       if mist.isTerrainValid(drop_point, {'LAND', 'ROAD'}) == true then  --if the point looks like a good drop point
-        gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(zone_point, 'flyover', 80, 400, 'agl') 
+        gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(zone_point, 'flyover', 100, 400, 'agl') 
         gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(zone_point, 'flyover', 20, 200, 'agl') 
         gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(drop_point, 'turning point', 10, 70, 'agl') 
         gp.route.points[#gp.route.points].task = dropTroops  
@@ -1463,10 +1484,15 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
     end
 
   end
-  
-  gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(initial_point, 'flyover', 80, 400, 'agl') 
+  gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(initial_point, 'flyover', 100, 400, 'agl') 
   gp.clone = true
-  mist.dynAdd(gp)
+  local new_group_data = mist.dynAdd(gp) --returns a mist group data table
+  debugTable(new_group_data)
+--  local new_group = Group.getByName(new_group_data.groupName)
+--  local grp_controller = new_group:getController() --controller for aircraft can be group or unit level
+--  grp_controller:setOption(AI.Option.Air.id.REACTION_ON_THREAT , AI.Option.Air.val.REACTION_ON_THREAT.EVADE_FIRE) 
+--  grp_controller:setOption(AI.Option.Air.id.FLARE_USING , AI.Option.Air.val.FLARE_USING.WHEN_FLYING_NEAR_ENEMIES) 
+  
   env.info("ROTOROPS: TRANSPORT HELICOPTER DEPARTING WITH "..drop_qty.." PLANNED TROOP DROPS.")
   
   

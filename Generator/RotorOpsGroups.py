@@ -11,7 +11,7 @@ import random
 
 class VehicleTemplate:
 
-    class USA:
+    class CombinedJointTaskForcesBlue:
 
         @staticmethod
         def zone_farp(mission, country, farp_country, position, heading, name, late_activation):
@@ -24,7 +24,8 @@ class VehicleTemplate:
                 [
                     dcs.vehicles.Unarmed.M_818,
                     dcs.vehicles.AirDefence.Vulcan,
-                    dcs.vehicles.Unarmed.Ural_375
+                    dcs.vehicles.Unarmed.Ural_375,
+                    dcs.vehicles.Unarmed.M978_HEMTT_Tanker
                 ],
                 position.point_from_heading(45, 7),
                 heading=random.randint(0, 359),

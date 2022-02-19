@@ -14,9 +14,10 @@ e_attack_helos = [
 ]
 
 e_transport_helos = [
-    dcs.helicopters.Mi_26,
-    dcs.helicopters.Mi_24P,
-    dcs.helicopters.Mi_8MT,
+    #dcs.helicopters.Mi_26,
+    #dcs.helicopters.Mi_24P,
+    #dcs.helicopters.Mi_8MT,
+    dcs.helicopters.CH_47D,
 ]
 
 e_attack_planes = [

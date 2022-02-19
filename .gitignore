@@ -12,3 +12,4 @@ MissionGenerator.exe
 incoming templates/
 Generator/utils/extract units/source.miz
 Generator/utils/extract units/units.txt
+generator.log

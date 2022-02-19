@@ -17,6 +17,8 @@ Optional:
 8) USA Carrier called "HELO_CARRIER" for automatic player placement.
 9) Infantry spawn zones inside conflict zones. Add near buildings to simulate infantry hiding within. Name trigger zones like "ALPHA_SPAWN", "ALPHA_SPAWN_2, etc.
 
+Testing:
+You should test your scenarios to ensure that vehicals move between zones as you expect.  In some circumstances, vehicles may not be able to calculate a valid route to the next zone, and they will stop.  Make sure they can route correctly by testing your scenario in fast forward, with few defending units.  You can also get a good idea as to how long your scenario will take to complete.
 
 
 Tips:
@@ -36,3 +38,4 @@ Tips:
 -Late activation FARPs might be useful for rearming far from the player spawn point.
 -In "Defense" or with "Swap sides" option, USA and Russia ships, helicopters, planes, and ground units will swap countries. Static objects may not. Test it out.
 -Turn off or limit civilian road traffic.
+-Pay attention to rivers and bridges, as a far away bridge crossing may break routing if it's the only way across.  See the testing notes above.

@@ -171,6 +171,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 "Infantry Spawn Zones: " + str(spawn_zones) + "\n" +
                 "Approx Distance: " + str(math.floor(RotorOpsUtils.convertMeterToNM(conflict_zone_distance_sum))) + "nm \n"
                 #"Validity Check:" + str(validateTemplate())
+                + "\n== BRIEFING ==\n\n"
+                + source_mission.description_text()
             )
         #self.description_textBrowser.setText("File error occured.")
 
@@ -202,6 +204,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "inf_spawn_msgs": self.inf_spawn_voiceovers_checkBox.isChecked(),
                 "e_transport_helos": self.e_transport_helos_spinBox.value(),
                 "transport_drop_qty": self.troop_drop_spinBox.value(),
+                "smoke_pickup_zones": self.smoke_pickup_zone_checkBox.isChecked(),
                 }
         os.chdir(self.m.home_dir + '/Generator')
         n = ROps.RotorOpsMission()

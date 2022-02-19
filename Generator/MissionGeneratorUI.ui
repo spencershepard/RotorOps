@@ -96,9 +96,9 @@ padding: 4px;</string>
    <widget class="QTextBrowser" name="description_textBrowser">
     <property name="geometry">
      <rect>
-      <x>710</x>
-      <y>20</y>
-      <width>331</width>
+      <x>670</x>
+      <y>30</y>
+      <width>501</width>
       <height>131</height>
      </rect>
     </property>
@@ -313,7 +313,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>810</x>
-      <y>790</y>
+      <y>760</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -340,7 +340,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>810</x>
-      <y>820</y>
+      <y>790</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -448,6 +448,9 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="text">
      <string>APCs Spawn Infantry</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QSpinBox" name="inf_spawn_spinBox">
@@ -570,7 +573,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>810</x>
-      <y>760</y>
+      <y>820</y>
       <width>191</width>
       <height>16</height>
      </rect>
@@ -581,7 +584,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>May help prevent long travel times or pathfinding issues.  Tip: You can change this dynamically from mission triggers.</string>
+     <string>May help prevent long travel times or pathfinding issues.  </string>
     </property>
     <property name="text">
      <string>Force Offroad</string>
@@ -957,6 +960,30 @@ p, li { white-space: pre-wrap; }
      <number>4</number>
     </property>
    </widget>
+   <widget class="QCheckBox" name="smoke_pickup_zone_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>810</x>
+      <y>690</y>
+      <width>251</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Infinite troop pickup zones will be marked with blue smoke.</string>
+    </property>
+    <property name="text">
+     <string>Smoke at Troop Pickup Zones</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
+    </property>
+   </widget>
    <zorder>background_label</zorder>
    <zorder>scenario_comboBox</zorder>
    <zorder>scenario_label</zorder>
@@ -1000,6 +1027,7 @@ p, li { white-space: pre-wrap; }
    <zorder>e_transport_helos_spinBox</zorder>
    <zorder>label_3</zorder>
    <zorder>troop_drop_spinBox</zorder>
+   <zorder>smoke_pickup_zone_checkBox</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
