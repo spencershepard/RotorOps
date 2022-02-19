@@ -1,6 +1,7 @@
 RotorOps = {}
-RotorOps.version = "1.2.5"
+RotorOps.version = "1.2.6"
 local debug = true
+
 
 
 ---[[ROTOROPS OPTIONS]]---
@@ -15,6 +16,7 @@ RotorOps.max_units_left = 0 --allow clearing the zone when a few units are left 
 RotorOps.force_offroad = false  --affects "move_to_zone" tasks only
 RotorOps.apcs_spawn_infantry = false  --apcs will unload troops when arriving to a new zone
 RotorOps.auto_push = true --should attacking ground units move to the next zone after clearing? 
+RotorOps.defending_vehicles_disperse = true
 
 RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn events remaining in the active zone
 RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
@@ -28,6 +30,7 @@ RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mi
 RotorOps.CTLD_crates = false 
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
+RotorOps.pickup_zone_smoke = "blue"
 
 
 ---[[END OF OPTIONS]]---
@@ -67,6 +70,7 @@ local inf_spawn_zones = {}
 local cooldown = {
   ["attack_helo_msg"] = 0, 
   ["attack_plane_msg"] = 0,
+  ["trans_helo_msg"] = 0,
 }
 
 
@@ -164,13 +168,23 @@ RotorOps.gameMsgs = {
     {'ENEMY TROOPS IN THE ACTIVE!', 'e_infantry_spawn5.ogg'},
     {'VISUAL ON ENEMY TROOPS!', 'e_infantry_spawn6.ogg'},
   },
+  farp_established = {
+    {'NEW FARP AVAILABLE!', 'forward_base_established.ogg'},
+    {'NEW FARP AT ALPHA!', 'forward_base_established.ogg'},
+    {'NEW FARP AT BRAVO!', 'forward_base_established.ogg'},
+    {'NEW FARP AT CHARLIE!', 'forward_base_established.ogg'},
+    {'NEW FARP AT DELTA!', 'forward_base_established.ogg'},
+  },
+  transp_helos_toff = {
+    {'ENEMY TRANSPORT HELICOPTERS INBOUND!', 'enemy_chopper_inbound.ogg'},
+  },
   
 
 }
 
 
 local sound_effects = {
-    ["troop_pickup"] = {'troops_load_ao.ogg', 'troops_load_ready.ogg', 'troops_load_to_action.ogg',force_offroad = true},
+    ["troop_pickup"] = {'troops_load_ao.ogg', 'troops_load_ready.ogg', 'troops_load_to_action.ogg',},
     ["troop_dropoff"] = {'troops_unload_thanks.ogg', 'troops_unload_everybody_off.ogg', 'troops_unload_get_off.ogg', 'troops_unload_here_we_go.ogg', 'troops_unload_moving_out.ogg',},
 }
 
@@ -184,15 +198,15 @@ end
 function RotorOps.eventHandler:onEvent(event)
    ---ENGINE STARTUP EVENTS
    if (world.event.S_EVENT_ENGINE_STARTUP  == event.id) then  --play some sound files when a player starts engines  
-    local initiator = event.initiator:getGroup():getID()
+     local initiator = event.initiator:getGroup():getID()
     
-    if #event.initiator:getGroup():getUnits() == 1 then --if there are no other units in the player flight group (preventing duplicated messages for ai wingman flights)
-      if RotorOps.defending then
-        trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.enemy_pushing[RotorOps.active_zone_index + 1][2])
-      else
-        trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
-      end
-    end
+     if #event.initiator:getGroup():getUnits() == 1 then --if there are no other units in the player flight group (preventing duplicated messages for ai wingman flights)
+       if RotorOps.defending then
+         trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.enemy_pushing[RotorOps.active_zone_index + 1][2])
+       else
+         trigger.action.outSoundForGroup(initiator , RotorOps.gameMsgs.push[RotorOps.active_zone_index + 1][2])
+       end
+     end
     
    end
    
@@ -219,7 +233,27 @@ function RotorOps.eventHandler:onEvent(event)
        end
      end
      
+     if initiator_name == "Enemy Transport Helicopters" then  --we're using mist clone now so group name will not match
+       env.info("Transport helicopter took off")
+       
+       if ((RotorOps.getTime() - cooldown["trans_helo_msg"]) > 90) then
+         timer.scheduleFunction(function()RotorOps.gameMsg(RotorOps.gameMsgs.transp_helos_toff) end, {}, timer.getTime() + 1)
+         cooldown["trans_helo_msg"] = RotorOps.getTime()
+       else 
+         env.warning("RotorOps transport helo message skipped")
+       end
+     end
+     
    end
+   
+   ---BASE CAPTURE EVENTS  --doesn't work with FARPs..
+   if (world.event.S_EVENT_BASE_CAPTURED == event.id) then
+     env.info("Base captured")   
+     if (event.place:getCoalition() == 2) then
+       env.info("Blue forces captured a base via place attribute")
+     end
+   end
+  
    
 end
 
@@ -258,7 +292,8 @@ end
 
 
 local function debugTable(table)
-  trigger.action.outText("dbg: ".. mist.utils.tableShow(table), 5) 
+  --trigger.action.outText("dbg: ".. mist.utils.tableShow(table), 5) 
+  env.info("ROTOROPS_DEBUG: ".. mist.utils.tableShow(table))
 end
 
 
@@ -357,6 +392,7 @@ local function processMsgBuffer(vars)
   if #game_message_buffer > 0 then
     local message = table.remove(game_message_buffer, 1)
     trigger.action.outText(message[1], 10, true)
+    env.info("RotorOps: "..message[1])
     if RotorOps.voice_overs then
       trigger.action.outSound(message[2])
     end
@@ -422,45 +458,7 @@ function RotorOps.spawnGroupOnGroup(grp, src_grp_name, ai_task) --allow to spawn
   end
 end
 
---Spawn infantry in a trigger zone. Uses CTLD but may use another method in the future. Side is "red" or "blue"
---function RotorOps.spawnInfantryInZone(vars)
---    --local group = {mg=1,at=0,aa=0,inf=4,mortar=0}
---
---    local _triggerName = vars.zone
---    local _groupSide = vars.side
---    local _number = vars.qty
---    local _searchRadius = 500
---  
---    local _spawnTrigger = trigger.misc.getZone(_triggerName) -- trigger to use as reference position
---
---    if _spawnTrigger == nil then
---        env.warning("ERROR: Cant find zone called " .. _triggerName)
---        return
---    end
---
---    local _country
---    if _groupSide == "red" then
---        _groupSide = 1
---        _country = 0
---    else
---        _groupSide = 2
---        _country = 2
---    end
---
---    if _searchRadius < 0 then
---        _searchRadius = 0
---    end
---
---    local _pos2 = { x = _spawnTrigger.point.x, y = _spawnTrigger.point.z }
---    local _alt = land.getHeight(_pos2)
---    local _pos3 = { x = _pos2.x, y = _alt, z = _pos2.y }
---
---    local _groupDetails = ctld.generateTroopTypes(_groupSide, _number, _country)
---
---    local _droppedTroops = ctld.spawnDroppedGroup(_pos3, _groupDetails, false, _searchRadius);
---    --debugMsg(_groupDetails.groupName)
---    return _groupDetails.groupName  --_ { units = _troops, groupId = _groupId, groupName = string.format("%s %i", _groupName, _groupId), side = _side, country = _country, weight = _weight, jtac = _hasJTAC }
---end
+
 
 --Easy way to deploy troops from a vehicle with waypoint action.  Spawns from the first valid unit found in a group
 function RotorOps.deployTroops(quantity, target_group, announce)
@@ -470,6 +468,7 @@ function RotorOps.deployTroops(quantity, target_group, announce)
   else
     target_group_obj = target_group
   end 
+  debugMsg("DeployTroops on group: "..target_group_obj:getName())
   local valid_unit = RotorOps.getValidUnitFromGroup(target_group_obj)
   if not valid_unit then return end
   local coalition = valid_unit:getCoalition()
@@ -811,6 +810,7 @@ function RotorOps.aiExecute(vars)
     local speed = RotorOps.ground_speed
     local force_offroad = RotorOps.force_offroad
     mist.groupToPoint(group_name, RotorOps.active_zone, formation, final_heading, speed, force_offroad)
+
   end  
  
  end
@@ -882,6 +882,14 @@ function RotorOps.assessUnitsInZone(var)
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
     end
   end
+  
+  for index, group in pairs(RotorOps.ai_defending_vehicle_groups) do 
+    if group then
+      Group.getByName(group):getController():setOption(AI.Option.Ground.id.DISPERSE_ON_ATTACK , RotorOps.defending_vehicles_disperse)
+    end
+  end
+  
+
 
   
    --FIRES ONCE PER ZONE ACTIVATION
@@ -945,7 +953,7 @@ function RotorOps.assessUnitsInZone(var)
    local percent_staged_remain = 0
    percent_staged_remain = math.floor((#staged_units_remaining / #RotorOps.staged_units) * 100) 
    trigger.action.setUserFlag(RotorOps.staged_units_flag, percent_staged_remain)
-   debugMsg("Staged units remaining: "..percent_staged_remain.."%")
+   debugMsg("Staged units remaining percent: "..percent_staged_remain.."%")
    
    
    --is the game finished?
@@ -1156,7 +1164,7 @@ function RotorOps.setActiveZone(new_index)
     
     if not RotorOps.defending then
     
-      if old_index > 0 then 
+      if old_index > 0 and RotorOps.apcs_spawn_infantry == false then 
         ctld.activatePickupZone(RotorOps.zones[old_index].name)  --make the captured zone a pickup zone
       end
       ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
@@ -1176,7 +1184,8 @@ function RotorOps.setActiveZone(new_index)
     
     local staged_groups = RotorOps.groupsFromUnits(RotorOps.staged_units)
     for index, group in pairs(staged_groups) do
-      RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
+      timer.scheduleFunction(function()RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) end, {}, timer.getTime() + index) --add a second between calling aitask
+      --RotorOps.aiTask(group,"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name) --send vehicles to next zone; use move_to_active_zone so units don't get stuck if the active zone moves before they arrive
     end
     
 
@@ -1196,6 +1205,7 @@ function RotorOps.setupCTLD()
     return
   end
   
+  --ctld.Debug = false
   ctld.enableCrates = RotorOps.CTLD_crates
   ctld.enabledFOBBuilding = false
   ctld.JTAC_lock = "vehicle"
@@ -1217,6 +1227,7 @@ function RotorOps.setupCTLD()
      ["UH-1H"] = 10,
      ["Mi-8MT"] = 24,
      ["Mi-24P"] = 8,
+     ["UH-60L"] = 11,
    }
    
    ctld.loadableGroups = {  
@@ -1228,8 +1239,10 @@ function RotorOps.setupCTLD()
     {name = "JTAC Group (4)", inf = 3, jtac = 1 },
     {name = "Small Platoon (16)", inf = 9, mg = 3, at = 3, aa = 1 },
     {name = "Platoon (24)", inf = 10, mg = 5, at = 6, aa = 3 },
+   }
     
-}
+
+    
 end
 
 
@@ -1250,7 +1263,7 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
   table.insert(RotorOps.zones, {name = _name, defenders_status_flag = _zone_defenders_flag})
   trigger.action.setUserFlag(_zone_defenders_flag, 101)
   RotorOps.drawZones()
-  RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
+  RotorOps.addPickupZone(_name, RotorOps.pickup_zone_smoke, -1, "no", 2)
 end
 
 function RotorOps.stagingZone(_name)
@@ -1258,7 +1271,7 @@ function RotorOps.stagingZone(_name)
     trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
     env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
   end
-  RotorOps.addPickupZone(_name, "blue", -1, "no", 0)
+  RotorOps.addPickupZone(_name, RotorOps.pickup_zone_smoke, -1, "no", 0)
   RotorOps.staging_zone = _name
 end
 
@@ -1332,33 +1345,155 @@ function RotorOps.startConflict()
 end
 
 
-function RotorOps.triggerSpawn(groupName, msg)
+function RotorOps.triggerSpawn(groupName, msg, resume_task)
   local group = Group.getByName(groupName)
+  if not group then
+    env.warning("RotorOps tried to spawn "..groupName.." but it doesn't exist.")
+    return nil
+  end
   if group and group:isExist() == true and #group:getUnits() > 0 and group:getUnits()[1]:getLife() > 1 and group:getUnits()[1]:isActive() then
     env.info("RotorOps tried to respawn "..groupName.." but it's already active.")
+    return nil
   else
-    local new_group = mist.respawnGroup(groupName, true)
+    local new_group = mist.respawnGroup(groupName, resume_task)
     if new_group then
-      RotorOps.gameMsg(msg)
+      if msg ~= nil then
+        RotorOps.gameMsg(msg)
+      end
       env.info("RotorOps spawned "..groupName)
       return new_group
     end
   end
 
-  return nil
-
 end
 
 
 function RotorOps.spawnAttackHelos()
-  RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos_prep)
+  RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos_prep, true)
 end
 
 
 function RotorOps.spawnAttackPlanes()
-  RotorOps.triggerSpawn("Enemy Attack Planes", RotorOps.gameMsgs.attack_planes_prep)
+  RotorOps.triggerSpawn("Enemy Attack Planes", RotorOps.gameMsgs.attack_planes_prep, true)
 end
 
 
 
+function RotorOps.farpEstablished(index)
+  env.info("RotorOps FARP established at "..RotorOps.zones[index].name)
+  timer.scheduleFunction(function()RotorOps.gameMsg(RotorOps.gameMsgs.farp_established, index) end, {}, timer.getTime() + 15)
+end
 
+
+function RotorOps.getEnemyZones()
+  local enemy_zones = {}
+  
+  if RotorOps.defending then
+  
+    for index, zone in pairs(RotorOps.zones) do
+      if index <= RotorOps.active_zone_index then
+        enemy_zones[#enemy_zones + 1] = zone.name
+      end
+    end
+    
+  else --not defending
+  
+    for index, zone in pairs(RotorOps.zones) do
+      if index >= RotorOps.active_zone_index then
+        enemy_zones[#enemy_zones + 1] = zone.name
+      end
+    end
+  
+  end 
+  debugMsg("Got enemy zones:")
+  debugTable(enemy_zones)
+  return enemy_zones 
+end
+
+
+function RotorOps.spawnTranspHelos(troops, max_drops)
+  local script_string = [[local this_grp = ...
+    this_grp:getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT , AI.Option.Air.val.REACTION_ON_THREAT.EVADE_FIRE)
+    this_grp:getController():setOption(AI.Option.Air.id.FLARE_USING , AI.Option.Air.val.FLARE_USING.WHEN_FLYING_NEAR_ENEMIES)]]
+
+  local setOptions = {
+    id = 'WrappedAction',
+    params = {
+      action = {
+        id = 'Script',
+        params = {
+          command = script_string,
+
+        },
+      },
+    },
+  }
+  
+  local dropTroops = {
+    id = 'WrappedAction',
+    params = {
+      action = {
+        id = 'Script',
+        params = {
+          command = 'RotorOps.deployTroops('..troops..', ...)',  
+
+        },
+      },
+    },
+  }
+  
+  local group = Group.getByName("Enemy Transport Helicopters")
+  local initial_point = group:getUnits()[1]:getPoint()
+  local gp = mist.getGroupData("Enemy Transport Helicopters")
+  --debugTable(gp)
+  
+  local drop_zones = RotorOps.getEnemyZones()
+  if RotorOps.defending then
+    drop_zones = {RotorOps.active_zone}
+  end
+  gp.route = {points = {}}
+  gp.route.points[1] = mist.heli.buildWP(initial_point, initial, 'flyover', 0, 0, 'agl')
+  gp.route.points[2] = mist.heli.buildWP(initial_point, initial, 'flyover', 100, 100, 'agl')
+  gp.route.points[2].task = setOptions
+   
+  
+  local failsafe = 100
+  local drop_qty = 0
+  while drop_qty < max_drops do
+  
+    for i = 1, 10 do  --pick some random points to evaluate
+      local zone_name = drop_zones[math.random(#drop_zones)]
+      local zone_point = trigger.misc.getZone(zone_name).point
+      local drop_point = mist.getRandomPointInZone(zone_name, 300)     
+       
+      if mist.isTerrainValid(drop_point, {'LAND', 'ROAD'}) == true then  --if the point looks like a good drop point
+        gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(zone_point, 'flyover', 100, 400, 'agl') 
+        gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(zone_point, 'flyover', 20, 200, 'agl') 
+        gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(drop_point, 'turning point', 10, 70, 'agl') 
+        gp.route.points[#gp.route.points].task = dropTroops  
+        drop_qty = drop_qty + 1    
+        break
+      end
+      
+    end
+    
+    failsafe = failsafe - 1
+    if failsafe < 1 then 
+      env.error("ROTOROPS: FINDING DROP POINTS TOOK TOO LONG")
+      break
+    end
+
+  end
+  gp.route.points[#gp.route.points + 1] = mist.heli.buildWP(initial_point, 'flyover', 100, 400, 'agl') 
+  gp.clone = true
+  local new_group_data = mist.dynAdd(gp) --returns a mist group data table
+  debugTable(new_group_data)
+--  local new_group = Group.getByName(new_group_data.groupName)
+--  local grp_controller = new_group:getController() --controller for aircraft can be group or unit level
+--  grp_controller:setOption(AI.Option.Air.id.REACTION_ON_THREAT , AI.Option.Air.val.REACTION_ON_THREAT.EVADE_FIRE) 
+--  grp_controller:setOption(AI.Option.Air.id.FLARE_USING , AI.Option.Air.val.FLARE_USING.WHEN_FLYING_NEAR_ENEMIES) 
+  
+  env.info("ROTOROPS: TRANSPORT HELICOPTER DEPARTING WITH "..drop_qty.." PLANNED TROOP DROPS.")
+  
+  
+end

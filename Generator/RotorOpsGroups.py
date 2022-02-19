@@ -11,20 +11,21 @@ import random
 
 class VehicleTemplate:
 
-    class USA:
+    class CombinedJointTaskForcesBlue:
 
         @staticmethod
-        def invisible_farp(mission, country, position, heading, name, late_activation):
-
-            farp = mission.farp(country, name, position, hidden=False, dead=False, farp_type=dcs.unit.InvisibleFARP)
+        def zone_farp(mission, country, farp_country, position, heading, name, late_activation):
+            # ai air units attack farp with late activation units, so we will set it to enemy coalition.  It will be captured when frienly units spawn
+            farp = mission.farp(farp_country, name, position, hidden=False, dead=False, farp_type=dcs.unit.InvisibleFARP)
 
             vg = mission.vehicle_group_platoon(
                 country,
-                name,
+                name + " Static",
                 [
                     dcs.vehicles.Unarmed.M_818,
                     dcs.vehicles.AirDefence.Vulcan,
-                    dcs.vehicles.Unarmed.Ural_375
+                    dcs.vehicles.Unarmed.Ural_375,
+                    dcs.vehicles.Unarmed.M978_HEMTT_Tanker
                 ],
                 position.point_from_heading(45, 7),
                 heading=random.randint(0, 359),
