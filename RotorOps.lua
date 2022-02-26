@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.2.6"
+RotorOps.version = "1.2.7"
 local debug = true
 
 
@@ -345,6 +345,7 @@ end
 function RotorOps.isUnitInZone(unit, zone_name)
   local zone = trigger.misc.getZone(zone_name)
   local distance = getDistance(unit:getPoint(), zone.point)
+  --local distance = mist.utils.get2DDist(unit:getPoint(), zone.point)
   if distance <= zone.radius then
     return true
   else
@@ -1497,3 +1498,43 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
   
   
 end
+
+--- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS
+
+--determine if any players have broken a defined ceiling above ground level
+function RotorOps.predPlayerMaxAGL(max_agl, hide_display)
+  for uName, uData in pairs(mist.DBs.humansByName) do
+    local player_unit = Unit.getByName(uData.unitName)
+    if player_unit then
+      local player_pos = player_unit:getPosition().p
+      local terrain_height = land.getHeight({x = player_pos.x, y = player_pos.z})
+      local player_agl = player_pos.y - terrain_height
+      if player_agl > max_agl then
+        env.info(uData.unitName.." broke the AGL limit of "..max_agl)
+        if not hide_display then
+          trigger.action.outText(uData.unitName.." is above the maximum altitude of "..max_agl.."m AGL.", 1, true)
+        end
+        return true
+      else
+        return false
+      end
+    end
+  end
+end
+
+--determine if any players are in a zone (not currently working)
+function RotorOps.predPlayerInZone(zone_name)
+  local players_in_zone = 0
+  for uName, uData in pairs(mist.DBs.humansByName) do
+    local player_unit = Unit.getByName(uData.unitName)
+    if player_unit and RotorOps.isUnitInZone(player_unit, zone_name) then
+      players_in_zone = players_in_zone + 1
+    end
+  end
+  if players_in_zone > 0 then
+    return true
+  else
+    return false
+  end
+end
+

@@ -1,0 +1,8 @@
+You can put .miz files in this folder to be copied into the generated mission at marker points.  This feature is currently very 'alpha' and may produce errors.
+
+1) Make an empty mission on Cauacasus.
+2) Place units/objects on the map.
+3) Make one unit group name: 'ANCHOR'  This will represent the point of insertion into the target mission.
+4) In a Scenario template, place a static object (flag, etc) and call it "IMPORT-[filename of .miz created in first step]"
+
+Tip: You can change the heading of the imported group by changing the heading of the insertion object.  

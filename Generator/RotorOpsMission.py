@@ -6,9 +6,9 @@ import random
 
 import RotorOpsGroups
 import RotorOpsUnits
+import RotorOpsUtils
 import time
 from MissionGenerator import logger
-
 
 
 class RotorOpsMission:
@@ -23,6 +23,7 @@ class RotorOpsMission:
         self.sound_directory = self.home_dir + "\sound\embedded"
         self.output_dir = self.home_dir + "\Generator\Output"
         self.assets_dir = self.home_dir + "\Generator/assets"
+        self.imports_dir = self.home_dir + "\Generator\Imports"
 
         self.conflict_zones = {}
         self.staging_zones = {}
@@ -119,6 +120,8 @@ class RotorOpsMission:
 
         self.m.load_file(options["scenario_filename"])
 
+        self.importObjects()
+
         if not self.m.country("Combined Joint Task Forces Red") or not self.m.country("Combined Joint Task Forces Blue"):
             failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + self.scenarios_dir
             return {"success": False, "failure_msg": failure_msg}
@@ -132,7 +135,6 @@ class RotorOpsMission:
 
         self.m.add_picture_blue(self.assets_dir + '/briefing1.png')
         self.m.add_picture_blue(self.assets_dir + '/briefing2.png')
-
 
 
         # add zones to target mission
@@ -234,6 +236,9 @@ class RotorOpsMission:
         #add files and triggers necessary for RotorOps.lua script
         self.addResources(self.sound_directory, self.script_directory)
         self.scriptTriggerSetup(options)
+
+        # test adding static objects from a .miz
+        #self.addStatics()
 
         #Save the mission file
         os.chdir(self.output_dir)
@@ -631,7 +636,7 @@ class RotorOpsMission:
             else:
                 return
 
-            if source_helo:
+            if source_helo and afg:
                 for unit in afg.units:
                     unit.pylons = source_helo.pylons
                     unit.livery_id = source_helo.livery_id
@@ -661,10 +666,10 @@ class RotorOpsMission:
                     group_size=group_size)
                 zone_attack(afg, airport)
 
-            if source_plane:
-                for unit in afg.units:
-                    unit.pylons = source_plane.pylons
-                    unit.livery_id = source_plane.livery_id
+                if source_plane:
+                    for unit in afg.units:
+                        unit.pylons = source_plane.pylons
+                        unit.livery_id = source_plane.livery_id
 
         if options["e_transport_helos"]:
             source_helo = None
@@ -690,10 +695,10 @@ class RotorOpsMission:
                 afg.late_activation = True
                 afg.units[0].skill = dcs.unit.Skill.Excellent
 
-            if source_helo:
-                for unit in afg.units:
-                    unit.pylons = source_helo.pylons
-                    unit.livery_id = source_helo.livery_id
+                if source_helo:
+                    for unit in afg.units:
+                        unit.pylons = source_helo.pylons
+                        unit.livery_id = source_helo.livery_id
 
     def scriptTriggerSetup(self, options):
 
@@ -839,5 +844,25 @@ class RotorOpsMission:
         trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
         trig.actions.append(dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
         self.m.triggerrules.triggers.append(trig)
+
+
+    def addStatics(self):
+        os.chdir(self.home_dir + "/Generator/Statics")
+        logger.info("Looking for .miz files in '" + os.getcwd())
+        dest_point = self.conflict_zones["ALPHA"].position
+        grps = RotorOpsUtils.extractUnits.toPoint("test.miz", dest_point, 180)
+        for grp in grps:
+            self.m.country("Combined Joint Task Forces Blue").add_vehicle_group(grp)
+
+    def importObjects(self):
+        os.chdir(self.imports_dir)
+        logger.info("Looking for import .miz files in '" + os.getcwd())
+        for group in self.m.country("Combined Joint Task Forces Blue").static_group:
+            prefix = "IMPORT-"
+            if group.name.find(prefix) == 0:
+                filename = group.name.removeprefix(prefix) + ".miz"
+                i = RotorOpsUtils.ImportObjects(filename)
+                i.anchorByGroupName("ANCHOR")
+                i.copyTo(self.m, group.units[0].position)
 
 

@@ -36,7 +36,7 @@ sys.excepthook = handle_exception
 
 
 maj_version = 0
-minor_version = 4
+minor_version = 5
 version_string = str(maj_version) + "." + str(minor_version)
 scenarios = []
 red_forces_files = []
