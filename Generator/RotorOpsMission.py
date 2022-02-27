@@ -10,6 +10,8 @@ import RotorOpsUtils
 import time
 from MissionGenerator import logger
 
+jtf_red = "Combined Joint Task Forces Red"
+jtf_blue = "Combined Joint Task Forces Blue"
 
 class RotorOpsMission:
 
@@ -37,6 +39,7 @@ class RotorOpsMission:
             self.flag = flag
             self.position = position
             self.size = size
+
 
     def getMission(self):
         return self.m
@@ -122,7 +125,7 @@ class RotorOpsMission:
 
         self.importObjects()
 
-        if not self.m.country("Combined Joint Task Forces Red") or not self.m.country("Combined Joint Task Forces Blue"):
+        if not self.m.country(jtf_red) or not self.m.country(jtf_blue):
             failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + self.scenarios_dir
             return {"success": False, "failure_msg": failure_msg}
 
@@ -167,18 +170,18 @@ class RotorOpsMission:
         #Populate Red zones with ground units
         for zone_name in red_zones:
             if red_forces["vehicles"]:
-                    self.addGroundGroups(red_zones[zone_name], self.m.country('Combined Joint Task Forces Red'), red_forces["vehicles"], options["red_quantity"])
+                    self.addGroundGroups(red_zones[zone_name], self.m.country(jtf_red), red_forces["vehicles"], options["red_quantity"])
 
             #Add red FARPS
             if options["zone_farps"] != "farp_never" and not options["defending"]:
-                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country('Combined Joint Task Forces Blue'),
-                                                             self.m.country('Combined Joint Task Forces Blue'),
+                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country(jtf_blue),
+                                                             self.m.country(jtf_blue),
                                                               red_zones[zone_name].position,
                                                               180, zone_name + " FARP", late_activation=True)
 
             if options["zone_protect_sams"]:
                 self.m.vehicle_group(
-                    self.m.country('Combined Joint Task Forces Red'),
+                    self.m.country(jtf_red),
                     "Static " + zone_name + " Protection SAM",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     red_zones[zone_name].position,
@@ -192,18 +195,18 @@ class RotorOpsMission:
         #Populate Blue zones with ground units
         for zone_name in blue_zones:
             if blue_forces["vehicles"]:
-                self.addGroundGroups(blue_zones[zone_name], self.m.country('Combined Joint Task Forces Blue'), blue_forces["vehicles"],
+                self.addGroundGroups(blue_zones[zone_name], self.m.country(jtf_blue), blue_forces["vehicles"],
                                      options["blue_quantity"])
             #Add blue FARPS
             if options["zone_farps"] != "farp_never" and options["defending"]:
-                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country('Combined Joint Task Forces Blue'),
-                                                             self.m.country('Combined Joint Task Forces Blue'),
+                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country(jtf_blue),
+                                                             self.m.country(jtf_blue),
                                                               blue_zones[zone_name].position,
                                                               180, zone_name + " FARP", late_activation=False)
 
             #add logistics sites
             if options["crates"] and zone_name in self.staging_zones:
-                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country('Combined Joint Task Forces Blue'),
+                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country(jtf_blue),
                                                               blue_zones[zone_name].position,
                                                               180, zone_name)
 
@@ -213,7 +216,7 @@ class RotorOpsMission:
 
             if options["zone_protect_sams"] and options["defending"]:
                 vg = self.m.vehicle_group(
-                    self.m.country('Combined Joint Task Forces Blue'),
+                    self.m.country(jtf_blue),
                     "Static " + zone_name + " Protection SAM",
                     random.choice(RotorOpsUnits.e_zone_sams),
                     blue_zones[zone_name].position,
@@ -224,7 +227,8 @@ class RotorOpsMission:
 
 
         #Add player slots
-        self.addPlayerHelos(options)
+        if options["slots"] != "Locked to Scenario" and options["slots"] != "None":
+            self.addPlayerHelos(options)
 
         #Add AI Flights
         self.addFlights(options, red_forces, blue_forces)
@@ -289,10 +293,11 @@ class RotorOpsMission:
         if len(airport.free_parking_slots(aircraft)) >= group_size:
             if not (aircraft.id in dcs.planes.plane_map and len(airport.runways) == 0):
                 return airport
-        for airport in alt_airports:
-            if len(airport.free_parking_slots(aircraft)) >= group_size:
-                if not (aircraft.id in dcs.planes.plane_map and len(airport.runways) == 0):
-                    return airport
+        if alt_airports:
+            for airport in alt_airports:
+                if len(airport.free_parking_slots(aircraft)) >= group_size:
+                    if not (aircraft.id in dcs.planes.plane_map and len(airport.runways) == 0):
+                        return airport
 
         logger.warn("No parking available for " + aircraft.id)
         return None
@@ -314,8 +319,8 @@ class RotorOpsMission:
         for airport in red_airports:
             self.m.terrain.airports[airport.name].set_blue()
 
-        combinedJointTaskForcesBlue = self.m.country("Combined Joint Task Forces Blue")
-        combinedJointTaskForcesRed = self.m.country("Combined Joint Task Forces Red")
+        combinedJointTaskForcesBlue = self.m.country(jtf_blue)
+        combinedJointTaskForcesRed = self.m.country(jtf_red)
 
 
         #Swap ships
@@ -398,13 +403,13 @@ class RotorOpsMission:
                 client_helos = [dcs.helicopters.helicopter_map[helicopter]]
 
         #find friendly carriers and farps
-        carrier = self.m.country("Combined Joint Task Forces Blue").find_ship_group(name="HELO_CARRIER")
+        carrier = self.m.country(jtf_blue).find_ship_group(name="HELO_CARRIER")
         if not carrier:
-            carrier = self.m.country("Combined Joint Task Forces Blue").find_ship_group(name="HELO_CARRIER_1")
+            carrier = self.m.country(jtf_blue).find_ship_group(name="HELO_CARRIER_1")
 
-        farp = self.m.country("Combined Joint Task Forces Blue").find_static_group("HELO_FARP")
+        farp = self.m.country(jtf_blue).find_static_group("HELO_FARP")
         if not farp:
-            farp = self.m.country("Combined Joint Task Forces Blue").find_static_group("HELO_FARP_1")
+            farp = self.m.country(jtf_blue).find_static_group("HELO_FARP_1")
 
         friendly_airports, primary_f_airport = self.getCoalitionAirports("blue")
 
@@ -415,10 +420,10 @@ class RotorOpsMission:
 
         for helotype in client_helos:
             if carrier:
-                fg = self.m.flight_group_from_unit(self.m.country('Combined Joint Task Forces Blue'), "CARRIER " + helotype.id, helotype, carrier,
+                fg = self.m.flight_group_from_unit(self.m.country(jtf_blue), "CARRIER " + helotype.id, helotype, carrier,
                                                    dcs.task.CAS, group_size=group_size)
             elif farp:
-                fg = self.m.flight_group_from_unit(self.m.country('Combined Joint Task Forces Blue'), "FARP " + helotype.id, helotype, farp,
+                fg = self.m.flight_group_from_unit(self.m.country(jtf_blue), "FARP " + helotype.id, helotype, farp,
                                                    dcs.task.CAS, group_size=group_size)
 
                 #invisible farps need manual unit placement for multiple units
@@ -428,7 +433,7 @@ class RotorOpsMission:
                     fg.units[0].position = fg.units[0].position.point_from_heading(heading, 30)
                     heading += 90
             else:
-                fg = self.m.flight_group_from_airport(self.m.country('Combined Joint Task Forces Blue'), primary_f_airport.name + " " + helotype.id, helotype,
+                fg = self.m.flight_group_from_airport(self.m.country(jtf_blue), primary_f_airport.name + " " + helotype.id, helotype,
                                                           self.getParking(primary_f_airport, helotype), group_size=group_size)
             fg.units[0].set_client()
             fg.load_task_default_loadout(dcs.task.CAS)
@@ -464,13 +469,13 @@ class RotorOpsMission:
         enemy_airports, primary_e_airport = self.getCoalitionAirports("red")
 
         #find enemy carriers and farps
-        carrier = self.m.country("Combined Joint Task Forces Red").find_ship_group(name="HELO_CARRIER")
+        carrier = self.m.country(jtf_red).find_ship_group(name="HELO_CARRIER")
         if not carrier:
-            carrier = self.m.country("Combined Joint Task Forces Red").find_ship_group(name="HELO_CARRIER_1")
+            carrier = self.m.country(jtf_red).find_ship_group(name="HELO_CARRIER_1")
 
-        farp = self.m.country("Combined Joint Task Forces Red").find_static_group("HELO_FARP")
+        farp = self.m.country(jtf_red).find_static_group("HELO_FARP")
         if not farp:
-            farp = self.m.country("Combined Joint Task Forces Red").find_static_group("HELO_FARP_1")
+            farp = self.m.country(jtf_red).find_static_group("HELO_FARP_1")
 
         e_airport_heading = dcs.mapping.heading_between_points(
             friendly_airports[0].position.x, friendly_airports[0].position.y, enemy_airports[0].position.x, primary_e_airport.position.y
@@ -507,7 +512,7 @@ class RotorOpsMission:
             awacs_escort = self.m.escort_flight(
                 combinedJointTaskForcesBlue, "AWACS Escort",
                 plane_type,
-                airport=self.getParking(primary_f_airport, plane_type, friendly_airports),
+                airport=self.getParking(primary_f_airport, plane_type, friendly_airports, group_size=2),
                 group_to_escort=awacs,
                 group_size=2)
 
@@ -767,11 +772,11 @@ class RotorOpsMission:
             for index, zone_name in enumerate(self.conflict_zones):
                 if index > 0:
                     previous_zone = list(self.conflict_zones)[index - 1]
-                    if not self.m.country("Combined Joint Task Forces Blue").find_group(previous_zone + " FARP Static"):
+                    if not self.m.country(jtf_blue).find_group(previous_zone + " FARP Static"):
                         continue
                     z_farps_trig = dcs.triggers.TriggerOnce(comment="Activate " + previous_zone + " FARP")
                     z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
-                    z_farps_trig.actions.append(dcs.action.ActivateGroup(self.m.country("Combined Joint Task Forces Blue").find_group(previous_zone + " FARP Static").id))
+                    z_farps_trig.actions.append(dcs.action.ActivateGroup(self.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
                     #z_farps_trig.actions.append(dcs.action.SoundToAll(str(self.res_map['forward_base_established.ogg'])))
                     z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
                         "RotorOps.farpEstablished(" + str(index) + ")")))
@@ -783,14 +788,14 @@ class RotorOpsMission:
             for index, zone_name in enumerate(self.conflict_zones):
                 if index > 0:
                     previous_zone = list(self.conflict_zones)[index - 1]
-                    if not self.m.country("Combined Joint Task Forces Blue").find_group(previous_zone + " FARP Static"):
+                    if not self.m.country(jtf_blue).find_group(previous_zone + " FARP Static"):
                         continue
                     z_farps_trig = dcs.triggers.TriggerOnce(comment= "Activate " + previous_zone + " FARP")
                     z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
                     z_farps_trig.rules.append(dcs.condition.FlagIsMore(111, 20))
                     z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String("--The 100 flag indicates which zone is active.  The 111 flag value is the percentage of staged units remaining")))
                     z_farps_trig.actions.append(
-                        dcs.action.ActivateGroup(self.m.country("Combined Joint Task Forces Blue").find_group(previous_zone + " FARP Static").id))
+                        dcs.action.ActivateGroup(self.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
                     #z_farps_trig.actions.append(dcs.action.SoundToAll(str(self.res_map['forward_base_established.ogg'])))
                     z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
                         "RotorOps.farpEstablished(" + str(index) + ")")))
@@ -845,24 +850,22 @@ class RotorOpsMission:
         trig.actions.append(dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
         self.m.triggerrules.triggers.append(trig)
 
-
-    def addStatics(self):
-        os.chdir(self.home_dir + "/Generator/Statics")
-        logger.info("Looking for .miz files in '" + os.getcwd())
-        dest_point = self.conflict_zones["ALPHA"].position
-        grps = RotorOpsUtils.extractUnits.toPoint("test.miz", dest_point, 180)
-        for grp in grps:
-            self.m.country("Combined Joint Task Forces Blue").add_vehicle_group(grp)
+    #
+    # def addStatics(self):
+    #     os.chdir(self.home_dir + "/Generator/Statics")
+    #     logger.info("Looking for .miz files in '" + os.getcwd())
+    #     dest_point = self.conflict_zones["ALPHA"].position
+    #     grps = RotorOpsUtils.extractUnits.toPoint("test.miz", dest_point, 180)
+    #     for grp in grps:
+    #         self.m.country(jtf_blue).add_vehicle_group(grp)
 
     def importObjects(self):
         os.chdir(self.imports_dir)
         logger.info("Looking for import .miz files in '" + os.getcwd())
-        for group in self.m.country("Combined Joint Task Forces Blue").static_group:
+        for group in self.m.country(jtf_blue).static_group:
             prefix = "IMPORT-"
             if group.name.find(prefix) == 0:
                 filename = group.name.removeprefix(prefix) + ".miz"
                 i = RotorOpsUtils.ImportObjects(filename)
                 i.anchorByGroupName("ANCHOR")
-                i.copyTo(self.m, group.units[0].position)
-
-
+                i.copyTo(self.m, group.units[0].name, group.units[0].position, group.units[0].heading)

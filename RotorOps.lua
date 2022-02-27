@@ -1501,8 +1501,10 @@ end
 
 --- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS
 
---determine if any players have broken a defined ceiling above ground level
-function RotorOps.predPlayerMaxAGL(max_agl, hide_display)
+--determine if any players are above a defined ceiling above ground level. If 'above' parameter is false, function will return true if no players above ceiling
+function RotorOps.predPlayerMaxAGL(max_agl, above) 
+  local players_above_ceiling = 0
+  
   for uName, uData in pairs(mist.DBs.humansByName) do
     local player_unit = Unit.getByName(uData.unitName)
     if player_unit then
@@ -1510,16 +1512,17 @@ function RotorOps.predPlayerMaxAGL(max_agl, hide_display)
       local terrain_height = land.getHeight({x = player_pos.x, y = player_pos.z})
       local player_agl = player_pos.y - terrain_height
       if player_agl > max_agl then
-        env.info(uData.unitName.." broke the AGL limit of "..max_agl)
-        if not hide_display then
-          trigger.action.outText(uData.unitName.." is above the maximum altitude of "..max_agl.."m AGL.", 1, true)
-        end
-        return true
-      else
-        return false
+        players_above_ceiling = players_above_ceiling + 1
       end
     end
   end
+  
+  if players_above_ceiling > 0 then
+    return above
+  else 
+    return not above
+  end
+  
 end
 
 --determine if any players are in a zone (not currently working)
