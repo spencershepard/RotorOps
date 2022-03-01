@@ -631,7 +631,7 @@ class RotorOpsMission:
             else:
                 return
 
-            if source_helo:
+            if source_helo and afg:
                 for unit in afg.units:
                     unit.pylons = source_helo.pylons
                     unit.livery_id = source_helo.livery_id
@@ -661,10 +661,10 @@ class RotorOpsMission:
                     group_size=group_size)
                 zone_attack(afg, airport)
 
-            if source_plane:
-                for unit in afg.units:
-                    unit.pylons = source_plane.pylons
-                    unit.livery_id = source_plane.livery_id
+                if source_plane:
+                    for unit in afg.units:
+                        unit.pylons = source_plane.pylons
+                        unit.livery_id = source_plane.livery_id
 
         if options["e_transport_helos"]:
             source_helo = None
@@ -690,10 +690,10 @@ class RotorOpsMission:
                 afg.late_activation = True
                 afg.units[0].skill = dcs.unit.Skill.Excellent
 
-            if source_helo:
-                for unit in afg.units:
-                    unit.pylons = source_helo.pylons
-                    unit.livery_id = source_helo.livery_id
+                if source_helo:
+                    for unit in afg.units:
+                        unit.pylons = source_helo.pylons
+                        unit.livery_id = source_helo.livery_id
 
     def scriptTriggerSetup(self, options):
 
