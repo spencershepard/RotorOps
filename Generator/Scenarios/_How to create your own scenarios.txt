@@ -39,3 +39,8 @@ Tips:
 -In "Defense" or with "Swap sides" option, USA and Russia ships, helicopters, planes, and ground units will swap countries. Static objects may not. Test it out.
 -Turn off or limit civilian road traffic.
 -Pay attention to rivers and bridges, as a far away bridge crossing may break routing if it's the only way across.  See the testing notes above.
+
+v0.6:
+You can now control the FARP spawning location and heading by adding a static object (such as a mark flag) with group name 'ALPHA' etc.  Same for staging area logistics site..but the group name should be 'STAGING'.  Change the object heading to better align with roads or map objects.  The flags for these must be CJTFB country.
+
+You can dynamically insert complex arangements of objects such as large bases with multiplayer spawns.  See the 'Imports' folder for more details.

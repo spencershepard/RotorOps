@@ -29,7 +29,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
     msg = QMessageBox()
     msg.setWindowTitle("Uncaught exception")
-    msg.setText("Oops, there was a problem.  Please check the log file or post it in the RotorOps discord where some helpful people will have a look.")
+    msg.setText("Oops, there was a problem.  Please check the log file for more details or post it in the RotorOps discord where some helpful people will have a look. \n\n" + str(exc_value))
     x = msg.exec_()
 
 
@@ -77,8 +77,6 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.version_label.setText("Version " + version_string)
 
-        self.prefs = None  # holds json from scenario preference files
-
 
     def connectSignalsSlots(self):
         self.action_generateMission.triggered.connect(self.generateMissionAction)
@@ -122,21 +120,21 @@ class Window(QMainWindow, Ui_MainWindow):
             self.red_forces_label.setText(defenders_text)
             self.blue_forces_label.setText(attackers_text)
 
-        self.applyScenarioPrefs()
+        self.applyScenarioConfig()
 
-    def loadScenarioPrefs(self, filename):
+    def loadScenarioConfig(self, filename):
         try:
             j = open(filename)
-            prefs = json.load(j)
+            config = json.load(j)
             j.close()
-            return prefs
+            return config
         except:
             return None
 
     def lockedSlot(self):
         return self.slot_template_comboBox.findText("Locked to Scenario")
 
-    def clearScenarioPrefs(self):
+    def clearScenarioConfig(self):
         # reset default states
         self.defense_checkBox.setEnabled(True)
         if self.lockedSlot():
@@ -145,16 +143,19 @@ class Window(QMainWindow, Ui_MainWindow):
         self.slot_template_comboBox.setEnabled(True)
         self.slot_template_comboBox.setCurrentIndex(0)
 
-    def applyScenarioPrefs(self):
+    def applyScenarioConfig(self):
 
-        if self.prefs['defense']['allowed'] == False:
+        if not self.config:
+            return
+
+        if self.config['defense']['allowed'] == False:
             self.defense_checkBox.setChecked(False)
             self.defense_checkBox.setEnabled(False)
-        elif self.prefs['offense']['allowed'] == False:
+        elif self.config['offense']['allowed'] == False:
             self.defense_checkBox.setChecked(True)
             self.defense_checkBox.setEnabled(False)
 
-        if self.prefs['defense']['player_spawn'] == "fixed":
+        if self.config['defense']['player_spawn'] == "fixed":
             self.slot_template_comboBox.addItem("Locked to Scenario")
             self.slot_template_comboBox.setCurrentIndex(self.lockedSlot())
             self.slot_template_comboBox.setEnabled(False)
@@ -180,11 +181,12 @@ class Window(QMainWindow, Ui_MainWindow):
         friendly_airports = True
         enemy_airports = True
 
-        self.clearScenarioPrefs()
-        prefs_filename = filename.removesuffix(".miz") + ".json"
-        self.prefs = self.loadScenarioPrefs(prefs_filename)
-        if self.prefs:
-            self.applyScenarioPrefs()
+        self.clearScenarioConfig()
+        config_filename = filename.removesuffix(".miz") + ".json"
+        self.config = self.loadScenarioConfig(config_filename)
+        if self.config:
+            self.applyScenarioConfig()
+            self.m.setConfig(self.config)
 
 
         for zone in zones:

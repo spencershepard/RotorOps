@@ -7,6 +7,8 @@ import random
 import RotorOpsGroups
 import RotorOpsUnits
 import RotorOpsUtils
+import RotorOpsConflict
+from RotorOpsImport import ImportObjects
 import time
 from MissionGenerator import logger
 
@@ -32,6 +34,7 @@ class RotorOpsMission:
         self.spawn_zones = {}
         self.scripts = {}
         self.res_map = {}
+        self.config = None
 
     class RotorOpsZone:
         def __init__(self, name: str, flag: int, position: dcs.point, size: int):
@@ -43,6 +46,9 @@ class RotorOpsMission:
 
     def getMission(self):
         return self.m
+
+    def setConfig(self,config):
+        self.config = config
 
     def addZone(self, zone_dict, zone: RotorOpsZone):
         zone_dict[zone.name] = zone
@@ -125,7 +131,10 @@ class RotorOpsMission:
 
         self.importObjects()
 
-        if not self.m.country(jtf_red) or not self.m.country(jtf_blue):
+        #todo: test
+        self.m.coalition.get("neutrals").add_country(dcs.countries.UnitedNationsPeacekeepers())
+
+        if not self.m.country(jtf_red) or not self.m.country(jtf_blue) or not self.m.country(dcs.countries.UnitedNationsPeacekeepers.name):
             failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + self.scenarios_dir
             return {"success": False, "failure_msg": failure_msg}
 
@@ -135,6 +144,8 @@ class RotorOpsMission:
         # Add coalitions (we may be able to add CJTF here instead of requiring templates to have objects of those coalitions)
         self.m.coalition.get("red").add_country(dcs.countries.Russia())
         self.m.coalition.get("blue").add_country(dcs.countries.USA())
+        # blue = self.m.coalition.get("blue")
+        # blue.add_country(dcs.countries.CombinedJointTaskForcesBlue())
 
         self.m.add_picture_blue(self.assets_dir + '/briefing1.png')
         self.m.add_picture_blue(self.assets_dir + '/briefing2.png')
@@ -168,16 +179,45 @@ class RotorOpsMission:
 
 
         #Populate Red zones with ground units
+
         for zone_name in red_zones:
             if red_forces["vehicles"]:
                     self.addGroundGroups(red_zones[zone_name], self.m.country(jtf_red), red_forces["vehicles"], options["red_quantity"])
 
             #Add red FARPS
+
             if options["zone_farps"] != "farp_never" and not options["defending"]:
-                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country(jtf_blue),
-                                                             self.m.country(jtf_blue),
-                                                              red_zones[zone_name].position,
-                                                              180, zone_name + " FARP", late_activation=True)
+                # RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.zone_farp(self.m, self.m.country(jtf_blue),
+                #                                              self.m.country(jtf_blue),
+                #                                               red_zones[zone_name].position,
+                #                                               180, zone_name + " FARP", late_activation=True)
+
+                #new_statics, new_vehicles, new_helicopters = i.copyAll(self.m, dcs.countries.UnitedNationsPeacekeepers.name, zone_name, red_zones[zone_name].position)
+
+                farp_flag = self.m.find_group(zone_name)
+
+                if farp_flag:
+                    farp_position = farp_flag.units[0].position
+                    farp_heading = farp_flag.units[0].heading
+                else:
+                    farp_position = red_zones[zone_name].position
+                    farp_heading = 0
+
+                farp = self.m.farp(self.m.country(jtf_blue), zone_name + " FARP", farp_position,
+                                   hidden=False, dead=False,
+                                   farp_type=dcs.unit.InvisibleFARP)
+
+                os.chdir(self.imports_dir)
+                if self.config and self.config["zone_farp_file"]:
+                    filename = self.config["zone_farp_file"]
+                else:
+                    filename = "FARP_DEFAULT_ZONE.miz"
+                i = ImportObjects(filename)
+                i.anchorByGroupName("ANCHOR")
+                farp_group = i.copyVehiclesAsGroup(self.m, jtf_blue, zone_name + " FARP Static", farp_position, farp_heading)
+                farp_group.late_activation = True
+
+
 
             if options["zone_protect_sams"]:
                 self.m.vehicle_group(
@@ -206,9 +246,24 @@ class RotorOpsMission:
 
             #add logistics sites
             if options["crates"] and zone_name in self.staging_zones:
-                RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country(jtf_blue),
-                                                              blue_zones[zone_name].position,
-                                                              180, zone_name)
+                # RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country(jtf_blue),
+                #                                               blue_zones[zone_name].position,
+                #                                               180, zone_name)
+                os.chdir(self.imports_dir)
+                staging_flag = self.m.find_group(zone_name)
+                if staging_flag:
+                    staging_position = staging_flag.units[0].position
+                    staging_heading = staging_flag.units[0].heading
+                else:
+                    staging_position = blue_zones[zone_name].position
+                    staging_heading = 0
+                i = ImportObjects("STAGING_LOGISITIC_HUB.miz")
+                i.anchorByGroupName("ANCHOR")
+                i.copyAll(self.m, jtf_blue, "Staging Logistics Zone",
+                                                   staging_position, staging_heading)
+
+
+
 
 
 
@@ -239,7 +294,7 @@ class RotorOpsMission:
 
         #add files and triggers necessary for RotorOps.lua script
         self.addResources(self.sound_directory, self.script_directory)
-        self.scriptTriggerSetup(options)
+        RotorOpsConflict.triggerSetup(self, options)
 
         # test adding static objects from a .miz
         #self.addStatics()
@@ -705,167 +760,34 @@ class RotorOpsMission:
                         unit.pylons = source_helo.pylons
                         unit.livery_id = source_helo.livery_id
 
-    def scriptTriggerSetup(self, options):
-
-        #get the boolean value from ui option and convert to lua string
-        def lb(var):
-            return str(options[var]).lower()
-
-        game_flag = 100
-        #Add the first trigger
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Scripts")
-        trig.rules.append(dcs.condition.TimeAfter(1))
-        trig.actions.append(dcs.action.DoScriptFile(self.scripts["mist_4_4_90.lua"]))
-        trig.actions.append(dcs.action.DoScriptFile(self.scripts["Splash_Damage_2_0.lua"]))
-        trig.actions.append(dcs.action.DoScriptFile(self.scripts["CTLD.lua"]))
-        trig.actions.append(dcs.action.DoScriptFile(self.scripts["RotorOps.lua"]))
-        script = ""
-        script = ("--OPTIONS HERE!\n\n" +
-            "RotorOps.CTLD_crates = " + lb("crates") + "\n\n" +
-            "RotorOps.CTLD_sound_effects = true\n\n" +
-            "RotorOps.force_offroad = " + lb("force_offroad") + "\n\n" +
-            "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
-            "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
-            "RotorOps.inf_spawn_messages = " + lb("inf_spawn_msgs") + "\n\n" +
-            "RotorOps.inf_spawns_per_zone = " + lb("inf_spawn_qty") + "\n\n" +
-            "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n")
-        if not options["smoke_pickup_zones"]:
-            script = script + 'RotorOps.pickup_zone_smoke = "none"\n\n'
-        trig.actions.append(dcs.action.DoScript(dcs.action.String((script))))
-        self.m.triggerrules.triggers.append(trig)
-
-        #Add the second trigger
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Zones")
-        trig.rules.append(dcs.condition.TimeAfter(2))
-        for s_zone in self.staging_zones:
-            trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.stagingZone('" + s_zone + "')")))
-        for c_zone in self.conflict_zones:
-            zone_flag = self.conflict_zones[c_zone].flag
-            trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.addZone('" + c_zone + "'," + str(zone_flag) + ")")))
-
-        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.setupConflict('" + str(game_flag) + "')")))
-
-        self.m.triggerrules.triggers.append(trig)
-
-        #Add the third trigger
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict Start")
-        trig.rules.append(dcs.condition.TimeAfter(10))
-        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
-        self.m.triggerrules.triggers.append(trig)
-
-        #Add generic zone-based triggers
-        for index, zone_name in enumerate(self.conflict_zones):
-            z_active_trig = dcs.triggers.TriggerOnce(comment= zone_name + " Active")
-            z_active_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
-            z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("--Add any action you want here!")))
-            self.m.triggerrules.triggers.append(z_active_trig)
-
-        #Zone protection SAMs
-        if options["zone_protect_sams"]:
-            for index, zone_name in enumerate(self.conflict_zones):
-                z_sams_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " SAMs")
-                z_sams_trig.actions.append(dcs.action.DoScript(dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protection SAM'))")))
-                self.m.triggerrules.triggers.append(z_sams_trig)
-
-        #Zone FARPS always
-        if options["zone_farps"] == "farp_always" and not options["defending"]:
-            for index, zone_name in enumerate(self.conflict_zones):
-                if index > 0:
-                    previous_zone = list(self.conflict_zones)[index - 1]
-                    if not self.m.country(jtf_blue).find_group(previous_zone + " FARP Static"):
-                        continue
-                    z_farps_trig = dcs.triggers.TriggerOnce(comment="Activate " + previous_zone + " FARP")
-                    z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
-                    z_farps_trig.actions.append(dcs.action.ActivateGroup(self.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                    #z_farps_trig.actions.append(dcs.action.SoundToAll(str(self.res_map['forward_base_established.ogg'])))
-                    z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
-                        "RotorOps.farpEstablished(" + str(index) + ")")))
-                    self.m.triggerrules.triggers.append(z_farps_trig)
-
-
-        #Zone FARPS conditional on staged units remaining
-        if options["zone_farps"] == "farp_gunits" and not options["defending"]:
-            for index, zone_name in enumerate(self.conflict_zones):
-                if index > 0:
-                    previous_zone = list(self.conflict_zones)[index - 1]
-                    if not self.m.country(jtf_blue).find_group(previous_zone + " FARP Static"):
-                        continue
-                    z_farps_trig = dcs.triggers.TriggerOnce(comment= "Activate " + previous_zone + " FARP")
-                    z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
-                    z_farps_trig.rules.append(dcs.condition.FlagIsMore(111, 20))
-                    z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String("--The 100 flag indicates which zone is active.  The 111 flag value is the percentage of staged units remaining")))
-                    z_farps_trig.actions.append(
-                        dcs.action.ActivateGroup(self.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                    #z_farps_trig.actions.append(dcs.action.SoundToAll(str(self.res_map['forward_base_established.ogg'])))
-                    z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
-                        "RotorOps.farpEstablished(" + str(index) + ")")))
-                    self.m.triggerrules.triggers.append(z_farps_trig)
 
 
 
-        #Add attack helos triggers
-        for index in range(options["e_attack_helos"]):
-            random_zone_obj = random.choice(list(self.conflict_zones.items()))
-            zone = random_zone_obj[1]
-            z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Attack Helo")
-            z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone.flag, 1))
-            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 90)))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("---Flag " + str(zone.flag) + " value represents the percentage of defending ground units remaining in zone. ")))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.spawnAttackHelos()")))
-            self.m.triggerrules.triggers.append(z_weak_trig)
-
-        #Add attack plane triggers
-        for index in range(options["e_attack_planes"]):
-            random_zone_obj = random.choice(list(self.conflict_zones.items()))
-            zone = random_zone_obj[1]
-            z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Attack Plane")
-            z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone.flag, 1))
-            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 90)))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("---Flag " + str(zone.flag) + " value represents the percentage of defending ground units remaining in zone. ")))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.spawnAttackPlanes()")))
-            self.m.triggerrules.triggers.append(z_weak_trig)
-
-        #Add transport helos triggers
-        for index in range(options["e_transport_helos"]):
-            random_zone_index = random.randrange(1, len(self.conflict_zones))
-            random_zone_obj = list(self.conflict_zones.items())[random_zone_index]
-            zone = random_zone_obj[1]
-            z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Transport Helo")
-            z_weak_trig.rules.append(dcs.condition.FlagEquals(game_flag, random_zone_index + 1))
-            z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 100)))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String(
-                "---Flag " + str(game_flag) + " value represents the index of the active zone. ")))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("---Flag " + str(zone.flag) + " value represents the percentage of defending ground units remaining in zone. ")))
-            z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.spawnTranspHelos(8," + str(options["transport_drop_qty"]) + ")")))
-            self.m.triggerrules.triggers.append(z_weak_trig)
-
-        #Add game won/lost triggers
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
-        trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
-        trig.actions.append(dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
-        self.m.triggerrules.triggers.append(trig)
-
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
-        trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
-        trig.actions.append(dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
-        self.m.triggerrules.triggers.append(trig)
-
-    #
-    # def addStatics(self):
-    #     os.chdir(self.home_dir + "/Generator/Statics")
-    #     logger.info("Looking for .miz files in '" + os.getcwd())
-    #     dest_point = self.conflict_zones["ALPHA"].position
-    #     grps = RotorOpsUtils.extractUnits.toPoint("test.miz", dest_point, 180)
-    #     for grp in grps:
-    #         self.m.country(jtf_blue).add_vehicle_group(grp)
 
     def importObjects(self):
         os.chdir(self.imports_dir)
         logger.info("Looking for import .miz files in '" + os.getcwd())
-        for group in self.m.country(jtf_blue).static_group:
-            prefix = "IMPORT-"
-            if group.name.find(prefix) == 0:
-                filename = group.name.removeprefix(prefix) + ".miz"
-                i = RotorOpsUtils.ImportObjects(filename)
-                i.anchorByGroupName("ANCHOR")
-                i.copyTo(self.m, group.units[0].name, group.units[0].position, group.units[0].heading)
+
+        for side in "red", "blue", "neutrals":
+            coalition = self.m.coalition.get(side)
+            for country_name in coalition.countries:
+                for group in self.m.country(country_name).static_group:
+                    prefix = "IMPORT-"
+                    if group.name.find(prefix) == 0:
+                        if group.units[0].name.find('IMPORT-') == 0:
+                            logger.error(
+                                group.units[0].name + " IMPORT group's unit name cannot start with 'IMPORT'.  Check the scenario template.")
+                            raise Exception("Scenario file error: " + group.units[0].name + " IMPORT group's unit name cannot start with 'IMPORT'")
+
+                        # trim the groupname to our filename convention
+                        filename = group.name.removeprefix(prefix)
+                        i = filename.find('-')
+                        if i > 8:
+                            filename = filename[0:i]
+                            print(filename)
+
+                        filename = filename + ".miz"
+                        i = ImportObjects(filename)
+                        i.anchorByGroupName("ANCHOR")
+                        new_statics, new_vehicles, new_helicopters = i.copyAll(self.m, country_name, group.units[0].name, group.units[0].position, group.units[0].heading)
+
