@@ -760,8 +760,7 @@ class RotorOpsMission:
 
 
 
-
-
+                        
     def importObjects(self):
         os.chdir(self.imports_dir)
         logger.info("Looking for import .miz files in '" + os.getcwd())
@@ -776,7 +775,7 @@ class RotorOpsMission:
                             logger.error(
                                 group.units[0].name + " IMPORT group's unit name cannot start with 'IMPORT'.  Check the scenario template.")
                             raise Exception("Scenario file error: " + group.units[0].name + " IMPORT group's unit name cannot start with 'IMPORT'")
-
+                            
                         # trim the groupname to our filename convention
                         filename = group.name.removeprefix(prefix)
                         i = filename.find('-')
