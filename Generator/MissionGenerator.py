@@ -6,6 +6,7 @@ import RotorOpsMission as ROps
 import RotorOpsUtils
 import RotorOpsUnits
 import logging
+import json
 
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QMainWindow, QMessageBox
@@ -28,7 +29,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
     msg = QMessageBox()
     msg.setWindowTitle("Uncaught exception")
-    msg.setText("Oops, there was a problem.  Please check the log file or post it in the RotorOps discord where some helpful people will have a look.")
+    msg.setText("Oops, there was a problem.  Please check the log file for more details or post it in the RotorOps discord where some helpful people will have a look. \n\n" + str(exc_value))
     x = msg.exec_()
 
 
@@ -36,7 +37,7 @@ sys.excepthook = handle_exception
 
 
 maj_version = 0
-minor_version = 4
+minor_version = 6
 version_string = str(maj_version) + "." + str(minor_version)
 scenarios = []
 red_forces_files = []
@@ -109,6 +110,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.slot_template_comboBox.addItem("Multiple Slots")
         for type in RotorOpsUnits.client_helos:
             self.slot_template_comboBox.addItem(type.id)
+        self.slot_template_comboBox.addItem("None")
 
     def defensiveModeChanged(self):
         if self.defense_checkBox.isChecked():
@@ -117,6 +119,49 @@ class Window(QMainWindow, Ui_MainWindow):
         else:
             self.red_forces_label.setText(defenders_text)
             self.blue_forces_label.setText(attackers_text)
+
+        self.applyScenarioConfig()
+
+    def loadScenarioConfig(self, filename):
+        try:
+            j = open(filename)
+            config = json.load(j)
+            j.close()
+            return config
+        except:
+            return None
+
+    def lockedSlot(self):
+        return self.slot_template_comboBox.findText("Locked to Scenario")
+
+    def clearScenarioConfig(self):
+        # reset default states
+        self.defense_checkBox.setEnabled(True)
+        if self.lockedSlot():
+            self.slot_template_comboBox.removeItem(self.lockedSlot())
+
+        self.slot_template_comboBox.setEnabled(True)
+        self.slot_template_comboBox.setCurrentIndex(0)
+
+    def applyScenarioConfig(self):
+
+        if not self.config:
+            return
+
+        if self.config['defense']['allowed'] == False:
+            self.defense_checkBox.setChecked(False)
+            self.defense_checkBox.setEnabled(False)
+        elif self.config['offense']['allowed'] == False:
+            self.defense_checkBox.setChecked(True)
+            self.defense_checkBox.setEnabled(False)
+
+        if self.config['defense']['player_spawn'] == "fixed":
+            self.slot_template_comboBox.addItem("Locked to Scenario")
+            self.slot_template_comboBox.setCurrentIndex(self.lockedSlot())
+            self.slot_template_comboBox.setEnabled(False)
+
+
+
 
 
     def scenarioChanged(self):
@@ -135,6 +180,14 @@ class Window(QMainWindow, Ui_MainWindow):
         #enemy_airports = source_mission.getCoalitionAirports("red")
         friendly_airports = True
         enemy_airports = True
+
+        self.clearScenarioConfig()
+        config_filename = filename.removesuffix(".miz") + ".json"
+        self.config = self.loadScenarioConfig(config_filename)
+        if self.config:
+            self.applyScenarioConfig()
+            self.m.setConfig(self.config)
+
 
         for zone in zones:
             if zone.name == "STAGING":
@@ -174,7 +227,6 @@ class Window(QMainWindow, Ui_MainWindow):
                 + "\n== BRIEFING ==\n\n"
                 + source_mission.description_text()
             )
-        #self.description_textBrowser.setText("File error occured.")
 
 
     def generateMissionAction(self):

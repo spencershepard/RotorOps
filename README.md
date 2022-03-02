@@ -1,9 +1,12 @@
+![alt text](https://github.com/spencershepard/RotorOps/blob/main/Generator/assets/briefing1.png?raw=true)
+
 # What is RotorOps?
 RotorOps is a mission generator and gameplay script for DCS: World.  At its heart is a game type called Conflict, which requires helicopter operations to win battles on the ground.  This is a fun territory capture game that promotes focus on individual 'conflict zones'.  
 
 At the core of the RotorOps script are AI enhancements that provide a dynamic ground war by causing automatic conflicts between ground forces and a progression of the front line.
 
-![alt text](https://raw.githubusercontent.com/spencershepard/RotorOps/develop/documentation/images/rotorops%ss%200_3.png?raw=true)
+![alt text](https://github.com/spencershepard/RotorOps/blob/main/documentation/images/rotorops%20ss%200_3.PNG?raw=true)
+
 
 # Key Features:
 - Unique helicopter-focused gameplay
@@ -22,6 +25,7 @@ At the core of the RotorOps script are AI enhancements that provide a dynamic gr
 
 ## Demo Missions
 RotorOps: Aleppo Under Siege  https://www.digitalcombatsimulator.com/en/files/3320079/
+
 Rota Landing (Mr. Nobody) https://www.digitalcombatsimulator.com/en/files/3320186/
 
 
@@ -57,25 +61,19 @@ Easily add your own templates for friendly/enemy ground units directly in the DC
 
 Create your own scenarios for the RotorOps mission generator,  using the DCS mission editor.
 
-### RotorOps Mission Creator Guide:
-For more detailed information on how the script works, see this wiki:
-https://github.com/spencershepard/RotorOps/wiki/RotorOps:-Mission-Creator-Guide
-
 ***
 
-### Get in touch!
-
-https://discord.gg/HFqjrZV9xD
-
-### Support Development
-
-https://www.patreon.com/spencershepard
 
 ### Developers
 We welcome contributors to this new project!  Please get in touch on Discord with new ideas or pickup/create an issue in this repo.  
 
 
+### RotorOps Mission Creator Guide:
+For more detailed information on how the script works, see this wiki:
+https://github.com/spencershepard/RotorOps/wiki/RotorOps:-Mission-Creator-Guide
+
 ***
+### Thanks to
 RotorOps uses MIST and integrates CTLD:
 
 https://github.com/mrSkortch/MissionScriptingTools
@@ -85,3 +83,17 @@ https://github.com/ciribob/DCS-CTLD
 The mission generator would not be possible without PyDCS:
 
 https://github.com/pydcs/dcs
+
+### Thanks to contributors
+
+Shagrat: For amazing templates and testing for our FARPs, FOBs, and other mission assets.
+
+Mr. Nobody: For awesome scenario and forces templates and helping to indroduce the DCS world to RotorOps.
+
+***
+
+# Join our Discord!
+
+Chat about anything RotorOps or join up to fly!
+
+https://discord.gg/HFqjrZV9xD
