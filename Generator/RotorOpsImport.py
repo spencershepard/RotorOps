@@ -43,6 +43,8 @@ class ImportObjects:
             self.source_heading = group.units[0].heading
         else:
             logger.warning("Unable to find group for anchor.")
+            raise Exception(
+                "Import template file error: " + self.mizfile + " does not contain a group called " + group_name)
 
     def extractUnits(self):
 

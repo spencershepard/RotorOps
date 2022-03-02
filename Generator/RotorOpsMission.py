@@ -257,7 +257,7 @@ class RotorOpsMission:
                 else:
                     staging_position = blue_zones[zone_name].position
                     staging_heading = 0
-                i = ImportObjects("STAGING_LOGISITIC_HUB.miz")
+                i = ImportObjects("STAGING_LOGISTIC_HUB.miz")
                 i.anchorByGroupName("ANCHOR")
                 i.copyAll(self.m, jtf_blue, "Staging Logistics Zone",
                                                    staging_position, staging_heading)
@@ -296,8 +296,6 @@ class RotorOpsMission:
         self.addResources(self.sound_directory, self.script_directory)
         RotorOpsConflict.triggerSetup(self, options)
 
-        # test adding static objects from a .miz
-        #self.addStatics()
 
         #Save the mission file
         os.chdir(self.output_dir)

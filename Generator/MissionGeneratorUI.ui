@@ -597,6 +597,9 @@ p, li { white-space: pre-wrap; }
     </property>
    </widget>
    <widget class="QCheckBox" name="defense_checkBox">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>60</x>
@@ -612,6 +615,9 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="text">
      <string>Defensive Mode</string>
+    </property>
+    <property name="checkable">
+     <bool>true</bool>
     </property>
    </widget>
    <widget class="QSpinBox" name="e_attack_helos_spinBox">
