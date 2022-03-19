@@ -4,6 +4,7 @@ import dcs
 import os
 import random
 
+
 import RotorOpsGroups
 import RotorOpsUnits
 import RotorOpsUtils
@@ -11,6 +12,7 @@ import RotorOpsConflict
 from RotorOpsImport import ImportObjects
 import time
 from MissionGenerator import logger
+from MissionGenerator import directories
 
 jtf_red = "Combined Joint Task Forces Red"
 jtf_blue = "Combined Joint Task Forces Blue"
@@ -19,15 +21,15 @@ class RotorOpsMission:
 
     def __init__(self):
         self.m = dcs.mission.Mission()
-        os.chdir("../")
-        self.home_dir = os.getcwd()
-        self.scenarios_dir = self.home_dir + "\Generator\Scenarios"
-        self.forces_dir = self.home_dir + "\Generator\Forces"
-        self.script_directory = self.home_dir
-        self.sound_directory = self.home_dir + "\sound\embedded"
-        self.output_dir = self.home_dir + "\Generator\Output"
-        self.assets_dir = self.home_dir + "\Generator/assets"
-        self.imports_dir = self.home_dir + "\Generator\Imports"
+        # os.chdir("../")
+        # directories.home_dir = os.getcwd()
+        # directories.scenarios = directories.home_dir + "\Generator\Scenarios"
+        # directories.forces = directories.home_dir + "\Generator\Forces"
+        # directories.scripts = directories.home_dir
+        # directories.sound = directories.home_dir + "\sound\embedded"
+        # directories.output = directories.home_dir + "\Generator\Output"
+        # directories.assets = directories.home_dir + "\Generator/assets"
+        # directories.imports = directories.home_dir + "\Generator\Imports"
 
         self.conflict_zones = {}
         self.staging_zones = {}
@@ -89,8 +91,8 @@ class RotorOpsMission:
         attack_planes = []
         fighter_planes = []
 
-        os.chdir(self.home_dir)
-        os.chdir(self.forces_dir + "/" + side)
+        os.chdir(directories.home_dir)
+        os.chdir(directories.forces + "/" + side)
         logger.info("Looking for " + side + " Forces files in '" + os.getcwd())
         source_mission = dcs.mission.Mission()
 
@@ -124,8 +126,10 @@ class RotorOpsMission:
             logger.error("Failed to load units from " + filename)
 
     def generateMission(self, options):
-        os.chdir(self.scenarios_dir)
+        os.chdir(directories.scenarios)
         logger.info("Looking for mission files in " + os.getcwd())
+
+
 
         self.m.load_file(options["scenario_filename"])
 
@@ -135,7 +139,7 @@ class RotorOpsMission:
         self.m.coalition.get("neutrals").add_country(dcs.countries.UnitedNationsPeacekeepers())
 
         if not self.m.country(jtf_red) or not self.m.country(jtf_blue) or not self.m.country(dcs.countries.UnitedNationsPeacekeepers.name):
-            failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + self.scenarios_dir
+            failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + directories.scenarios
             return {"success": False, "failure_msg": failure_msg}
 
         red_forces = self.getUnitsFromMiz(options["red_forces_filename"], "red")
@@ -147,8 +151,8 @@ class RotorOpsMission:
         # blue = self.m.coalition.get("blue")
         # blue.add_country(dcs.countries.CombinedJointTaskForcesBlue())
 
-        self.m.add_picture_blue(self.assets_dir + '/briefing1.png')
-        self.m.add_picture_blue(self.assets_dir + '/briefing2.png')
+        self.m.add_picture_blue(directories.assets + '/briefing1.png')
+        self.m.add_picture_blue(directories.assets + '/briefing2.png')
 
 
         # add zones to target mission
@@ -207,7 +211,7 @@ class RotorOpsMission:
                                    hidden=False, dead=False,
                                    farp_type=dcs.unit.InvisibleFARP)
 
-                os.chdir(self.imports_dir)
+                os.chdir(directories.imports)
                 if self.config and self.config["zone_farp_file"]:
                     filename = self.config["zone_farp_file"]
                 else:
@@ -249,7 +253,7 @@ class RotorOpsMission:
                 # RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country(jtf_blue),
                 #                                               blue_zones[zone_name].position,
                 #                                               180, zone_name)
-                os.chdir(self.imports_dir)
+                os.chdir(directories.imports)
                 staging_flag = self.m.find_group(zone_name)
                 if staging_flag:
                     staging_position = staging_flag.units[0].position
@@ -293,15 +297,15 @@ class RotorOpsMission:
         self.m.map.zoom = 100000
 
         #add files and triggers necessary for RotorOps.lua script
-        self.addResources(self.sound_directory, self.script_directory)
+        self.addResources(directories.sound, directories.scripts)
         RotorOpsConflict.triggerSetup(self, options)
 
 
         #Save the mission file
-        os.chdir(self.output_dir)
+        os.chdir(directories.output)
         output_filename = options["scenario_filename"].removesuffix('.miz') + " " + time.strftime('%a%H%M%S') + '.miz'
         success = self.m.save(output_filename)
-        return {"success": success, "filename": output_filename, "directory": self.output_dir} #let the UI know the result
+        return {"success": success, "filename": output_filename, "directory": directories.output} #let the UI know the result
 
     def addGroundGroups(self, zone, _country, groups, quantity):
         for a in range(0, quantity):
@@ -344,8 +348,10 @@ class RotorOpsMission:
     def getParking(self, airport, aircraft, alt_airports=None, group_size=1):
 
         if len(airport.free_parking_slots(aircraft)) >= group_size:
-            if not (aircraft.id in dcs.planes.plane_map and len(airport.runways) == 0):
+            if not (aircraft.id in dcs.planes.plane_map and (len(airport.runways) == 0 or airport.runways[0].ils is None)):
                 return airport
+
+
         if alt_airports:
             for airport in alt_airports:
                 if len(airport.free_parking_slots(aircraft)) >= group_size:
@@ -483,7 +489,7 @@ class RotorOpsMission:
                 if farp.units[0].type == 'Invisible FARP':
                     fg.points[0].action = dcs.point.PointAction.FromGroundArea
                     fg.points[0].type = "TakeOffGround"
-                    fg.units[0].position = fg.units[0].position.point_from_heading(heading, 30)
+                    fg.units[0].position = fg.units[0].position.point_from_heading(heading, 20)
                     heading += 90
             else:
                 fg = self.m.flight_group_from_airport(self.m.country(jtf_blue), primary_f_airport.name + " " + helotype.id, helotype,
@@ -508,12 +514,12 @@ class RotorOpsMission:
             return dcs.mapping.Point(x1, y1), heading, race_dist
 
         @staticmethod
-        def perpRacetrack(enemy_heading, friendly_pt):
+        def perpRacetrack(enemy_heading, friendly_pt, terrain):
             heading = enemy_heading + random.randrange(70,110)
             race_dist = random.randrange(40 * 1000, 80 * 1000)
             center_pt = dcs.mapping.point_from_heading(friendly_pt.x, friendly_pt.y, enemy_heading - random.randrange(140, 220), 10000)
             pt1 = dcs.mapping.point_from_heading(center_pt[0], center_pt[1], enemy_heading - 90, random.randrange(20 * 1000, 40 * 1000))
-            return dcs.mapping.Point(pt1[0], pt1[1]), heading, race_dist
+            return dcs.mapping.Point(pt1[0], pt1[1], terrain), heading, race_dist
 
     def addFlights(self, options, red_forces, blue_forces):
         combinedJointTaskForcesBlue = self.m.country(dcs.countries.CombinedJointTaskForcesBlue.name)
@@ -543,7 +549,7 @@ class RotorOpsMission:
             awacs_name = "AWACS"
             awacs_freq = 266
             #pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position)
+            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position, self.m.terrain)
             awacs = self.m.awacs_flight(
                 combinedJointTaskForcesBlue,
                 awacs_name,
@@ -589,7 +595,7 @@ class RotorOpsMission:
             t2_freq = 256
             t2_tac = "101Y"
             #pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position)
+            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position, self.m.terrain)
             refuel_net = self.m.refuel_flight(
                 combinedJointTaskForcesBlue,
                 t1_name,
@@ -605,7 +611,7 @@ class RotorOpsMission:
                 tacanchannel=t1_tac)
 
             #pos, heading, race_dist = self.TrainingScenario.random_orbit(orbit_rect)
-            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position)
+            pos, heading, race_dist = self.TrainingScenario.perpRacetrack(e_airport_heading, primary_f_airport.position, self.m.terrain)
             refuel_rod = self.m.refuel_flight(
                 combinedJointTaskForcesBlue,
                 t2_name,
@@ -763,7 +769,7 @@ class RotorOpsMission:
 
 
     def importObjects(self):
-        os.chdir(self.imports_dir)
+        os.chdir(directories.imports)
         logger.info("Looking for import .miz files in '" + os.getcwd())
 
         for side in "red", "blue", "neutrals":
