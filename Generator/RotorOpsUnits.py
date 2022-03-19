@@ -2,7 +2,7 @@ import dcs
 
 client_helos = [
     dcs.helicopters.UH_1H,
-    dcs.helicopters.Mi_8MT,
+    dcs.helicopters.AH_64D_BLK_II,
     dcs.helicopters.Mi_24P,
     dcs.helicopters.Ka_50,
 ]

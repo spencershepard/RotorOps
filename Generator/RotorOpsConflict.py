@@ -14,7 +14,8 @@ def triggerSetup(rops, options):
     # Add the first trigger
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Scripts")
     trig.rules.append(dcs.condition.TimeAfter(1))
-    trig.actions.append(dcs.action.DoScriptFile(rops.scripts["mist_4_4_90.lua"]))
+    #trig.actions.append(dcs.action.DoScriptFile(rops.scripts["mist_4_4_90.lua"]))
+    trig.actions.append(dcs.action.DoScriptFile(rops.scripts["mist_4_5_107_grimm.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["Splash_Damage_2_0.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["CTLD.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOps.lua"]))

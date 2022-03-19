@@ -5,16 +5,13 @@ from MissionGenerator import logger
 
 class ImportObjects:
 
-    def __init__(self, mizfile, source_point=None, source_heading=0):
+    def __init__(self, mizfile):
         self.pad_unit = True #todo: use this to hold a unit for helicopter placement on ships ie flight_group_from_unit
         logger.info("Importing objects from " + mizfile)
         self.source_mission = dcs.mission.Mission()
         self.source_mission.load_file(mizfile)
-        self.source_heading = source_heading
-        if source_point:
-            self.source_point = source_point
-        else:
-            self.source_point = dcs.Point(self.source_mission.terrain.bullseye_blue["x"], self.source_mission.terrain.bullseye_blue["y"])
+        self.source_heading = None
+        self.source_point = None
         self.statics = []
         self.vehicles = []
         self.helicopters = []

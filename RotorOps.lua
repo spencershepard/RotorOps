@@ -747,11 +747,25 @@ function RotorOps.aiExecute(vars)
 --  if vars.zone then zone = vars.zone end
 
   
-  if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+--error after Apache update  
+--  if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+--    debugMsg(group_name.." no longer exists")
+--    RotorOps.ai_tasks[group_name] = nil
+--    return
+--  end  
+
+  if Group.getByName(group_name) then
+    if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+      debugMsg(group_name.." no longer exists")
+      RotorOps.ai_tasks[group_name] = nil
+      return
+    end
+  else
     debugMsg(group_name.." no longer exists")
     RotorOps.ai_tasks[group_name] = nil
-    return
-  end  
+  end
+
+
   
   local same_zone = false
   if zone ~= nil then
@@ -1499,9 +1513,9 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
   
 end
 
---- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS
+--- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS (don't forget that DCS lua predicate functions should 'return' these function calls)
 
---determine if any players are above a defined ceiling above ground level. If 'above' parameter is false, function will return true if no players above ceiling
+--determine if any human players are above a defined ceiling above ground level. If 'above' parameter is false, function will return true if no players above ceiling
 function RotorOps.predPlayerMaxAGL(max_agl, above) 
   local players_above_ceiling = 0
   
@@ -1525,7 +1539,7 @@ function RotorOps.predPlayerMaxAGL(max_agl, above)
   
 end
 
---determine if any players are in a zone (not currently working)
+--determine if any human players are in a zone
 function RotorOps.predPlayerInZone(zone_name)
   local players_in_zone = 0
   for uName, uData in pairs(mist.DBs.humansByName) do
