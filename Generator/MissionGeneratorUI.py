@@ -534,7 +534,7 @@ class Ui_MainWindow(object):
         self.actionAll.setChecked(True)
         self.actionAll.setObjectName("actionAll")
         self.actionMultiplayer = QtWidgets.QAction(MainWindow)
-        self.actionMultiplayer.setCheckable(True)
+        self.actionMultiplayer.setCheckable(False)
         self.actionMultiplayer.setObjectName("actionMultiplayer")
         self.actionAll_2 = QtWidgets.QAction(MainWindow)
         self.actionAll_2.setCheckable(True)

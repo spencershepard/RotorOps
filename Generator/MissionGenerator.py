@@ -67,7 +67,7 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_exception
 
-
+build = 1
 maj_version = 1
 minor_version = 1
 version_string = str(maj_version) + "." + str(minor_version)
@@ -345,12 +345,27 @@ class Window(QMainWindow, Ui_MainWindow):
     def nextScenario(self):
         self.scenario_comboBox.setCurrentIndex((self.scenario_comboBox.currentIndex() + 1))
 
+    def checkVersion(self):
+        try:
+            url = user_files_url + 'versions.yaml'
+            r = requests.get(url, allow_redirects=False)
+            v = yaml.safe_load(r.content)
+            print(v["build"])
+            avail_build = v["build"]
+            if avail_build > build:
+                msg = QMessageBox()
+                msg.setWindowTitle("Update Available")
+                msg.setText(v["description"])
+                x = msg.exec_()
+        except:
+            logger.error("Online version check failed.")
+
+
     def loadOnlineContent(self):
         url = user_files_url + 'directory.yaml'
         r = requests.get(url, allow_redirects=False)
         user_files = yaml.safe_load(r.content)
         count = 0
-        #todo: try/catch/fail here
 
         # Download scenarios files
         os.chdir(directories.scenarios)
@@ -403,6 +418,7 @@ if __name__ == "__main__":
     win = Window()
     # win.show()
     # win.loadOnlineContent()
+    win.checkVersion()
 
 
     qtmodern.styles.dark(app)

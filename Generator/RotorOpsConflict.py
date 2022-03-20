@@ -65,8 +65,9 @@ def triggerSetup(rops, options):
     if options["zone_protect_sams"]:
         for index, zone_name in enumerate(rops.conflict_zones):
             z_sams_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " SAMs")
+            z_sams_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
             z_sams_trig.actions.append(dcs.action.DoScript(
-                dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protection SAM'))")))
+                dcs.action.String("Group.destroy(Group.getByName('Static " + zone_name + " Protection SAM'))")))
             rops.m.triggerrules.triggers.append(z_sams_trig)
 
     # Zone FARPS always
