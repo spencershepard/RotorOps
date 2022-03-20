@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.2.6"
+RotorOps.version = "1.2.7"
 local debug = true
 
 
@@ -345,6 +345,7 @@ end
 function RotorOps.isUnitInZone(unit, zone_name)
   local zone = trigger.misc.getZone(zone_name)
   local distance = getDistance(unit:getPoint(), zone.point)
+  --local distance = mist.utils.get2DDist(unit:getPoint(), zone.point)
   if distance <= zone.radius then
     return true
   else
@@ -746,11 +747,25 @@ function RotorOps.aiExecute(vars)
 --  if vars.zone then zone = vars.zone end
 
   
-  if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+--error after Apache update  
+--  if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+--    debugMsg(group_name.." no longer exists")
+--    RotorOps.ai_tasks[group_name] = nil
+--    return
+--  end  
+
+  if Group.getByName(group_name) then
+    if Group.isExist(Group.getByName(group_name)) ~= true or #Group.getByName(group_name):getUnits() < 1 then
+      debugMsg(group_name.." no longer exists")
+      RotorOps.ai_tasks[group_name] = nil
+      return
+    end
+  else
     debugMsg(group_name.." no longer exists")
     RotorOps.ai_tasks[group_name] = nil
-    return
-  end  
+  end
+
+
   
   local same_zone = false
   if zone ~= nil then
@@ -1497,3 +1512,46 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
   
   
 end
+
+--- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS (don't forget that DCS lua predicate functions should 'return' these function calls)
+
+--determine if any human players are above a defined ceiling above ground level. If 'above' parameter is false, function will return true if no players above ceiling
+function RotorOps.predPlayerMaxAGL(max_agl, above) 
+  local players_above_ceiling = 0
+  
+  for uName, uData in pairs(mist.DBs.humansByName) do
+    local player_unit = Unit.getByName(uData.unitName)
+    if player_unit then
+      local player_pos = player_unit:getPosition().p
+      local terrain_height = land.getHeight({x = player_pos.x, y = player_pos.z})
+      local player_agl = player_pos.y - terrain_height
+      if player_agl > max_agl then
+        players_above_ceiling = players_above_ceiling + 1
+      end
+    end
+  end
+  
+  if players_above_ceiling > 0 then
+    return above
+  else 
+    return not above
+  end
+  
+end
+
+--determine if any human players are in a zone
+function RotorOps.predPlayerInZone(zone_name)
+  local players_in_zone = 0
+  for uName, uData in pairs(mist.DBs.humansByName) do
+    local player_unit = Unit.getByName(uData.unitName)
+    if player_unit and RotorOps.isUnitInZone(player_unit, zone_name) then
+      players_in_zone = players_in_zone + 1
+    end
+  end
+  if players_in_zone > 0 then
+    return true
+  else
+    return false
+  end
+end
+

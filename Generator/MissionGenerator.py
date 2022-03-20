@@ -2,23 +2,56 @@ import math
 import sys
 import os
 import dcs
+from PyQt5.QtCore import QCoreApplication
+from PyQt5.uic.properties import QtCore
+
 import RotorOpsMission as ROps
 import RotorOpsUtils
 import RotorOpsUnits
 import logging
+import json
+import yaml
+import requests
 
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QMainWindow, QMessageBox
 )
 from PyQt5 import QtGui
+from PyQt5 import Qt, QtCore
 from MissionGeneratorUI import Ui_MainWindow
 
+import qtmodern.styles
+import qtmodern.windows
 
 #Setup logfile and exception handler
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='generator.log', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 handler = logging.StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
+
+user_files_url = 'https://dcs-helicopters.com/user-files/'
+
+class directories:
+    home_dir = scenarios = forces = scripts = sound = output = assets = imports = None
+
+    @classmethod
+    def find(cls):
+        current_dir = os.getcwd()
+        if os.path.basename(os.getcwd()) == "Generator":
+            os.chdir("..")
+        cls.home_dir = os.getcwd()
+        cls.scenarios = cls.home_dir + "\Generator\Scenarios"
+        cls.forces = cls.home_dir + "\Generator\Forces"
+        cls.scripts = cls.home_dir
+        cls.sound = cls.home_dir + "\sound\embedded"
+        cls.output = cls.home_dir + "\Generator\Output"
+        cls.assets = cls.home_dir + "\Generator/assets"
+        cls.imports = cls.home_dir + "\Generator\Imports"
+        os.chdir(current_dir)
+
+
+directories.find()
+
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt): #example of handling error subclasses
@@ -28,15 +61,15 @@ def handle_exception(exc_type, exc_value, exc_traceback):
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
     msg = QMessageBox()
     msg.setWindowTitle("Uncaught exception")
-    msg.setText("Oops, there was a problem.  Please check the log file or post it in the RotorOps discord where some helpful people will have a look.")
+    msg.setText("Oops, there was a problem.  Please check the log file for more details or post it in the RotorOps discord where some helpful people will have a look. \n\n" + str(exc_value))
     x = msg.exec_()
 
 
 sys.excepthook = handle_exception
 
-
-maj_version = 0
-minor_version = 4
+build = 1
+maj_version = 1
+minor_version = 1
 version_string = str(maj_version) + "." + str(minor_version)
 scenarios = []
 red_forces_files = []
@@ -54,8 +87,8 @@ class Window(QMainWindow, Ui_MainWindow):
 
         if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
             logger.info('running in a PyInstaller bundle')
-            home_dir = os.getcwd()
-            os.chdir(home_dir + "/Generator")
+            qtmodern.styles._STYLESHEET = directories.assets + '/style.qss'
+            qtmodern.windows._FL_STYLESHEET = directories.assets + '/frameless.qss'
         else:
             logger.info('running in a normal Python process')
 
@@ -68,9 +101,9 @@ class Window(QMainWindow, Ui_MainWindow):
         self.populateForces("blue", self.blueforces_comboBox, blue_forces_files)
         self.populateSlotSelection()
 
-        self.blue_forces_label.setText(attackers_text)
-        self.red_forces_label.setText(defenders_text)
-        self.background_label.setPixmap(QtGui.QPixmap(self.m.assets_dir + "/background.PNG"))
+        # self.blue_forces_label.setText(attackers_text)
+        # self.red_forces_label.setText(defenders_text)
+        self.background_label.setPixmap(QtGui.QPixmap(directories.assets + "/rotorops-dkgray.png"))
         self.statusbar.setStyleSheet(
             "QStatusBar{padding-left:5px;color:black;font-weight:bold;}")
 
@@ -81,9 +114,11 @@ class Window(QMainWindow, Ui_MainWindow):
         self.action_generateMission.triggered.connect(self.generateMissionAction)
         self.action_scenarioSelected.triggered.connect(self.scenarioChanged)
         self.action_defensiveModeChanged.triggered.connect(self.defensiveModeChanged)
+        self.action_nextScenario.triggered.connect(self.nextScenario)
+        self.action_prevScenario.triggered.connect(self.prevScenario)
 
     def populateScenarios(self):
-        os.chdir(self.m.scenarios_dir)
+        os.chdir(directories.scenarios)
         path = os.getcwd()
         dir_list = os.listdir(path)
         logger.info("Looking for mission files in " + path)
@@ -94,8 +129,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 self.scenario_comboBox.addItem(filename.removesuffix('.miz'))
 
     def populateForces(self, side, combobox, files_list):
-        os.chdir(self.m.home_dir)
-        os.chdir(self.m.forces_dir + "/" + side)
+        os.chdir(directories.home_dir)
+        os.chdir(directories.forces + "/" + side)
         path = os.getcwd()
         dir_list = os.listdir(path)
         logger.info("Looking for " + side + " Forces files in '" + path)
@@ -109,18 +144,63 @@ class Window(QMainWindow, Ui_MainWindow):
         self.slot_template_comboBox.addItem("Multiple Slots")
         for type in RotorOpsUnits.client_helos:
             self.slot_template_comboBox.addItem(type.id)
+        self.slot_template_comboBox.addItem("None")
 
     def defensiveModeChanged(self):
-        if self.defense_checkBox.isChecked():
-            self.red_forces_label.setText(attackers_text)
-            self.blue_forces_label.setText(defenders_text)
-        else:
-            self.red_forces_label.setText(defenders_text)
-            self.blue_forces_label.setText(attackers_text)
+        # if self.defense_checkBox.isChecked():
+        #     self.red_forces_label.setText(attackers_text)
+        #     self.blue_forces_label.setText(defenders_text)
+        # else:
+        #     self.red_forces_label.setText(defenders_text)
+        #     self.blue_forces_label.setText(attackers_text)
+
+        self.applyScenarioConfig()
+
+
+    def loadScenarioConfig(self, filename):
+        try:
+            j = open(filename)
+            config = json.load(j)
+            j.close()
+            return config
+        except:
+            return None
+
+    def lockedSlot(self):
+        return self.slot_template_comboBox.findText("Locked to Scenario")
+
+    def clearScenarioConfig(self):
+        # reset default states
+        self.defense_checkBox.setEnabled(True)
+        if self.lockedSlot():
+            self.slot_template_comboBox.removeItem(self.lockedSlot())
+
+        self.slot_template_comboBox.setEnabled(True)
+        self.slot_template_comboBox.setCurrentIndex(0)
+
+    def applyScenarioConfig(self):
+
+        if not self.config:
+            return
+
+        if self.config['defense']['allowed'] == False:
+            self.defense_checkBox.setChecked(False)
+            self.defense_checkBox.setEnabled(False)
+        elif self.config['offense']['allowed'] == False:
+            self.defense_checkBox.setChecked(True)
+            self.defense_checkBox.setEnabled(False)
+
+        if self.config['defense']['player_spawn'] == "fixed":
+            self.slot_template_comboBox.addItem("Locked to Scenario")
+            self.slot_template_comboBox.setCurrentIndex(self.lockedSlot())
+            self.slot_template_comboBox.setEnabled(False)
+
+
+
 
 
     def scenarioChanged(self):
-        os.chdir(self.m.scenarios_dir)
+        os.chdir(directories.scenarios)
         filename = scenarios[self.scenario_comboBox.currentIndex()]
         source_mission = dcs.mission.Mission()
         source_mission.load_file(filename)
@@ -135,6 +215,14 @@ class Window(QMainWindow, Ui_MainWindow):
         #enemy_airports = source_mission.getCoalitionAirports("red")
         friendly_airports = True
         enemy_airports = True
+
+        self.clearScenarioConfig()
+        config_filename = filename.removesuffix(".miz") + ".json"
+        self.config = self.loadScenarioConfig(config_filename)
+        if self.config:
+            self.applyScenarioConfig()
+            self.m.setConfig(self.config)
+
 
         for zone in zones:
             if zone.name == "STAGING":
@@ -174,14 +262,23 @@ class Window(QMainWindow, Ui_MainWindow):
                 + "\n== BRIEFING ==\n\n"
                 + source_mission.description_text()
             )
-        #self.description_textBrowser.setText("File error occured.")
+
+        path = directories.scenarios + "/" + filename.removesuffix(".miz") + ".jpg"
+        if os.path.isfile(path):
+            self.missionImage.setPixmap(QtGui.QPixmap(path))
+        else:
+            self.missionImage.setPixmap(QtGui.QPixmap(directories.assets + "/briefing1.png"))
+
+
 
 
     def generateMissionAction(self):
         red_forces_filename = red_forces_files[self.redforces_comboBox.currentIndex()]
         blue_forces_filename = blue_forces_files[self.blueforces_comboBox.currentIndex()]
         scenario_filename = scenarios[self.scenario_comboBox.currentIndex()]
+        source = "offline"
         data = {
+                "source": source,
                 "scenario_filename": scenario_filename,
                 "red_forces_filename": red_forces_filename,
                 "blue_forces_filename": blue_forces_filename,
@@ -206,7 +303,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "transport_drop_qty": self.troop_drop_spinBox.value(),
                 "smoke_pickup_zones": self.smoke_pickup_zone_checkBox.isChecked(),
                 }
-        os.chdir(self.m.home_dir + '/Generator')
+        os.chdir(directories.home_dir + '/Generator')
         n = ROps.RotorOpsMission()
         result = n.generateMission(data)
         logger.info("Generating mission with options:")
@@ -222,7 +319,7 @@ class Window(QMainWindow, Ui_MainWindow):
             msg = QMessageBox()
             msg.setWindowTitle("Mission Generated")
             msg.setText("Awesome, your mission is ready! It's located in this directory: \n" +
-                        self.m.output_dir + "\n" +
+                        directories.output + "\n" +
                         "\n" +
                         "Next, you should use the DCS Mission Editor to fine tune unit placements.  Don't be afraid to edit the missions that this generator produces. \n" +
                         "\n" +
@@ -242,13 +339,90 @@ class Window(QMainWindow, Ui_MainWindow):
             msg.setText(result["failure_msg"])
             x = msg.exec_()
 
+    def prevScenario(self):
+        self.scenario_comboBox.setCurrentIndex((self.scenario_comboBox.currentIndex() - 1))
+
+    def nextScenario(self):
+        self.scenario_comboBox.setCurrentIndex((self.scenario_comboBox.currentIndex() + 1))
+
+    def checkVersion(self):
+        try:
+            url = user_files_url + 'versions.yaml'
+            r = requests.get(url, allow_redirects=False)
+            v = yaml.safe_load(r.content)
+            print(v["build"])
+            avail_build = v["build"]
+            if avail_build > build:
+                msg = QMessageBox()
+                msg.setWindowTitle("Update Available")
+                msg.setText(v["description"])
+                x = msg.exec_()
+        except:
+            logger.error("Online version check failed.")
+
+
+    def loadOnlineContent(self):
+        url = user_files_url + 'directory.yaml'
+        r = requests.get(url, allow_redirects=False)
+        user_files = yaml.safe_load(r.content)
+        count = 0
+
+        # Download scenarios files
+        os.chdir(directories.scenarios)
+        if user_files["scenarios"]["files"]:
+            for filename in user_files["scenarios"]["files"]:
+                url = user_files_url + user_files["scenarios"]["dir"] + '/' + filename
+                r = requests.get(url, allow_redirects=False)
+                open(filename, 'wb').write(r.content)
+                count = count + 1
+
+
+        # Download blue forces files
+        os.chdir(directories.forces + '/blue')
+        if user_files["forces_blue"]["files"]:
+            for filename in user_files["forces_blue"]["files"]:
+                url = user_files_url + user_files["forces_blue"]["dir"] + '/' + filename
+                r = requests.get(url, allow_redirects=False)
+                open(filename, 'wb').write(r.content)
+                count = count + 1
+
+        # Download red forces files
+        os.chdir(directories.forces + '/red')
+        if user_files["forces_red"]["files"]:
+            for filename in user_files["forces_red"]["files"]:
+                url = user_files_url + user_files["forces_red"]["dir"] + '/' + filename
+                r = requests.get(url, allow_redirects=False)
+                open(filename, 'wb').write(r.content)
+                count = count + 1
+
+        # Download imports files
+        os.chdir(directories.imports)
+        if user_files["imports"]["files"]:
+            for filename in user_files["imports"]["files"]:
+                url = user_files_url + user_files["imports"]["dir"] + '/' + filename
+                r = requests.get(url, allow_redirects=False)
+                open(filename, 'wb').write(r.content)
+                count = count + 1
+
+        msg = QMessageBox()
+        msg.setWindowTitle("Downloaded Files")
+        msg.setText("We've downloaded " + str(count) + " new files!")
+        x = msg.exec_()
 
 
 if __name__ == "__main__":
+ #   os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
     app = QApplication(sys.argv)
+ #   QCoreApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling)
     win = Window()
-    win.show()
+    # win.show()
+    # win.loadOnlineContent()
+    win.checkVersion()
+
+
+    qtmodern.styles.dark(app)
+    mw = qtmodern.windows.ModernWindow(win)
+    mw.show()
     sys.exit(app.exec())
-
-
 
