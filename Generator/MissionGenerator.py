@@ -1,27 +1,37 @@
-import math
-import sys
-import os
-import dcs
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.uic.properties import QtCore
-
-import RotorOpsMission as ROps
-import RotorOpsUtils
-import RotorOpsUnits
-import logging
 import json
 import yaml
+import sys
+import os
+
+import RotorOpsMission as ROps
+import RotorOpsUnits
+import user
+import logging
+
 import requests
+from packaging import version
 
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QMainWindow, QMessageBox
+    QApplication, QDialog, QMainWindow, QMessageBox, QCheckBox, QSpinBox, QSplashScreen, QFileDialog, QRadioButton,
+    QInputDialog, QDialogButtonBox, QVBoxLayout, QLabel, QComboBox
 )
 from PyQt5 import QtGui
-from PyQt5 import Qt, QtCore
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import QObject, QEvent, Qt, QUrl
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+import resources # pyqt resource file
+
 from MissionGeneratorUI import Ui_MainWindow
 
 import qtmodern.styles
 import qtmodern.windows
+
+# UPDATE BUILD VERSION
+maj_version = 1
+minor_version = 1
+patch_version = 1
+
+user_files_url = 'https://dcs-helicopters.com/user-files/'
 
 #Setup logfile and exception handler
 logger = logging.getLogger(__name__)
@@ -29,10 +39,9 @@ logging.basicConfig(filename='generator.log', encoding='utf-8', level=logging.DE
 handler = logging.StreamHandler(stream=sys.stdout)
 logger.addHandler(handler)
 
-user_files_url = 'https://dcs-helicopters.com/user-files/'
 
 class directories:
-    home_dir = scenarios = forces = scripts = sound = output = assets = imports = None
+    home_dir = scenarios = forces = scripts = sound = output = assets = imports = user_datafile_path = scenarios_downloaded = scenarios_user = default_config = None
 
     @classmethod
     def find(cls):
@@ -40,18 +49,22 @@ class directories:
         if os.path.basename(os.getcwd()) == "Generator":
             os.chdir("..")
         cls.home_dir = os.getcwd()
-        cls.scenarios = cls.home_dir + "\Generator\Scenarios"
-        cls.forces = cls.home_dir + "\Generator\Forces"
-        cls.scripts = cls.home_dir
-        cls.sound = cls.home_dir + "\sound\embedded"
-        cls.output = cls.home_dir + "\Generator\Output"
-        cls.assets = cls.home_dir + "\Generator/assets"
-        cls.imports = cls.home_dir + "\Generator\Imports"
+        cls.scenarios = cls.home_dir + "\\templates\\Scenarios"
+        cls.forces = cls.home_dir + "\\templates\\Forces"
+        cls.scripts = cls.home_dir + "\\scripts"
+        cls.sound = cls.home_dir + "\\sound\\embedded"
+        cls.output = cls.home_dir + "\\MissionOutput"
+        cls.assets = cls.home_dir + "\\assets"
+        cls.imports = cls.home_dir + "\\templates\\Imports"
+        cls.user_datafile_path = cls.home_dir + "\\config\\user-data.yaml"
+        cls.scenarios_downloaded = cls.scenarios + "\\downloaded"
+        cls.scenarios_user = cls.scenarios + "\\user"
+        cls.default_config = cls.home_dir + '\\config\\default-config.yaml'
         os.chdir(current_dir)
-
 
 directories.find()
 
+import MissionGeneratorScenario
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt): #example of handling error subclasses
@@ -67,17 +80,26 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_exception
 
-build = 1
-maj_version = 1
-minor_version = 1
-version_string = str(maj_version) + "." + str(minor_version)
-scenarios = []
+
+version_string = str(maj_version) + "." + str(minor_version) + "." + str(patch_version)
+# scenarios = []
 red_forces_files = []
 blue_forces_files = []
 defenders_text = "Defending Forces:"
 attackers_text = "Attacking Forces:"
+ratings_json = None
 
 logger.info("RotorOps v" + version_string)
+
+# Try to set windows app ID to display taskbar icon properly
+try:
+    from ctypes import windll
+    appid = 'RotorOps.MissionGenerator.' + version_string
+    windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
+except ImportError:
+    pass
+
+
 
 class Window(QMainWindow, Ui_MainWindow):
 
@@ -92,6 +114,14 @@ class Window(QMainWindow, Ui_MainWindow):
         else:
             logger.info('running in a normal Python process')
 
+        self.userid = None
+        self.scenarios_list = []
+        self.scenario = None
+        self.player_slots = []
+        self.user_output_dir = None
+        self.user_data = None
+
+        self.user_data = self.loadUserData()
 
         self.m = ROps.RotorOpsMission()
         self.setupUi(self)
@@ -104,10 +134,16 @@ class Window(QMainWindow, Ui_MainWindow):
         # self.blue_forces_label.setText(attackers_text)
         # self.red_forces_label.setText(defenders_text)
         self.background_label.setPixmap(QtGui.QPixmap(directories.assets + "/rotorops-dkgray.png"))
+        self.statusbar = self.statusBar()
         self.statusbar.setStyleSheet(
-            "QStatusBar{padding-left:5px;color:black;font-weight:bold;}")
-
+            "QStatusBar{padding-left:5px;}")
         self.version_label.setText("Version " + version_string)
+
+
+
+
+
+
 
 
     def connectSignalsSlots(self):
@@ -116,21 +152,126 @@ class Window(QMainWindow, Ui_MainWindow):
         self.action_defensiveModeChanged.triggered.connect(self.defensiveModeChanged)
         self.action_nextScenario.triggered.connect(self.nextScenario)
         self.action_prevScenario.triggered.connect(self.prevScenario)
+        self.actionSave_Directory.triggered.connect(self.chooseSaveDir)
+        self.action_slotChanged.triggered.connect(self.slotChanged)
+        self.actionCaucasus.triggered.connect(self.filterMenuTouched)
+        self.actionPersian_Gulf.triggered.connect(self.filterMenuTouched)
+        self.actionMarianas.triggered.connect(self.filterMenuTouched)
+        self.actionNevada.triggered.connect(self.filterMenuTouched)
+        self.actionSyria.triggered.connect(self.filterMenuTouched)
+        self.actionMultiplayer.triggered.connect(self.filterMenuTouched)
+        self.actionSingle_Player.triggered.connect(self.filterMenuTouched)
+        self.actionCo_Op.triggered.connect(self.filterMenuTouched)
+        self.action_rateButton1.triggered.connect(self.rateButtonActionOne)
+        self.action_rateButton2.triggered.connect(self.rateButtonActionTwo)
+        self.action_rateButton3.triggered.connect(self.rateButtonActionThree)
+        self.action_rateButton4.triggered.connect(self.rateButtonActionFour)
+        self.action_rateButton5.triggered.connect(self.rateButtonActionFive)
+
+    # Find the selected dropdown menu options and make a list of tags to filter for
+    def tagsFromMenuOptions(self):
+        tags = []
+        maps = []
+        if self.actionCaucasus.isChecked():
+            maps.append('Caucasus')
+        if self.actionPersian_Gulf.isChecked():
+            maps.append('PersianGulf')
+        if self.actionMarianas.isChecked():
+            maps.append('Marianas')
+        if self.actionNevada.isChecked():
+            maps.append('Nevada')
+        if self.actionSyria.isChecked():
+            maps.append('Syria')
+
+        if self.actionMultiplayer.isChecked():
+            tags.append('MultiPlayer')
+        if self.actionSingle_Player.isChecked():
+            tags.append('SinglePlayer')
+        if self.actionCo_Op.isChecked():
+            tags.append('CoOp')
+
+        return maps, tags
+
 
     def populateScenarios(self):
-        os.chdir(directories.scenarios)
-        path = os.getcwd()
-        dir_list = os.listdir(path)
-        logger.info("Looking for mission files in " + path)
 
-        for filename in dir_list:
-            if filename.endswith(".miz"):
-                scenarios.append(filename)
-                self.scenario_comboBox.addItem(filename.removesuffix('.miz'))
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        self.scenario_comboBox.clear()
+        scenarios = []
+
+
+        for path in [directories.scenarios_downloaded, directories.scenarios_user]:
+            logger.info("Looking for mission files in " + path)
+            os.chdir(path)
+            module_folders = next(os.walk('.'))[1]
+
+            for folder in module_folders:
+                for filename in os.listdir(folder):
+                    if filename.endswith(".miz"):
+                        basename = filename.removesuffix('.miz')
+                        mizpath = os.path.join(path, folder, filename)
+                        # create scenario object
+                        s = MissionGeneratorScenario.Scenario(mizpath, basename)
+
+                        #apply some properties if found in the downloads directory
+                        if path == directories.scenarios_downloaded:
+                            package_name = folder
+                            s.downloadable = True
+                            s.packageID = folder
+
+                            if ratings_json:
+                                print(ratings_json)
+                                for module in ratings_json:
+                                    if module['package'] == folder:
+                                        s.rating = module["avg_rating"]
+                                        s.rating_qty = module["rating_count"]
+
+                        config_file_path = os.path.join(path, folder, basename + '.yaml')
+                        if os.path.exists(config_file_path):
+                            config = self.loadScenarioConfig(config_file_path)
+                            if config:
+                                s.applyConfig(config)
+
+                        # all the scenarios we can find
+                        scenarios.append(s)
+
+        #remove scenarios if they don't match filter criteria
+        filter_maps, filter_tags = self.tagsFromMenuOptions()
+
+        # remove scenarios if map not selected in menu
+        for s in scenarios:
+            if s.map_name and not s.map_name in filter_maps:
+                scenarios.remove(s)
+
+        # add scenarios if tags match
+        if len(filter_tags) > 0:
+            t_scenarios = []
+            for s in scenarios:
+                if s.tags: #if the config file has tags set
+                    for tag in filter_tags:
+                        if tag in s.tags:
+                            t_scenarios.append(s)
+                else: #add if no tags set
+                    t_scenarios.append(s)
+            scenarios = t_scenarios.copy()
+
+        #self.scenario_comboBox.addItem(s.name)
+        self.scenarios_list = scenarios.copy()
+        for s in self.scenarios_list:
+            self.scenario_comboBox.addItem(s.name)
+
+            QApplication.restoreOverrideCursor()
+
+
+    def filterMenuTouched(self):
+        self.populateScenarios()
+        # self.scenarioChanged() haven't tried yet
 
     def populateForces(self, side, combobox, files_list):
         os.chdir(directories.home_dir)
-        os.chdir(directories.forces + "/" + side)
+        # os.chdir(directories.forces + "/" + side)
+        os.chdir(directories.forces)
         path = os.getcwd()
         dir_list = os.listdir(path)
         logger.info("Looking for " + side + " Forces files in '" + path)
@@ -142,35 +283,43 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def populateSlotSelection(self):
         self.slot_template_comboBox.addItem("Multiple Slots")
-        for type in RotorOpsUnits.client_helos:
+        for type in RotorOpsUnits.player_helos:
             self.slot_template_comboBox.addItem(type.id)
         self.slot_template_comboBox.addItem("None")
 
+    def slotChanged(self):
+        if self.slot_template_comboBox.currentIndex() == 0:
+            sd = self.slotDialog(self)
+            sd.exec_()
+            if sd.helicopter_types:
+                self.user_data["player_slots"] = sd.helicopter_types
+                self.player_slots = sd.helicopter_types
+                self.saveUserData()
+
+
     def defensiveModeChanged(self):
-        # if self.defense_checkBox.isChecked():
-        #     self.red_forces_label.setText(attackers_text)
-        #     self.blue_forces_label.setText(defenders_text)
-        # else:
-        #     self.red_forces_label.setText(defenders_text)
-        #     self.blue_forces_label.setText(attackers_text)
-
-        self.applyScenarioConfig()
-
-
-    def loadScenarioConfig(self, filename):
-        try:
-            j = open(filename)
-            config = json.load(j)
-            j.close()
-            return config
-        except:
-            return None
+        print("defensive checkbox changed")
 
     def lockedSlot(self):
         return self.slot_template_comboBox.findText("Locked to Scenario")
 
-    def clearScenarioConfig(self):
-        # reset default states
+    def loadScenarioConfig(self, filename):
+        try:
+            j = open(filename)
+            config = yaml.safe_load(j)
+            j.close()
+            return config
+        except yaml.parser.ParserError as e:
+            logger.error("Unable to load configuration file. Invalid yaml: " + filename)
+            return None
+        except OSError as e:
+            logger.error(e)
+            return None
+
+
+    def applyScenarioConfig(self, config):
+
+        # reset some UI elements
         self.defense_checkBox.setEnabled(True)
         if self.lockedSlot():
             self.slot_template_comboBox.removeItem(self.lockedSlot())
@@ -178,108 +327,150 @@ class Window(QMainWindow, Ui_MainWindow):
         self.slot_template_comboBox.setEnabled(True)
         self.slot_template_comboBox.setCurrentIndex(0)
 
-    def applyScenarioConfig(self):
+        try:
+            if 'player_spawn' in config and config['player_spawn'] == "fixed":
+                self.slot_template_comboBox.addItem("Locked to Scenario")
+                self.slot_template_comboBox.setCurrentIndex(self.lockedSlot())
+                self.slot_template_comboBox.setEnabled(False)
 
-        if not self.config:
-            return
+            if 'checkboxes' in config:
+                for box in config['checkboxes']:
+                    qobj = QObject.findChild(self, QCheckBox, box)
+                    if qobj:
+                        qobj.setChecked(config['checkboxes'][box])
 
-        if self.config['defense']['allowed'] == False:
-            self.defense_checkBox.setChecked(False)
-            self.defense_checkBox.setEnabled(False)
-        elif self.config['offense']['allowed'] == False:
-            self.defense_checkBox.setChecked(True)
-            self.defense_checkBox.setEnabled(False)
+            for box in QObject.findChildren(self, QCheckBox):
+                if 'disable_checkboxes' in config and config['disable_checkboxes'] is not None and box.objectName() in config['disable_checkboxes']:
+                    box.setEnabled(False)
+                else:
+                    box.setEnabled(True)
 
-        if self.config['defense']['player_spawn'] == "fixed":
-            self.slot_template_comboBox.addItem("Locked to Scenario")
-            self.slot_template_comboBox.setCurrentIndex(self.lockedSlot())
-            self.slot_template_comboBox.setEnabled(False)
+            if 'spinboxes' in config:
+                for box in config['spinboxes']:
+                    qobj = QObject.findChild(self, QSpinBox, box)
+                    if qobj:
+                        qobj.setValue(config['spinboxes'][box])
 
+            for button in QObject.findChildren(self, QRadioButton):
+                if 'radiobuttons' in config and button.objectName() in config['radiobuttons']:
+                    button.setChecked(True)
 
+            for button in QObject.findChildren(self, QRadioButton):
+                if 'disable_radiobuttons' in config and config['disable_radiobuttons'] is not None and button.objectName() in config['disable_radiobuttons']:
+                    button.setEnabled(False)
+                else:
+                    button.setEnabled(True)
 
+            if 'blue_forces' in config:
+                self.blueforces_comboBox.setCurrentIndex(self.blueforces_comboBox.findText(config['blue_forces']))
+
+            if 'red_forces' in config:
+                if self.redforces_comboBox.findText(config['red_forces']) >= 0:
+                    self.redforces_comboBox.setCurrentIndex(self.redforces_comboBox.findText(config['red_forces']))
+
+        except Exception as e:
+            logger.error("Error loading config file: " + str(e))
+
+    def loadUserData(self):
+        prefs = {}
+        if os.path.exists(directories.user_datafile_path):
+            try:
+                with open(directories.user_datafile_path, 'r') as pfile:
+                    prefs = yaml.safe_load(pfile)
+                    if "save_directory" in prefs:
+                        self.user_output_dir = prefs["save_directory"]
+
+                    if "player_slots" in prefs:
+                        self.player_slots = prefs["player_slots"]
+
+                    if "ratings" in prefs:
+                        self.user_ratings = prefs["ratings"]
+            except:
+                logger.error("Could not load prefs.yaml")
+        if not prefs:
+            prefs = {}
+
+        return prefs
+
+    def saveUserData(self):
+        with open(directories.user_datafile_path, 'w') as pfile:
+            yaml.dump(self.user_data, pfile)
+
+    def chooseSaveDir(self):
+        dlg = QFileDialog()
+        dlg.setFileMode(QFileDialog.Directory)
+
+        if "save_directory" in self.user_data:
+            dlg.setDirectory(self.user_data["save_directory"])
+
+        if dlg.exec_():
+            path = dlg.directory().absolutePath()
+            if path:
+                self.user_data["save_directory"] = path
+                self.user_output_dir = path
+                self.saveUserData()
 
 
     def scenarioChanged(self):
-        os.chdir(directories.scenarios)
-        filename = scenarios[self.scenario_comboBox.currentIndex()]
-        source_mission = dcs.mission.Mission()
-        source_mission.load_file(filename)
-        zones = source_mission.triggers.zones()
-        conflict_zones = 0
-        staging_zones = 0
-        conflict_zone_size_sum = 0
-        conflict_zone_distance_sum = 0
-        spawn_zones = 0
-        conflict_zone_positions = []
-        #friendly_airports = source_mission.getCoalitionAirports("blue")
-        #enemy_airports = source_mission.getCoalitionAirports("red")
-        friendly_airports = True
-        enemy_airports = True
+        if len(self.scenarios_list) <= 0:
+            return
 
-        self.clearScenarioConfig()
-        config_filename = filename.removesuffix(".miz") + ".json"
-        self.config = self.loadScenarioConfig(config_filename)
-        if self.config:
-            self.applyScenarioConfig()
-            self.m.setConfig(self.config)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
 
+        self.scenario = self.scenarios_list[self.scenario_comboBox.currentIndex()]
 
-        for zone in zones:
-            if zone.name == "STAGING":
-                staging_zones += 1
-            if zone.name == "ALPHA" or zone.name == "BRAVO" or zone.name == "CHARLIE" or zone.name == "DELTA":
-                conflict_zones += 1
-                conflict_zone_size_sum += zone.radius
-                conflict_zone_positions.append(zone.position)
-            if zone.name.rfind("_SPAWN") > 0:
-                spawn_zones += 1
-        if conflict_zones > 1:
-            for index, position in enumerate(conflict_zone_positions):
-                if index > 0:
-                    conflict_zone_distance_sum += RotorOpsUtils.getDistance(conflict_zone_positions[index], conflict_zone_positions[index - 1])
+        if self.scenario.config:
+            self.applyScenarioConfig(self.scenario.config)
+            self.m.setConfig(self.scenario.config)
+        else:
+            default_config = self.loadScenarioConfig(directories.default_config)
+            self.applyScenarioConfig(default_config)
+            self.m.setConfig(default_config)
 
-        def validateTemplate():
-            valid = True
-            if len(staging_zones) < 1:
-                valid = False
-            if len(conflict_zones) < 1:
-                valid = False
-            if not friendly_airports:
-                valid = False
-            if not enemy_airports:
-                valid = False
-            return valid
-
-        if conflict_zones and staging_zones :
-            average_zone_size = conflict_zone_size_sum / conflict_zones
-            self.description_textBrowser.setText(
-                "Map: " + source_mission.terrain.name + "\n" +
-                "Conflict Zones: " + str(conflict_zones) + "\n" +
-                "Average Zone Size " + str(math.floor(average_zone_size)) + "m \n" +
-                "Infantry Spawn Zones: " + str(spawn_zones) + "\n" +
-                "Approx Distance: " + str(math.floor(RotorOpsUtils.convertMeterToNM(conflict_zone_distance_sum))) + "nm \n"
-                #"Validity Check:" + str(validateTemplate())
-                + "\n== BRIEFING ==\n\n"
-                + source_mission.description_text()
-            )
-
-        path = directories.scenarios + "/" + filename.removesuffix(".miz") + ".jpg"
+        path = self.scenario.path.removesuffix(".miz") + ".jpg"
         if os.path.isfile(path):
             self.missionImage.setPixmap(QtGui.QPixmap(path))
         else:
             self.missionImage.setPixmap(QtGui.QPixmap(directories.assets + "/briefing1.png"))
 
+        self.scenario.evaluateMiz()
+        self.description_textBrowser.setText(self.scenario.description)
+
+        QApplication.restoreOverrideCursor()
+
+        rate_buttons = [
+            self.rateButton1,
+            self.rateButton2,
+            self.rateButton3,
+            self.rateButton4,
+            self.rateButton5,
+        ]
+
+        # Star rating buttons
+        star_full_ss = "border-image:url(:/images/star_full);"
+        star_empty_ss = "border-image:url(:/images/star_empty);"
+
+        for button in rate_buttons:
+            button.setStyleSheet(star_empty_ss)
 
 
+        if self.user_data and 'local_ratings' in self.user_data and self.scenario.path in self.user_data["local_ratings"]:
+            user_rating = self.user_data['local_ratings'][self.scenario.path]
+            for i in range(user_rating):
+                rate_buttons[i].setStyleSheet(star_full_ss)
 
     def generateMissionAction(self):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
         red_forces_filename = red_forces_files[self.redforces_comboBox.currentIndex()]
         blue_forces_filename = blue_forces_files[self.blueforces_comboBox.currentIndex()]
-        scenario_filename = scenarios[self.scenario_comboBox.currentIndex()]
+        scenario_name = self.scenario.name
+        scenario_path = self.scenario.path
         source = "offline"
         data = {
                 "source": source,
-                "scenario_filename": scenario_filename,
+                "scenario_file": scenario_path,
+                "scenario_name": scenario_name,
                 "red_forces_filename": red_forces_filename,
                 "blue_forces_filename": blue_forces_filename,
                 "red_quantity": self.redqty_spinBox.value(),
@@ -298,19 +489,19 @@ class Window(QMainWindow, Ui_MainWindow):
                 "slots": self.slot_template_comboBox.currentText(),
                 "zone_protect_sams": self.zone_sams_checkBox.isChecked(),
                 "zone_farps": self.farp_buttonGroup.checkedButton().objectName(),
-                "inf_spawn_msgs": self.inf_spawn_voiceovers_checkBox.isChecked(),
                 "e_transport_helos": self.e_transport_helos_spinBox.value(),
                 "transport_drop_qty": self.troop_drop_spinBox.value(),
                 "smoke_pickup_zones": self.smoke_pickup_zone_checkBox.isChecked(),
+                "player_slots": self.player_slots,
+                "player_hotstart": self.hotstart_checkBox.isChecked,
                 }
-        os.chdir(directories.home_dir + '/Generator')
-        n = ROps.RotorOpsMission()
-        result = n.generateMission(data)
+
         logger.info("Generating mission with options:")
         logger.info(str(data))
+        n = ROps.RotorOpsMission()
+        result = n.generateMission(self, data)
 
-        # generate the mission
-        #result = self.m.generateMission(data)
+        QApplication.restoreOverrideCursor()
 
         #display results
         if result["success"]:
@@ -319,13 +510,13 @@ class Window(QMainWindow, Ui_MainWindow):
             msg = QMessageBox()
             msg.setWindowTitle("Mission Generated")
             msg.setText("Awesome, your mission is ready! It's located in this directory: \n" +
-                        directories.output + "\n" +
+                        result["directory"] + "\n" +
                         "\n" +
                         "Next, you should use the DCS Mission Editor to fine tune unit placements.  Don't be afraid to edit the missions that this generator produces. \n" +
                         "\n" +
                         "There are no hidden script changes, everything is visible in the ME.  Triggers have been created to help you to add your own actions based on active zone and game status. \n" +
                         "\n" +
-                        "Units can be changed or moved without issue.  Player slots can be changed or moved without issue. \n" +
+                        "Units can be changed or moved without issue.  Player slots can be changed or moved without issue (one per group though!) \n" +
                         "\n" +
                         "Don't forget, you can also create your own templates that can include any mission options, objects, or even scripts. \n" +
                         "\n" +
@@ -345,84 +536,335 @@ class Window(QMainWindow, Ui_MainWindow):
     def nextScenario(self):
         self.scenario_comboBox.setCurrentIndex((self.scenario_comboBox.currentIndex() + 1))
 
-    def checkVersion(self):
-        try:
-            url = user_files_url + 'versions.yaml'
-            r = requests.get(url, allow_redirects=False)
-            v = yaml.safe_load(r.content)
-            print(v["build"])
-            avail_build = v["build"]
-            if avail_build > build:
-                msg = QMessageBox()
-                msg.setWindowTitle("Update Available")
-                msg.setText(v["description"])
-                x = msg.exec_()
-        except:
-            logger.error("Online version check failed.")
+
+    # works fine but no use for this currently
+    class myWebView(QDialog):
+        def __init__(self, window, parent=None):
+            QDialog.__init__(self, parent)
+            vbox = QVBoxLayout(self)
+
+            self.webEngineView = QWebEngineView()
+            self.webEngineView.load(QUrl('https://dcs-helicopters.com'))
+
+            vbox.addWidget(self.webEngineView)
+
+            self.setLayout(vbox)
+
+            self.setGeometry(600, 600, 700, 500)
+            self.setWindowTitle('QWebEngineView')
+
+    class slotDialog(QDialog):
+        def __init__(self, window, parent=None):
+            QDialog.__init__(self, parent)
+            self.setWindowTitle("Multiplayer Slots")
+            self.layout = QVBoxLayout()
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint) # remove help button
+            message = QLabel("Add your desired multiplayer slots here. \nIt is recommended to check placement in the \nMission Editor before flying your mission.\n")
+            self.layout.addWidget(message)
+            self.helicopter_types = None
 
 
-    def loadOnlineContent(self):
-        url = user_files_url + 'directory.yaml'
-        r = requests.get(url, allow_redirects=False)
-        user_files = yaml.safe_load(r.content)
-        count = 0
+            self.slot_qty = len(window.player_slots)
+            self.window = window
 
-        # Download scenarios files
-        os.chdir(directories.scenarios)
-        if user_files["scenarios"]["files"]:
-            for filename in user_files["scenarios"]["files"]:
-                url = user_files_url + user_files["scenarios"]["dir"] + '/' + filename
-                r = requests.get(url, allow_redirects=False)
-                open(filename, 'wb').write(r.content)
-                count = count + 1
+            #self.populateBoxes()
+
+            QBtn = QDialogButtonBox.Ok
+            self.buttonBox = QDialogButtonBox(QBtn)
+            self.addBtn = self.buttonBox.addButton("+", QDialogButtonBox.ActionRole)
+            self.removeBtn = self.buttonBox.addButton("-", QDialogButtonBox.ActionRole)
+            self.layout.addWidget(self.buttonBox)
 
 
-        # Download blue forces files
-        os.chdir(directories.forces + '/blue')
-        if user_files["forces_blue"]["files"]:
-            for filename in user_files["forces_blue"]["files"]:
-                url = user_files_url + user_files["forces_blue"]["dir"] + '/' + filename
-                r = requests.get(url, allow_redirects=False)
-                open(filename, 'wb').write(r.content)
-                count = count + 1
+            self.buttonBox.accepted.connect(self.accepted)
+            self.buttonBox.rejected.connect(self.close)
+            self.addBtn.clicked.connect(self.addSlotBox)
+            self.removeBtn.clicked.connect(self.removeSlotBox)
 
-        # Download red forces files
-        os.chdir(directories.forces + '/red')
-        if user_files["forces_red"]["files"]:
-            for filename in user_files["forces_red"]["files"]:
-                url = user_files_url + user_files["forces_red"]["dir"] + '/' + filename
-                r = requests.get(url, allow_redirects=False)
-                open(filename, 'wb').write(r.content)
-                count = count + 1
+            self.slot_boxes = []
 
-        # Download imports files
-        os.chdir(directories.imports)
-        if user_files["imports"]["files"]:
-            for filename in user_files["imports"]["files"]:
-                url = user_files_url + user_files["imports"]["dir"] + '/' + filename
-                r = requests.get(url, allow_redirects=False)
-                open(filename, 'wb').write(r.content)
-                count = count + 1
+            if "player_slots" in window.user_data:
+                for index in range(0, len(window.user_data["player_slots"])):
+                    self.addSlotBox()
 
+            self.setLayout(self.layout)
+
+
+        def populateBoxes(self):
+
+            for index in range(0, self.slot_qty):
+                self.slot_boxes.append(QComboBox())
+                for type in RotorOpsUnits.player_helos:
+                    self.slot_boxes[index].addItem(type.id)
+
+            for index in range(0, self.slot_qty):
+                self.layout.addWidget(self.slot_boxes[index])
+                #self.slot_boxes[index].setCurrentIndex(self.slot_boxes[index].findText(self.window.user_data["player_slots"][index]))
+
+
+
+        def addSlotBox(self):
+            new_slot = QComboBox()
+            self.slot_boxes.append(new_slot)
+            self.layout.addWidget(new_slot)
+            for helo_type in RotorOpsUnits.player_helos:
+                new_slot.addItem(helo_type.id)
+
+            slot_index = len(self.slot_boxes) - 1
+            if "player_slots" not in self.window.user_data:
+                new_slot.setCurrentIndex(0)
+            elif slot_index < len(self.window.user_data["player_slots"]):
+                new_slot.setCurrentIndex(new_slot.findText(self.window.user_data["player_slots"][slot_index]))
+            return new_slot
+
+        def removeSlotBox(self):
+            last_index = len(self.slot_boxes) - 1
+            self.layout.removeWidget(self.slot_boxes[last_index])
+            self.slot_boxes.pop(last_index)
+
+        def accepted(self):
+            heli_types = []
+            for box in self.slot_boxes:
+                heli_types.append(box.currentText())
+            self.helicopter_types = heli_types
+            self.close()
+
+    def rateScenario(self, rating):
+        if "local_ratings" not in self.user_data:
+            self.user_data["local_ratings"] = {}
+        self.user_data["local_ratings"][self.scenario.path] = rating
+        self.saveUserData()
+        self.scenarioChanged()
+
+        if not self.scenario.downloadable:
+            return
+
+
+        params = {}
+        params["userid"] = self.userid
+        params["package"] = self.scenario.packageID
+        params["rating"] = rating
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        r = requests.get(ratings_url, allow_redirects=False, timeout=3, params=params)
+        QApplication.restoreOverrideCursor()
+        if r.status_code == 200:
+            logger.info("Rating successfully submitted for " + self.scenario.packageID)
+            msg = QMessageBox()
+            msg.setWindowTitle("Success")
+            msg.setText("Thank you for submitting a " + str(rating) + " star review for " + self.scenario.name + ".  If you have previously submitted a rating for this mission, it will be updated.")
+            msg.setIcon(QMessageBox.Icon.Information)
+            x = msg.exec_()
+
+    def rateButtonActionOne(self):
+        self.rateScenario(1)
+
+    def rateButtonActionTwo(self):
+        self.rateScenario(2)
+
+    def rateButtonActionThree(self):
+        self.rateScenario(3)
+
+    def rateButtonActionFour(self):
+        self.rateScenario(4)
+
+    def rateButtonActionFive(self):
+        self.rateScenario(5)
+
+
+
+def checkVersion(splashscreen):
+
+   version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
+   try:
+        r = requests.get(version_url, allow_redirects=False, timeout=3)
+        v = yaml.safe_load(r.content)
+        avail_build = v["version"]
+        if version.parse(avail_build) > version.parse(version_string):
+            logger.warning("New version available. Please update to available version " + v["version"])
+            msg = QMessageBox()
+            msg.setWindowTitle(v["title"])
+            msg.setText(v["description"])
+            msg.setIcon(QMessageBox.Icon.Information)
+            x = msg.exec_()
+        else:
+            logger.info("Version check complete: running the latest version.")
+   except:
+        logger.error("Online version check failed.")
+
+
+
+modules_url = 'https://dcs-helicopters.com/user-files/modules/'
+version_url = 'https://dcs-helicopters.com/app-updates/versions.yaml'
+modules_map_url = 'https://dcs-helicopters.com/user-files/modules/module-map.yaml'
+ratings_url = 'https://dcs-helicopters.com/user-files/ratings.php'
+
+def loadModules(splashscreen):
+
+    r = requests.get(modules_map_url, allow_redirects=False, timeout=5)
+    if not r.status_code == 200:
+        logger.error("Could not retrieve the modules map.")
+        return
+    module_list = yaml.safe_load(r.content)
+    files_success = []
+    files_failed = []
+    new_scenarios = []
+    updated_scenarios = []
+
+
+    # Download scenarios files
+    #os.chdir(directories.scenarios)
+    if module_list:
+
+        for module in module_list:
+
+            should_download = False
+            new_module = False
+
+            # check if local version already exists
+            package_file_path = os.path.join(directories.scenarios_downloaded, module, "package.yaml")
+
+            if os.path.exists(package_file_path):
+                pkg_file = yaml.safe_load(open(package_file_path))
+            else:
+                pkg_file = None
+
+            #compare local and remote versions
+            if pkg_file and 'version' in pkg_file:
+                local_version = pkg_file['version']
+
+                if module_list[module]['version'] > local_version:
+                    should_download = True
+
+            else: # package file not found
+                should_download = True
+                new_module = True
+
+            if should_download:
+                logger.info("Updating module: " + module)
+                module_dir = os.path.join(directories.home_dir, module_list[module]["path"], module)
+
+                # download files in remote package
+                for filename in module_list[module]["files"]:
+                    splash.showMessage("Downloading " + filename + " ...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
+                    app.processEvents()
+
+                    url = modules_url + module + "/" + filename
+                    r = requests.get(url, allow_redirects=False)
+                    if r.status_code == 200:
+                        os.makedirs(module_dir, exist_ok=True)
+                        file_path = os.path.join(module_dir, filename)
+                        open(file_path, 'wb+').write(r.content)
+                        files_success.append(filename)
+
+                        # do some stuff for the dialog popup
+                        if filename.endswith('.miz') and "name" in module_list[module]:
+                            if new_module:
+                                new_scenarios.append(module_list[module]["name"])
+                            else:
+                                updated_scenarios.append(module_list[module]["name"])
+                    else:
+                        files_failed.append(filename)
+                        logger.error("Download failed: " + filename)
+
+                # create the local package file
+                logger.info("Creating local package file for module " + module)
+                package = {}
+                package['version'] = module_list[module]['version']
+                with open(package_file_path, 'w+') as pfile:
+                    yaml.dump(package, pfile)
+
+    else:
+        logger.error("Problem encountered with modules map.")
+
+    # show a popup if we downloaded any packages
+    if len(files_success) > 0 or len(files_failed) > 0:
+        if len(files_failed) > 0:
+            fs = ""
+            for filename in files_failed:
+                fs = fs + filename + ','
+            logger.error("Failed to add new files: " + fs)
         msg = QMessageBox()
         msg.setWindowTitle("Downloaded Files")
-        msg.setText("We've downloaded " + str(count) + " new files!")
+        message = ""
+        if len(new_scenarios) > 0:
+            message = message + "New scenarios added: \n"
+            for name in new_scenarios:
+                message = message + name + "\n"
+        if len(updated_scenarios) > 0:
+            message = message + "\nScenarios updated: \n"
+            for name in updated_scenarios:
+                message = message + name + "\n"
+        msg.setText(message +  "\n\n" + str(len(files_failed)) + " files failed.")
         x = msg.exec_()
+    else:
+        logger.info("All packages up to date.")
+
+def getRatings(splashscreen):
+
+    try:
+        r = requests.get(ratings_url, allow_redirects=False, timeout=3)
+        j = json.loads(r.text)
+        # for entry in j:
+        #     print(entry["package"])
+        #     print(entry["avg_rating"])
+        logger.info("Retrieved online package info.")
+        return j
+    except TimeoutError:
+        logger.error("Online package info failed: connection timed out.")
+    except ConnectionError:
+        logger.error("Online package info failed: connection error.")
+    except:
+        logger.error("Online package info failed.")
+
+
+class StatusTipFilter(QObject):
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
+        if isinstance(event, QtGui.QStatusTipEvent):
+            return True
+        return super().eventFilter(watched, event)
+
 
 
 if __name__ == "__main__":
  #   os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
     app = QApplication(sys.argv)
+
+    # Splash Screen and loading
+    pixmap = QPixmap(directories.assets + "/splash.jpg")
+    splash = QSplashScreen(pixmap)
+    splash.show()
+
+    font = splash.font()
+    font.setPixelSize(14)
+    splash.setFont(font)
+
+    splash.showMessage("Checking registry...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
+    userid = user.createUserKey()
+    app.processEvents()
+
+    splash.showMessage("Checking version...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
+    checkVersion(splash)
+    app.processEvents()
+
+    splash.showMessage("Getting package info...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
+    ratings_json = getRatings(splash)
+    app.processEvents()
+
+    splash.showMessage("Getting content...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
+    loadModules(splash)
+    app.processEvents()
+
+    app.setWindowIcon(QtGui.QIcon(directories.assets + '/icon.ico'))
  #   QCoreApplication.setAttribute(QtCore.Qt.AA_DisableHighDpiScaling)
     win = Window()
-    # win.show()
-    # win.loadOnlineContent()
-    win.checkVersion()
+    win.userid = userid
+    splash.finish(win)
 
-
+    win.generateButton.installEventFilter(StatusTipFilter(win)) #prevent button statustip from obscuring other messages
     qtmodern.styles.dark(app)
     mw = qtmodern.windows.ModernWindow(win)
     mw.show()
-    sys.exit(app.exec())
 
+    # wv = win.myWebView(win)
+    # wv.exec_()
+    sys.exit(app.exec())

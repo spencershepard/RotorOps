@@ -9,6 +9,7 @@ import RotorOpsGroups
 import RotorOpsUnits
 import RotorOpsUtils
 import RotorOpsConflict
+import aircraftMods
 from RotorOpsImport import ImportObjects
 import time
 from MissionGenerator import logger
@@ -21,15 +22,6 @@ class RotorOpsMission:
 
     def __init__(self):
         self.m = dcs.mission.Mission()
-        # os.chdir("../")
-        # directories.home_dir = os.getcwd()
-        # directories.scenarios = directories.home_dir + "\Generator\Scenarios"
-        # directories.forces = directories.home_dir + "\Generator\Forces"
-        # directories.scripts = directories.home_dir
-        # directories.sound = directories.home_dir + "\sound\embedded"
-        # directories.output = directories.home_dir + "\Generator\Output"
-        # directories.assets = directories.home_dir + "\Generator/assets"
-        # directories.imports = directories.home_dir + "\Generator\Imports"
 
         self.conflict_zones = {}
         self.staging_zones = {}
@@ -37,6 +29,7 @@ class RotorOpsMission:
         self.scripts = {}
         self.res_map = {}
         self.config = None
+
 
     class RotorOpsZone:
         def __init__(self, name: str, flag: int, position: dcs.point, size: int):
@@ -82,7 +75,7 @@ class RotorOpsMission:
                 logger.info("Adding script to mission: " + filename)
                 self.scripts[filename] = self.m.map_resource.add_resource_file(filename)
 
-    def getUnitsFromMiz(self, filename, side):
+    def getUnitsFromMiz(self, file, side='both'):
 
         forces = {}
         vehicles = []
@@ -90,49 +83,53 @@ class RotorOpsMission:
         transport_helos = []
         attack_planes = []
         fighter_planes = []
+        helicopters = []
 
-        os.chdir(directories.home_dir)
-        os.chdir(directories.forces + "/" + side)
-        logger.info("Looking for " + side + " Forces files in '" + os.getcwd())
         source_mission = dcs.mission.Mission()
 
         try:
-            source_mission.load_file(filename)
-
-            for country_name in source_mission.coalition.get(side).countries:
-                country_obj = source_mission.coalition.get(side).countries[country_name]
-                for vehicle_group in country_obj.vehicle_group:
-                    vehicles.append(vehicle_group)
-                for helicopter_group in country_obj.helicopter_group:
-                    if helicopter_group.task == 'CAS':
-                        attack_helos.append(helicopter_group)
-                    elif helicopter_group.task == 'Transport':
-                        transport_helos.append(helicopter_group)
-                for plane_group in country_obj.plane_group:
-                    if plane_group.task == 'CAS':
-                        attack_planes.append(plane_group)
-                    elif plane_group.task == 'CAP':
-                        fighter_planes.append(plane_group)
+            source_mission.load_file(file)
+            if side == 'both':
+                sides = ['red', 'blue']
+            else:
+                sides = [side]
+            for side in sides:
+                for country_name in source_mission.coalition.get(side).countries:
+                    country_obj = source_mission.coalition.get(side).countries[country_name]
+                    for vehicle_group in country_obj.vehicle_group:
+                        vehicles.append(vehicle_group)
+                    for helicopter_group in country_obj.helicopter_group:
+                        helicopters.append(helicopter_group)
+                        if helicopter_group.task == 'CAS':
+                            attack_helos.append(helicopter_group)
+                        elif helicopter_group.task == 'Transport':
+                            transport_helos.append(helicopter_group)
+                    for plane_group in country_obj.plane_group:
+                        if plane_group.task == 'CAS':
+                            attack_planes.append(plane_group)
+                        elif plane_group.task == 'CAP':
+                            fighter_planes.append(plane_group)
 
             forces["vehicles"] = vehicles
             forces["attack_helos"] = attack_helos
             forces["transport_helos"] = transport_helos
             forces["attack_planes"] = attack_planes
             forces["fighter_planes"] = fighter_planes
+            forces["helicopters"] = helicopters
 
             return forces
 
         except:
-            logger.error("Failed to load units from " + filename)
+            logger.error("Failed to load units from " + file)
 
-    def generateMission(self, options):
+    def generateMission(self, window, options):
+
         os.chdir(directories.scenarios)
         logger.info("Looking for mission files in " + os.getcwd())
 
-
-
-        self.m.load_file(options["scenario_filename"])
-
+        window.statusBar().showMessage("Loading scenario mission", 10000)
+        self.m.load_file(options["scenario_file"])
+        self.addMods()
         self.importObjects()
 
         #todo: test
@@ -142,8 +139,10 @@ class RotorOpsMission:
             failure_msg = "You must include a CombinedJointTaskForcesBlue and CombinedJointTaskForcesRed unit in the scenario template.  See the instructions in " + directories.scenarios
             return {"success": False, "failure_msg": failure_msg}
 
-        red_forces = self.getUnitsFromMiz(options["red_forces_filename"], "red")
-        blue_forces = self.getUnitsFromMiz(options["blue_forces_filename"], "blue")
+        # red_forces = self.getUnitsFromMiz(directories.forces + "/red/" + options["red_forces_filename"], "red")
+        # blue_forces = self.getUnitsFromMiz(directories.forces + "/blue/" + options["blue_forces_filename"], "blue")
+        red_forces = self.getUnitsFromMiz(directories.forces + "/" + options["red_forces_filename"], "both")
+        blue_forces = self.getUnitsFromMiz(directories.forces + "/" + options["blue_forces_filename"], "both")
 
         # Add coalitions (we may be able to add CJTF here instead of requiring templates to have objects of those coalitions)
         self.m.coalition.get("red").add_country(dcs.countries.Russia())
@@ -183,6 +182,7 @@ class RotorOpsMission:
 
 
         #Populate Red zones with ground units
+        window.statusBar().showMessage("Populating units into mission...", 10000)
 
         for zone_name in red_zones:
             if red_forces["vehicles"]:
@@ -249,10 +249,7 @@ class RotorOpsMission:
                                                               180, zone_name + " FARP", late_activation=False)
 
             #add logistics sites
-            if options["crates"] and zone_name in self.staging_zones:
-                # RotorOpsGroups.VehicleTemplate.CombinedJointTaskForcesBlue.logistics_site(self.m, self.m.country(jtf_blue),
-                #                                               blue_zones[zone_name].position,
-                #                                               180, zone_name)
+            if options["crates"] and zone_name == "STAGING":
                 os.chdir(directories.imports)
                 staging_flag = self.m.find_group(zone_name)
                 if staging_flag:
@@ -265,13 +262,6 @@ class RotorOpsMission:
                 i.anchorByGroupName("ANCHOR")
                 i.copyAll(self.m, jtf_blue, "Staging Logistics Zone",
                                                    staging_position, staging_heading)
-
-
-
-
-
-
-
 
             if options["zone_protect_sams"] and options["defending"]:
                 vg = self.m.vehicle_group(
@@ -286,6 +276,7 @@ class RotorOpsMission:
 
 
         #Add player slots
+        window.statusBar().showMessage("Adding flights to mission...", 10000)
         if options["slots"] != "Locked to Scenario" and options["slots"] != "None":
             self.addPlayerHelos(options)
 
@@ -297,15 +288,22 @@ class RotorOpsMission:
         self.m.map.zoom = 100000
 
         #add files and triggers necessary for RotorOps.lua script
+
+        window.statusBar().showMessage("Adding resources to mission...", 10000)
         self.addResources(directories.sound, directories.scripts)
         RotorOpsConflict.triggerSetup(self, options)
 
 
         #Save the mission file
-        os.chdir(directories.output)
-        output_filename = options["scenario_filename"].removesuffix('.miz') + " " + time.strftime('%a%H%M%S') + '.miz'
+        window.statusBar().showMessage("Saving mission...", 10000)
+        if window.user_output_dir:
+            output_dir = window.user_output_dir # if user has set output dir
+        else:
+            output_dir = directories.output # default dir
+        os.chdir(output_dir)
+        output_filename = options["scenario_name"] + " " + time.strftime('%a%H%M%S') + '.miz'
         success = self.m.save(output_filename)
-        return {"success": success, "filename": output_filename, "directory": directories.output} #let the UI know the result
+        return {"success": success, "filename": output_filename, "directory": output_dir} #let the UI know the result
 
     def addGroundGroups(self, zone, _country, groups, quantity):
         for a in range(0, quantity):
@@ -459,7 +457,16 @@ class RotorOpsMission:
         client_helos = RotorOpsUnits.client_helos
         for helicopter in dcs.helicopters.helicopter_map:
             if helicopter == options["slots"]:
-                client_helos = [dcs.helicopters.helicopter_map[helicopter]]
+                client_helos = [dcs.helicopters.helicopter_map[helicopter]] #if out ui slot option matches a specific helicopter type name
+
+        # get loadouts from miz file and put into a simple dict
+        default_loadouts = {}
+        default_unit_groups = self.getUnitsFromMiz(directories.home_dir + "\\config\\blue_player_loadouts.miz", "blue")
+        for helicopter_group in default_unit_groups["helicopters"]:
+            default_loadouts[helicopter_group.units[0].unit_type.id] = {}
+            default_loadouts[helicopter_group.units[0].unit_type.id]["pylons"] = helicopter_group.units[0].pylons
+            default_loadouts[helicopter_group.units[0].unit_type.id]["livery_id"] = helicopter_group.units[0].livery_id
+            default_loadouts[helicopter_group.units[0].unit_type.id]["fuel"] = helicopter_group.units[0].fuel
 
         #find friendly carriers and farps
         carrier = self.m.country(jtf_blue).find_ship_group(name="HELO_CARRIER")
@@ -474,16 +481,33 @@ class RotorOpsMission:
 
         heading = 0
         group_size = 1
+        player_helicopters = []
+        if options["slots"] == "Multiple Slots":
+            player_helicopters = options["player_slots"]
+        else:
+            player_helicopters.append(options["slots"]) # single helicopter type
+
         if len(client_helos) == 1:
             group_size = 2  #add a wingman if singleplayer
 
-        for helotype in client_helos:
+        start_type = dcs.mission.StartType.Cold
+        if options["player_hotstart"]:
+            start_type = dcs.mission.StartType.Warm
+
+        farp_helicopter_count = 1
+        for helicopter_id in player_helicopters:
+            helotype = None
+            if helicopter_id in dcs.helicopters.helicopter_map:
+                helotype = dcs.helicopters.helicopter_map[helicopter_id]
+            else:
+                continue
             if carrier:
                 fg = self.m.flight_group_from_unit(self.m.country(jtf_blue), "CARRIER " + helotype.id, helotype, carrier,
-                                                   dcs.task.CAS, group_size=group_size)
-            elif farp:
+                                                   dcs.task.CAS, group_size=group_size, start_type=start_type)
+            elif farp and farp_helicopter_count <= 4:
+                farp_helicopter_count = farp_helicopter_count + 1
                 fg = self.m.flight_group_from_unit(self.m.country(jtf_blue), "FARP " + helotype.id, helotype, farp,
-                                                   dcs.task.CAS, group_size=group_size)
+                                                   dcs.task.CAS, group_size=group_size, start_type=start_type)
 
                 #invisible farps need manual unit placement for multiple units
                 if farp.units[0].type == 'Invisible FARP':
@@ -493,13 +517,20 @@ class RotorOpsMission:
                     heading += 90
             else:
                 fg = self.m.flight_group_from_airport(self.m.country(jtf_blue), primary_f_airport.name + " " + helotype.id, helotype,
-                                                          self.getParking(primary_f_airport, helotype), group_size=group_size)
+                                                          self.getParking(primary_f_airport, helotype), group_size=group_size, start_type=start_type)
             fg.units[0].set_client()
-            fg.load_task_default_loadout(dcs.task.CAS)
+            #fg.load_task_default_loadout(dcs.task.CAS)
+            if helotype.id in default_loadouts:
+                fg.units[0].pylons = default_loadouts[helotype.id]["pylons"]
+                fg.units[0].livery_id = default_loadouts[helotype.id]["livery_id"]
+                fg.units[0].fuel = default_loadouts[helotype.id]["fuel"]
 
             #setup wingman for single player
             if len(fg.units) == 2:
                 fg.units[1].skill = dcs.unit.Skill.High
+                fg.units[1].pylons = fg.units[0].pylons
+                fg.units[1].livery_id = fg.units[0].livery_id
+                fg.units[1].fuel = fg.units[0].fuel
 
 
     class TrainingScenario():
@@ -683,7 +714,7 @@ class RotorOpsMission:
                     farp,
                     maintask=dcs.task.CAS,
                     start_type=dcs.mission.StartType.Cold,
-                    group_size=group_size)
+                    group_size=1) # more than one spawn on top of each other, setting group size to one for now
                 zone_attack(afg, farp)
 
             elif airport:
@@ -794,3 +825,6 @@ class RotorOpsMission:
                         i.anchorByGroupName("ANCHOR")
                         new_statics, new_vehicles, new_helicopters = i.copyAll(self.m, country_name, group.units[0].name, group.units[0].position, group.units[0].heading)
 
+    def addMods(self):
+        dcs.helicopters.helicopter_map["UH-60L"] = aircraftMods.UH_60L
+        self.m.country(jtf_blue).helicopters.append(aircraftMods.UH_60L)
