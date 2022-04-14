@@ -1,0 +1,29 @@
+description:
+player_spawn: auto
+checkboxes:
+    defense_checkBox: false
+    apcs_spawn_checkBox: true
+    logistics_crates_checkBox: true
+    awacs_checkBox: true
+    tankers_checkBox: true
+    zone_sams_checkBox: false
+    smoke_pickup_zone_checkBox: false
+    inf_spawn_voiceovers_checkBox: true
+    game_status_checkBox: true
+    voiceovers_checkBox: true
+    force_offroad_checkBox: false
+    hotstart_checkBox: false
+disable_checkboxes: 
+spinboxes:
+    blueqty_spinBox: 4
+    redqty_spinBox: 2
+    e_attack_helos_spinBox: 2
+    e_attack_planes_spinBox: 1
+    e_transport_helos_spinBox: 1
+    troop_drop_spinBox: 4
+    inf_spawn_spinBox: 2
+radiobuttons: farp_gunits,
+red_forces: "RED Default Armor (HARD)"
+blue_forces: "BLUE Default US Armor"
+    
+    

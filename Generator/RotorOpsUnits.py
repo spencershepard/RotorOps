@@ -1,10 +1,25 @@
 import dcs
+import aircraftMods
 
 client_helos = [
     dcs.helicopters.UH_1H,
+    #aircraftMods.UH_60L,
     dcs.helicopters.AH_64D_BLK_II,
     dcs.helicopters.Mi_24P,
     dcs.helicopters.Ka_50,
+]
+
+player_helos = [
+    dcs.helicopters.AH_64D_BLK_II,
+    dcs.helicopters.Ka_50,
+    dcs.helicopters.Mi_8MT,
+    dcs.helicopters.Mi_24P,
+    dcs.helicopters.SA342M,
+    dcs.helicopters.SA342L,
+    dcs.helicopters.SA342Minigun,
+    dcs.helicopters.SA342Mistral,
+    dcs.helicopters.UH_1H,
+    aircraftMods.UH_60L,
 ]
 
 e_attack_helos = [
