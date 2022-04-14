@@ -29,7 +29,7 @@ import qtmodern.windows
 # UPDATE BUILD VERSION
 maj_version = 1
 minor_version = 1
-patch_version = 1
+patch_version = 2
 
 user_files_url = 'https://dcs-helicopters.com/user-files/'
 
@@ -493,7 +493,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "transport_drop_qty": self.troop_drop_spinBox.value(),
                 "smoke_pickup_zones": self.smoke_pickup_zone_checkBox.isChecked(),
                 "player_slots": self.player_slots,
-                "player_hotstart": self.hotstart_checkBox.isChecked,
+                "player_hotstart": self.hotstart_checkBox.isChecked(),
                 }
 
         logger.info("Generating mission with options:")
@@ -645,7 +645,7 @@ class Window(QMainWindow, Ui_MainWindow):
         params["package"] = self.scenario.packageID
         params["rating"] = rating
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        r = requests.get(ratings_url, allow_redirects=False, timeout=3, params=params)
+        r = requests.get(ratings_url, allow_redirects=False, timeout=7, params=params)
         QApplication.restoreOverrideCursor()
         if r.status_code == 200:
             logger.info("Rating successfully submitted for " + self.scenario.packageID)
@@ -676,7 +676,7 @@ def checkVersion(splashscreen):
 
    version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
    try:
-        r = requests.get(version_url, allow_redirects=False, timeout=3)
+        r = requests.get(version_url, allow_redirects=False, timeout=7)
         v = yaml.safe_load(r.content)
         avail_build = v["version"]
         if version.parse(avail_build) > version.parse(version_string):
@@ -700,10 +700,15 @@ ratings_url = 'https://dcs-helicopters.com/user-files/ratings.php'
 
 def loadModules(splashscreen):
 
-    r = requests.get(modules_map_url, allow_redirects=False, timeout=5)
-    if not r.status_code == 200:
-        logger.error("Could not retrieve the modules map.")
+    try:
+        r = requests.get(modules_map_url, allow_redirects=False, timeout=7)
+        if not r.status_code == 200:
+            logger.error("Could not retrieve the modules map.")
+            return
+    except:
+        logger.error("Failed to retrieve module map.")
         return
+
     module_list = yaml.safe_load(r.content)
     files_success = []
     files_failed = []
@@ -745,12 +750,19 @@ def loadModules(splashscreen):
 
                 # download files in remote package
                 for filename in module_list[module]["files"]:
+                    broken_file = False
                     splash.showMessage("Downloading " + filename + " ...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
                     app.processEvents()
 
                     url = modules_url + module + "/" + filename
-                    r = requests.get(url, allow_redirects=False)
-                    if r.status_code == 200:
+                    try:
+                        r = requests.get(url, allow_redirects=False, timeout=10)
+                    except:
+                        logger("Request for " + url + " failed.")
+                        broken_file = True
+                        break
+
+                    if r and r.status_code == 200:
                         os.makedirs(module_dir, exist_ok=True)
                         file_path = os.path.join(module_dir, filename)
                         open(file_path, 'wb+').write(r.content)
@@ -763,15 +775,17 @@ def loadModules(splashscreen):
                             else:
                                 updated_scenarios.append(module_list[module]["name"])
                     else:
+                        broken_file = True
                         files_failed.append(filename)
                         logger.error("Download failed: " + filename)
 
                 # create the local package file
-                logger.info("Creating local package file for module " + module)
-                package = {}
-                package['version'] = module_list[module]['version']
-                with open(package_file_path, 'w+') as pfile:
-                    yaml.dump(package, pfile)
+                if not broken_file:
+                    logger.info("Creating local package file for module " + module)
+                    package = {}
+                    package['version'] = module_list[module]['version']
+                    with open(package_file_path, 'w+') as pfile:
+                        yaml.dump(package, pfile)
 
     else:
         logger.error("Problem encountered with modules map.")
@@ -787,14 +801,16 @@ def loadModules(splashscreen):
         msg.setWindowTitle("Downloaded Files")
         message = ""
         if len(new_scenarios) > 0:
-            message = message + "New scenarios added: \n"
+            message = message + "New scenarios added: \n\n"
             for name in new_scenarios:
                 message = message + name + "\n"
         if len(updated_scenarios) > 0:
             message = message + "\nScenarios updated: \n"
             for name in updated_scenarios:
                 message = message + name + "\n"
-        msg.setText(message +  "\n\n" + str(len(files_failed)) + " files failed.")
+        if len(files_failed) > 0:
+            message = message + "\n\n" + str(len(files_failed)) + " files failed."
+        msg.setText(message)
         x = msg.exec_()
     else:
         logger.info("All packages up to date.")
@@ -802,7 +818,7 @@ def loadModules(splashscreen):
 def getRatings(splashscreen):
 
     try:
-        r = requests.get(ratings_url, allow_redirects=False, timeout=3)
+        r = requests.get(ratings_url, allow_redirects=False, timeout=7)
         j = json.loads(r.text)
         # for entry in j:
         #     print(entry["package"])

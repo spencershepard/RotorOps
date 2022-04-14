@@ -16,3 +16,4 @@ generator.log
 templates/Scenarios/user
 templates/Scenarios/downloaded
 config/user-data.yaml
+*.exe

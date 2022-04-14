@@ -17,7 +17,7 @@ class UH_60L(HelicopterType):
     chaff_charge_size = 1
     flare_charge_size = 1
 
-    pylons: Set[int] = {1, 2, 3, 4}
+    pylons: Set[int] = {1, 2, 3, 4, 5, 6, 7}
 
     tasks = [task.Transport]
     task_default = task.Transport
