@@ -1,11 +1,11 @@
-![alt text](https://github.com/spencershepard/RotorOps/blob/main/Generator/assets/briefing1.png?raw=true)
+![alt text](https://dcs-helicopters.com/images/briefing1.png?raw=true)
 
 # What is RotorOps?
 RotorOps is a mission generator and gameplay script for DCS: World.  At its heart is a game type called Conflict, which requires helicopter operations to win battles on the ground.  This is a fun territory capture game that promotes focus on individual 'conflict zones'.  
 
 At the core of the RotorOps script are AI enhancements that provide a dynamic ground war by causing automatic conflicts between ground forces and a progression of the front line.
 
-![alt text](https://github.com/spencershepard/RotorOps/blob/main/documentation/images/rotorops%20ss%200_3.PNG?raw=true)
+![alt text](https://dcs-helicopters.com/images/RotorOps%20v1%20UI.png?raw=true)
 
 
 # Key Features:
