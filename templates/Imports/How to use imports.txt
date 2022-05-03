@@ -1,0 +1,20 @@
+## Imports
+
+A breakthrough feature of mission design with RotorOps is the ability to import complex arrangements of statics and vehicles.  This allows you to create reusable mission assets like bases, FARPs, objective sites, or just about anything you can imagine building in the mission editor.  You can place these on any map, at your desired point, rotation and coalition!
+
+A selection of FOBs, FARPs, and other objects are available in the Imports folder.  Included are multiplayer FOBs with up to 16 helicopter spawns!  A guide to the included templates is available here:  [RotorOps IMPORT Assets](http://dcs-helicopters.com/wp-content/uploads/2022/03/RotorOps_IMPORT_TEMPLATES-1.pdf)
+
+
+To use an import template:
+1) Place a static mark flag in the scenario template mission.  
+2) Change the group name to 'IMPORT-filename', where the filename is a .miz file in the Generator/Imports folder.
+3) Change the flag coalition to CJTF Blue/Red or UN Peacekeepers.  
+4) Change the flag heading and position as desired.
+5) Change the flag UNIT NAME to something relevant (ie. 'North Base')
+6) For multiple imports of the same template, the import object GROUP NAME should end with '-01' etc
+
+To create a new import template:
+1) Make an empty mission on Caucasus.
+2) Place units/objects on the map.
+3) Make one unit group name: 'ANCHOR' This will represent the point of insertion/rotation in the target mission. 
+4) Save the template .miz file in Generator/Imports

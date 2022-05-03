@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/images">
+        <file alias="star_full">resources/star_full.png</file>
+        <file alias="star_empty">resources/star_empty.png</file>
+    </qresource>
+</RCC>

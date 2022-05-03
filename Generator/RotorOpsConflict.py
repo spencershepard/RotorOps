@@ -5,10 +5,12 @@ jtf_red = "Combined Joint Task Forces Red"
 jtf_blue = "Combined Joint Task Forces Blue"
 
 
+
 def triggerSetup(rops, options):
     # get the boolean value from ui option and convert to lua string
     def lb(var):
         return str(options[var]).lower()
+
 
     game_flag = 100
     # Add the first trigger
@@ -26,7 +28,7 @@ def triggerSetup(rops, options):
               "RotorOps.force_offroad = " + lb("force_offroad") + "\n\n" +
               "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
               "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
-              "RotorOps.inf_spawn_messages = " + lb("inf_spawn_msgs") + "\n\n" +
+              "RotorOps.inf_spawn_messages = true\n\n" +
               "RotorOps.inf_spawns_per_zone = " + lb("inf_spawn_qty") + "\n\n" +
               "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n")
     if not options["smoke_pickup_zones"]:
@@ -38,7 +40,7 @@ def triggerSetup(rops, options):
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Zones")
     trig.rules.append(dcs.condition.TimeAfter(2))
     for s_zone in rops.staging_zones:
-        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.stagingZone('" + s_zone + "')")))
+        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.addStagingZone('" + s_zone + "')")))
     for c_zone in rops.conflict_zones:
         zone_flag = rops.conflict_zones[c_zone].flag
         trig.actions.append(
@@ -60,6 +62,15 @@ def triggerSetup(rops, options):
         z_active_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
         z_active_trig.actions.append(dcs.action.DoScript(dcs.action.String("--Add any action you want here!")))
         rops.m.triggerrules.triggers.append(z_active_trig)
+
+    # # Add CTLD beacons - this might be cool but we'd need to address placement of the 3D objects
+    # trig = dcs.triggers.TriggerOnce(comment="RotorOps CTLD Beacons")
+    # trig.rules.append(dcs.condition.TimeAfter(5))
+    # trig.actions.append(dcs.action.DoScript(dcs.action.String("ctld.createRadioBeaconAtZone('STAGING','blue', 1440,'STAGING/LOGISTICS')")))
+    # for c_zone in rops.conflict_zones:
+    #     trig.actions.append(
+    #         dcs.action.DoScript(dcs.action.String("ctld.createRadioBeaconAtZone('" + c_zone + "','blue', 1440,'" + c_zone + "')")))
+    # rops.m.triggerrules.triggers.append(trig)
 
     # Zone protection SAMs
     if options["zone_protect_sams"]:
@@ -131,11 +142,10 @@ def triggerSetup(rops, options):
 
     # Add transport helos triggers
     for index in range(options["e_transport_helos"]):
-        random_zone_index = random.randrange(1, len(rops.conflict_zones))
-        random_zone_obj = list(rops.conflict_zones.items())[random_zone_index]
+        random_zone_obj = random.choice(list(rops.conflict_zones.items()))
         zone = random_zone_obj[1]
         z_weak_trig = dcs.triggers.TriggerOnce(comment=zone.name + " Transport Helo")
-        z_weak_trig.rules.append(dcs.condition.FlagEquals(game_flag, random_zone_index + 1))
+        z_weak_trig.rules.append(dcs.condition.FlagIsMore(zone.flag, 1))
         z_weak_trig.rules.append(dcs.condition.FlagIsLess(zone.flag, random.randrange(20, 100)))
         z_weak_trig.actions.append(dcs.action.DoScript(dcs.action.String(
             "---Flag " + str(game_flag) + " value represents the index of the active zone. ")))
@@ -150,10 +160,13 @@ def triggerSetup(rops, options):
     trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
     trig.actions.append(
         dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
+    trig.actions.append(
+        dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
     rops.m.triggerrules.triggers.append(trig)
-
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
     trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
     trig.actions.append(
         dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
+    trig.actions.append(
+        dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
     rops.m.triggerrules.triggers.append(trig)

@@ -47,64 +47,7 @@
    <bool>false</bool>
   </property>
   <property name="styleSheet">
-   <string notr="true">/*-----QScrollBar-----*/
-QScrollBar:horizontal 
-{
-    background-color: transparent;
-    height: 8px;
-    margin: 0px;
-    padding: 0px;
-
-}
-
-
-QScrollBar::handle:horizontal 
-{
-    border: none;
-	min-width: 100px;
-    background-color: #9b9b9b;
-
-}
-
-
-QScrollBar::add-line:horizontal, 
-QScrollBar::sub-line:horizontal,
-QScrollBar::add-page:horizontal, 
-QScrollBar::sub-page:horizontal 
-{
-    width: 0px;
-    background-color: transparent;
-
-}
-
-
-QScrollBar:vertical 
-{
-    background-color: transparent;
-    width: 8px;
-    margin: 0;
-
-}
-
-
-QScrollBar::handle:vertical 
-{
-    border: none;
-	min-height: 100px;
-    background-color: #9b9b9b;
-
-}
-
-
-QScrollBar::add-line:vertical, 
-QScrollBar::sub-line:vertical,
-QScrollBar::add-page:vertical, 
-QScrollBar::sub-page:vertical 
-{
-    height: 0px;
-    background-color: transparent;
-
-}</string>
+   <string notr="true"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QCheckBox" name="logistics_crates_checkBox">
@@ -118,7 +61,6 @@ QScrollBar::sub-page:vertical
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -144,7 +86,6 @@ QScrollBar::sub-page:vertical
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -167,7 +108,6 @@ QScrollBar::sub-page:vertical
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -179,15 +119,14 @@ QScrollBar::sub-page:vertical
    <widget class="QComboBox" name="scenario_comboBox">
     <property name="geometry">
      <rect>
-      <x>30</x>
-      <y>20</y>
-      <width>371</width>
-      <height>29</height>
+      <x>40</x>
+      <y>10</y>
+      <width>351</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>8</pointsize>
       <bold>true</bold>
      </font>
@@ -214,15 +153,14 @@ QScrollBar::sub-page:vertical
    <widget class="QTextBrowser" name="description_textBrowser">
     <property name="geometry">
      <rect>
-      <x>40</x>
-      <y>410</y>
-      <width>361</width>
-      <height>251</height>
+      <x>30</x>
+      <y>390</y>
+      <width>371</width>
+      <height>211</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -242,7 +180,7 @@ QScrollBar::sub-page:vertical
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;meta charset=&quot;utf-8&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Arial'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p align=&quot;center&quot; style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:10pt;&quot;&gt;Provide close air support for our convoys as we take back Las Vegas from the enemy!&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
@@ -260,7 +198,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -287,7 +224,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>How many groups should we generate?</string>
+     <string>Red vehicle groups per staging or conflict zone.</string>
     </property>
     <property name="buttonSymbols">
      <enum>QAbstractSpinBox::PlusMinus</enum>
@@ -319,7 +256,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
       <bold>false</bold>
      </font>
@@ -339,7 +275,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -362,7 +297,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -403,7 +337,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -427,7 +360,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>How many groups should we generate?</string>
+     <string>Blue vehicle groups per staging or conflict zone.</string>
     </property>
     <property name="buttonSymbols">
      <enum>QAbstractSpinBox::PlusMinus</enum>
@@ -453,7 +386,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
       <bold>false</bold>
      </font>
@@ -510,7 +442,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -647,7 +578,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -670,7 +600,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -690,7 +619,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
      </font>
     </property>
@@ -709,16 +637,15 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
     </property>
     <property name="statusTip">
-     <string/>
+     <string>Spawn a friendly AWACS with fighter escorts.</string>
     </property>
     <property name="text">
-     <string>Friendly AWACS</string>
+     <string>Friendly AWACS with escort</string>
     </property>
     <property name="checked">
      <bool>true</bool>
@@ -735,38 +662,15 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Spawn friendly tankers for both boom and basket refueling.</string>
+    </property>
     <property name="text">
      <string>Friendly Tankers</string>
-    </property>
-    <property name="checked">
-     <bool>true</bool>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="inf_spawn_voiceovers_checkBox">
-    <property name="geometry">
-     <rect>
-      <x>960</x>
-      <y>455</y>
-      <width>271</width>
-      <height>24</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Arial</family>
-      <pointsize>9</pointsize>
-     </font>
-    </property>
-    <property name="statusTip">
-     <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone.</string>
-    </property>
-    <property name="text">
-     <string>Voiceovers on Infantry Spawn</string>
     </property>
     <property name="checked">
      <bool>true</bool>
@@ -783,7 +687,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -801,14 +704,13 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>960</x>
-      <y>424</y>
+      <y>460</y>
       <width>271</width>
       <height>24</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -826,14 +728,13 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>960</x>
-      <y>486</y>
+      <y>490</y>
       <width>271</width>
       <height>24</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -861,7 +762,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -944,7 +844,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -972,7 +871,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -995,7 +893,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>10</pointsize>
       <bold>false</bold>
      </font>
@@ -1004,13 +901,16 @@ p, li { white-space: pre-wrap; }
      <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone.  Disables infinite troop pickups from conflict zones (you must pick up existing troops).</string>
     </property>
     <property name="text">
-     <string>APCs Spawn Infantry</string>
+     <string>Dynamic Troops</string>
     </property>
     <property name="checked">
      <bool>true</bool>
     </property>
    </widget>
    <widget class="QPushButton" name="generateButton">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="geometry">
      <rect>
       <x>710</x>
@@ -1021,19 +921,15 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>8</pointsize>
       <bold>true</bold>
      </font>
     </property>
+    <property name="statusTip">
+     <string>Click to generate mission.</string>
+    </property>
     <property name="styleSheet">
-     <string notr="true">background-color: gray;
-color: rgb(255, 255, 255);
-border-style: outset;
-border-width: 1px;
-border-radius: 5px;
-border-color: black;
-padding: 4px;</string>
+     <string notr="true"/>
     </property>
     <property name="text">
      <string>GENERATE MISSION</string>
@@ -1050,7 +946,6 @@ padding: 4px;</string>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -1075,7 +970,6 @@ padding: 4px;</string>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -1100,7 +994,6 @@ padding: 4px;</string>
     </property>
     <property name="font">
      <font>
-      <family>Arial</family>
       <pointsize>9</pointsize>
      </font>
     </property>
@@ -1124,9 +1017,9 @@ padding: 4px;</string>
     <property name="geometry">
      <rect>
       <x>60</x>
-      <y>80</y>
-      <width>300</width>
-      <height>300</height>
+      <y>60</y>
+      <width>310</width>
+      <height>310</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -1154,7 +1047,7 @@ padding: 4px;</string>
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>assets/briefing1.png</pixmap>
+     <pixmap>../assets/briefing1.png</pixmap>
     </property>
     <property name="scaledContents">
      <bool>true</bool>
@@ -1166,10 +1059,10 @@ padding: 4px;</string>
    <widget class="QPushButton" name="nextScenario_pushButton">
     <property name="geometry">
      <rect>
-      <x>370</x>
-      <y>210</y>
-      <width>31</width>
-      <height>51</height>
+      <x>350</x>
+      <y>620</y>
+      <width>41</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -1179,10 +1072,10 @@ padding: 4px;</string>
    <widget class="QPushButton" name="prevScenario_pushButton">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>210</y>
-      <width>31</width>
-      <height>51</height>
+      <x>40</x>
+      <y>620</y>
+      <width>41</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -1202,10 +1095,172 @@ padding: 4px;</string>
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap>assets/rotorops-dkgray.png</pixmap>
+     <pixmap>../assets/rotorops-dkgray.png</pixmap>
     </property>
     <property name="scaledContents">
      <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rateButton1">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>120</x>
+      <y>620</y>
+      <width>31</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Submit a review for this mission scenario.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-image:url('../assets/star_full.png');</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hotstart_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>960</x>
+      <y>430</y>
+      <width>271</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Player helicopters start with engines running on the ground.  No effect if player slots says 'Locked to scenario'</string>
+    </property>
+    <property name="text">
+     <string>Player Hotstart</string>
+    </property>
+    <property name="checked">
+     <bool>false</bool>
+    </property>
+    <property name="tristate">
+     <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rateButton2">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>160</x>
+      <y>620</y>
+      <width>31</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Submit a review for this mission scenario.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-image:url('../assets/star_full.png');</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rateButton3">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>620</y>
+      <width>31</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Submit a review for this mission scenario.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-image:url('../assets/star_full.png');</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rateButton4">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>240</x>
+      <y>620</y>
+      <width>31</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Submit a review for this mission scenario.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-image:url('../assets/star_full.png');</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="rateButton5">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>280</x>
+      <y>620</y>
+      <width>31</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Submit a review for this mission scenario.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border-image:url('../assets/star_full.png');</string>
+    </property>
+    <property name="text">
+     <string/>
     </property>
    </widget>
   </widget>
@@ -1215,34 +1270,40 @@ padding: 4px;</string>
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>26</height>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMap">
     <property name="title">
-     <string>Map Filter</string>
+     <string>Map</string>
     </property>
-    <addaction name="actionAll_2"/>
     <addaction name="actionCaucasus"/>
     <addaction name="actionPersian_Gulf"/>
     <addaction name="actionMarianas"/>
     <addaction name="actionNevada"/>
     <addaction name="actionSyria"/>
    </widget>
-   <widget class="QMenu" name="menuGametype_Filter">
+   <widget class="QMenu" name="menuFilter">
     <property name="title">
-     <string>Gametype Filter</string>
+     <string>Filter</string>
     </property>
-    <addaction name="actionAll"/>
     <addaction name="actionMultiplayer"/>
+    <addaction name="actionSingle_Player"/>
+    <addaction name="actionCo_Op"/>
+   </widget>
+   <widget class="QMenu" name="menuPreferences">
+    <property name="title">
+     <string>Preferences</string>
+    </property>
+    <addaction name="actionSave_Directory"/>
    </widget>
    <addaction name="menuMap"/>
-   <addaction name="menuGametype_Filter"/>
+   <addaction name="menuFilter"/>
+   <addaction name="menuPreferences"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="font">
     <font>
-     <family>Arial</family>
      <pointsize>9</pointsize>
      <bold>false</bold>
     </font>
@@ -1251,7 +1312,7 @@ padding: 4px;</string>
     <bool>false</bool>
    </property>
    <property name="styleSheet">
-    <string notr="true">color: rgb(255, 255, 255);</string>
+    <string notr="true"/>
    </property>
   </widget>
   <action name="action_generateMission">
@@ -1290,31 +1351,50 @@ padding: 4px;</string>
    </property>
   </action>
   <action name="actionCaucasus">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Caucasus</string>
    </property>
   </action>
   <action name="actionPersian_Gulf">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Persian Gulf</string>
    </property>
   </action>
   <action name="actionMarianas">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Marianas</string>
    </property>
   </action>
   <action name="actionNevada">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Nevada</string>
    </property>
   </action>
   <action name="actionSyria">
-   <property name="text">
-    <string>Syria</string>
-   </property>
-  </action>
-  <action name="actionAll">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1322,18 +1402,31 @@ padding: 4px;</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>All</string>
+    <string>Syria</string>
    </property>
   </action>
   <action name="actionMultiplayer">
    <property name="checkable">
-    <bool>false</bool>
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Multiplayer</string>
    </property>
   </action>
-  <action name="actionAll_2">
+  <action name="actionSave_Directory">
+   <property name="text">
+    <string>Save Directory</string>
+   </property>
+  </action>
+  <action name="action_slotChanged">
+   <property name="text">
+    <string>_slotChanged</string>
+   </property>
+  </action>
+  <action name="actionIncluded">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1341,7 +1434,97 @@ padding: 4px;</string>
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>All</string>
+    <string>Included</string>
+   </property>
+  </action>
+  <action name="actionUser">
+   <property name="text">
+    <string>User</string>
+   </property>
+  </action>
+  <action name="actionDownloaded">
+   <property name="text">
+    <string>Downloaded</string>
+   </property>
+  </action>
+  <action name="action_downloadButton">
+   <property name="text">
+    <string>_downloadButton</string>
+   </property>
+   <property name="toolTip">
+    <string>_downloadButton</string>
+   </property>
+  </action>
+  <action name="action_rateButton1">
+   <property name="text">
+    <string>_rateButton1</string>
+   </property>
+   <property name="toolTip">
+    <string>_rateButton1</string>
+   </property>
+  </action>
+  <action name="actionSingle_Player">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Single-Player</string>
+   </property>
+  </action>
+  <action name="actionCo_Op">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Co-Op</string>
+   </property>
+  </action>
+  <action name="actionMapMenu">
+   <property name="text">
+    <string>actionMapMenu</string>
+   </property>
+  </action>
+  <action name="actionFilterMenu">
+   <property name="text">
+    <string>FilterMenu</string>
+   </property>
+  </action>
+  <action name="action_rateButton2">
+   <property name="text">
+    <string>_rateButton2</string>
+   </property>
+   <property name="toolTip">
+    <string>_rateButton2</string>
+   </property>
+  </action>
+  <action name="action_rateButton3">
+   <property name="text">
+    <string>_rateButton3</string>
+   </property>
+   <property name="toolTip">
+    <string>_rateButton3</string>
+   </property>
+  </action>
+  <action name="action_rateButton4">
+   <property name="text">
+    <string>_rateButton4</string>
+   </property>
+   <property name="toolTip">
+    <string>_rateButton4</string>
+   </property>
+  </action>
+  <action name="action_rateButton5">
+   <property name="text">
+    <string>_rateButton5</string>
+   </property>
+   <property name="toolTip">
+    <string>_rateButton5</string>
    </property>
   </action>
  </widget>
@@ -1356,6 +1539,54 @@ padding: 4px;</string>
     <hint type="sourcelabel">
      <x>1030</x>
      <y>616</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>prevScenario_pushButton</sender>
+   <signal>clicked()</signal>
+   <receiver>action_prevScenario</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>35</x>
+     <y>261</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>defense_checkBox</sender>
+   <signal>clicked()</signal>
+   <receiver>action_defensiveModeChanged</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>560</x>
+     <y>173</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>slot_template_comboBox</sender>
+   <signal>activated(int)</signal>
+   <receiver>action_slotChanged</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>1095</x>
+     <y>426</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
@@ -1380,22 +1611,6 @@ padding: 4px;</string>
    </hints>
   </connection>
   <connection>
-   <sender>defense_checkBox</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>action_defensiveModeChanged</receiver>
-   <slot>trigger()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>560</x>
-     <y>173</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>nextScenario_pushButton</sender>
    <signal>clicked()</signal>
    <receiver>action_nextScenario</receiver>
@@ -1406,20 +1621,84 @@ padding: 4px;</string>
      <y>257</y>
     </hint>
     <hint type="destinationlabel">
-     <x>372</x>
-     <y>63</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>prevScenario_pushButton</sender>
+   <sender>rateButton1</sender>
    <signal>clicked()</signal>
-   <receiver>action_prevScenario</receiver>
+   <receiver>action_rateButton1</receiver>
    <slot>trigger()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>35</x>
-     <y>261</y>
+     <x>300</x>
+     <y>101</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>rateButton2</sender>
+   <signal>clicked()</signal>
+   <receiver>action_rateButton2</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>175</x>
+     <y>664</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>rateButton3</sender>
+   <signal>clicked()</signal>
+   <receiver>action_rateButton3</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>215</x>
+     <y>664</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>rateButton4</sender>
+   <signal>clicked()</signal>
+   <receiver>action_rateButton4</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>255</x>
+     <y>664</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>rateButton5</sender>
+   <signal>clicked()</signal>
+   <receiver>action_rateButton5</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>295</x>
+     <y>664</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
