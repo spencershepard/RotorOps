@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.2.8"
+RotorOps.version = "1.3.0"
 local debug = true
 
 
@@ -8,7 +8,7 @@ local debug = true
 --- Protip: change these options from the mission editor rather than changing the script file itself.  See documentation on github for details.
 
 
---RotorOps settings that are safe to change dynamically (ideally from the mission editor in DO SCRIPT for portability). You can change these while the script is running, at any time.
+--RotorOps settings that can be changed dynamically (ideally from the mission editor in DO SCRIPT for portability). You can change these while the script is running, at any time. Be sure of your syntax and test...errors may crash the script.
 RotorOps.voice_overs = true
 RotorOps.ground_speed = 60 --max speed for ground vehicles moving between zones. Doesn't have much effect since always limited by slowest vehicle in group
 RotorOps.zone_status_display = true --constantly show units remaining and zone status on screen 
@@ -21,8 +21,14 @@ RotorOps.defending_vehicles_disperse = true
 RotorOps.inf_spawns_avail = 0 --this is the number of infantry group spawn events remaining in the active zone
 RotorOps.inf_spawn_chance = 25 -- 0-100 the chance of spawning infantry in an active zone spawn zone, per 'assessUnitsInZone' loop (10 seconds) 
 RotorOps.inf_spawn_trigger_percent = 70 --infantry has a chance of spawning if the percentage of defenders remaining in zone is less than this value
-RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
+--RotorOps.inf_spawns_per_zone = 3 --number of infantry groups to spawn per zone
 RotorOps.inf_spawn_messages = true --voiceovers and messages for infantry spawns
+RotorOps.inf_spawn_blue = {mg=1,at=0,aa=0,inf=4,mortar=0} --can be an integer quantity, or a ctld defined group table
+RotorOps.inf_spawn_red = {mg=1,at=0,aa=0,inf=4,mortar=0} --can be an integer quantity, or a ctld defined group table
+RotorOps.inf_apc_group = {mg=1,at=0,aa=0,inf=3,mortar=0} --can be an integer quantity, or a ctld defined group table
+RotorOps.inf_spawns_total = 0 --number of infantry groups to spawn per game
+
+RotorOps.farp_smoke_color = 2  -- Green=0 Red=1 White=2 Orange=3 Blue=4 NONE= -1
 
 
 --RotorOps settings that are safe to change only before calling setupConflict()
@@ -31,8 +37,18 @@ RotorOps.CTLD_crates = false
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
 RotorOps.pickup_zone_smoke = "blue"
-RotorOps.apc_group = {mg=1,at=0,aa=0,inf=3,mortar=0} --not used yet, but we should define the CTLD groups
-
+RotorOps.ai_task_by_name = true  --allow tasking all groups that include key strings in their group names eg 'Patrol'
+RotorOps.ai_task_by_name_scheduler = true --continually search active groups for key strings and ai tasking
+RotorOps.patrol_task_string = 'patrol' --default string to search group names for the patrol task. requires ai_task_by_name
+RotorOps.aggressive_task_string = 'aggressive' --default string to search group names for the patrol task. requires ai_task_by_name
+RotorOps.move_to_active_task_string = "activezone" --default string to search group names for the move to active zone task. requires ai_task_by_name
+RotorOps.shift_task_string = "shift"
+RotorOps.guard_task_string = "guard"
+--RotorOps.patrol_task_radius = 100 --patrol search radius
+--RotorOps.aggressive_task_radius = 1000 --aggressive search radius  --not implementing for now until more time for testing
+RotorOps.defending_vehicles_behavior = "shift"  --available options: 'none', 'patrol', 'shift'
+RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
+RotorOps.enable_staging_pickzones = true
 
 ---[[END OF OPTIONS]]---
 
@@ -47,14 +63,13 @@ RotorOps.active_zone = "" --name of the active zone
 RotorOps.active_zone_index = 0
 RotorOps.game_state_flag = 1  --user flag to store the game state
 RotorOps.staging_zones = {}
-RotorOps.ctld_pickup_zones = {} --keep track of ctld zones we've added, mainly for map markup
 RotorOps.ai_defending_infantry_groups = {} 
 RotorOps.ai_attacking_infantry_groups = {} 
 RotorOps.ai_defending_vehicle_groups = {} 
 RotorOps.ai_attacking_vehicle_groups = {} 
 RotorOps.ai_tasks = {} 
 RotorOps.defending = false
-RotorOps.staged_units_flag = 111
+RotorOps.staged_units_flag = 111  -- shows a percentage of the units found in the staging zone when the game starts. you can also use 'ROPS_ATTACKERS' for readability
 
 trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
@@ -74,6 +89,13 @@ local cooldown = {
   ["attack_plane_msg"] = 0,
   ["trans_helo_msg"] = 0,
 }
+local zone_defenders_flags = {
+  'ROPS_A_DEFENDERS',
+  'ROPS_B_DEFENDERS',
+  'ROPS_C_DEFENDERS',
+  'ROPS_D_DEFENDERS',
+}
+RotorOps.farp_names = {}
 
 
 RotorOps.gameMsgs = {
@@ -425,14 +447,14 @@ function RotorOps.getValidUnitFromGroup(grp)
  else
   group_obj = grp
  end 
- if not grp then
+ if not group_obj then
   return nil
  end
- if grp:isExist() ~= true then 
+ if group_obj:isExist() ~= true then 
   return nil 
  end
  local first_valid_unit
- for index, unit in pairs(grp:getUnits())
+ for index, unit in pairs(group_obj:getUnits())
  do
    if unit:isExist() == true then
      first_valid_unit = unit
@@ -443,7 +465,35 @@ function RotorOps.getValidUnitFromGroup(grp)
  return first_valid_unit
 end
 
+--"static" in this case, is our groups/units that we don't want controlled by conflict zone tasks
+local function isStaticUnit(unit)
+  local unit_obj
+  if type(unit) == 'string' then
+    unit_obj = Unit.getByName(unit)
+  else
+    unit_obj = unit
+  end 
+  if string.find(unit_obj:getGroup():getName():lower(), RotorOps.exclude_ai_group_name:lower()) then
+    return true
+  else
+    return false
+  end	
+end
 
+--"static" in this case, is our groups/units that we don't want controlled by conflict zone tasks
+local function isStaticGroup(group)
+  local group_obj
+  if type(group) == 'string' then
+    group_obj = Group.getByName(group)
+  else
+    group_obj = group
+  end 
+  if string.find(group_obj:getName():lower(), RotorOps.exclude_ai_group_name:lower()) then
+    return true
+  else
+    return false
+  end	
+end
 
 ----USEFUL PUBLIC FUNCTIONS FOR THE MISSION EDITOR---
 
@@ -500,21 +550,20 @@ end
 
 
 
---see list of tasks in aiExecute. Zone is optional for many tasks
-function RotorOps.aiTask(grp, task, zone)
+--see list of tasks in aiExecute. Zone/point is optional for many tasks. Works with group name or object/table
+function RotorOps.aiTask(grp, task, zone, point)
    local group_name
    if type(grp) == 'string' then
     group_name = grp
    else
     group_name = Group.getName(grp)
    end 
-   if string.find(group_name:lower(), RotorOps.exclude_ai_group_name:lower()) then  --exclude groups that the user specifies with a special group name
-     return
-   end
+
    if tableHasKey(RotorOps.ai_tasks, group_name) == true then  --if we already have this group in our list to manage
      --debugMsg("timer already exists, updating task for "..group_name.." : ".. RotorOps.ai_tasks[group_name].ai_task.." to "..task)
      RotorOps.ai_tasks[group_name].ai_task = task
      RotorOps.ai_tasks[group_name].zone = zone
+	 RotorOps.ai_tasks[group_name].point = point
    else 
      local vars = {}
      vars.group_name = group_name
@@ -522,8 +571,11 @@ function RotorOps.aiTask(grp, task, zone)
      if zone then 
        vars.zone = zone 
      end
+	 if point then
+	   vars.point = point
+	 end
      local timer_id = timer.scheduleFunction(RotorOps.aiExecute, vars, timer.getTime() + 5)
-     RotorOps.ai_tasks[group_name] = {['timer_id'] = timer_id, ['ai_task'] = task, ['zone'] = zone}
+     RotorOps.ai_tasks[group_name] = {['timer_id'] = timer_id, ['ai_task'] = task, ['zone'] = zone, ['point'] = point}
    end
 end
 
@@ -541,23 +593,24 @@ function RotorOps.tallyZone(zone_name)
     
     for index, unit in pairs(new_units) do
       if not hasValue(RotorOps.staged_units, unit) then
-        env.info("RotorOps adding new units to staged_units: "..#new_units)
-        table.insert(RotorOps.staged_units, unit)
-        RotorOps.aiTask(unit:getGroup(),"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name)
+	    if not isStaticUnit(unit) then
+          env.info("RotorOps adding new units to staged_units: "..#new_units)
+          table.insert(RotorOps.staged_units, unit)
+          RotorOps.aiTask(unit:getGroup(),"move_to_active_zone", RotorOps.zones[RotorOps.active_zone_index].name)
+		end
       else
         --env.info("unit already in table")
       end
     end
     
   end
---  
---  for index, unit in pairs(RotorOps.staged_units) do
---    if string.find(Unit.getGroup(unit):getName():lower(), RotorOps.exclude_ai_group_name:lower()) then
---      RotorOps.staged_units[index] = nil --remove 'static' units
---    end
---  end
+
 end
 
+--display a text message to all players with a radio sound effect
+function RotorOps.radioText(message)
+  RotorOps.gameMsg({message, 'radio_effect.ogg'})
+end
 
 
 ---AI CORE BEHAVIOR--
@@ -772,6 +825,138 @@ function RotorOps.patrolRadius(vars)
 end
 
 
+function RotorOps.shiftPosition(vars)
+ --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
+ local grp = vars.grp
+ local search_radius = vars.radius or 100
+ local inner_radius = 50 --minimum distance to move for randpointincircle
+ local first_valid_unit
+ if grp:isExist() ~= true then return end
+ local start_point = vars.point
+ 
+ if not start_point then
+     env.info("RotorOps: No point provided, getting current position.")
+	 for index, unit in pairs(grp:getUnits()) do
+	   if unit:isExist() == true then
+		 first_valid_unit = unit
+		 break
+	   else --trigger.action.outText("a unit no longer exists", 15) 
+	   end 
+	 end
+	 if first_valid_unit == nil then return end
+	 start_point = first_valid_unit:getPoint()
+ end
+	 
+ 
+ local max_waypoints = 2
+ 
+ local urban = RotorOps.pointIsUrban(start_point, 100)
+ formation = 'Cone'
+ if urban then
+   formation = 'On Road'
+ end
+
+ local path = {} 
+ path[1] = mist.ground.buildWP(start_point, '', 5) 
+
+ for i = #path, max_waypoints, 1 do
+   for i = 1, 4, 1 do
+    local rand_point = mist.getRandPointInCircle(start_point, search_radius, inner_radius)
+	
+    if mist.isTerrainValid(rand_point, {'LAND', 'ROAD'}) == true then
+        path[#path + 1] = mist.ground.buildWP(rand_point, formation, 5)
+    	env.info("point is valid, adding as waypoint with formation: " .. formation)
+    	break
+    end
+	
+   end
+ end
+
+ mist.goRoute(grp, path)                                                      
+end
+
+
+function RotorOps.guardPosition(vars)
+ --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
+ local grp = vars.grp
+ local search_radius = vars.radius or 100
+ local first_valid_unit
+ if grp:isExist() ~= true then return end
+ local start_point = vars.point
+ 
+ if not start_point then
+     env.info("RotorOps: No point provided, getting current position.")
+	 for index, unit in pairs(grp:getUnits()) do
+	   if unit:isExist() == true then
+		 first_valid_unit = unit
+		 break
+	   else --trigger.action.outText("a unit no longer exists", 15) 
+	   end 
+	 end
+	 if first_valid_unit == nil then return end
+	 start_point = first_valid_unit:getPoint()
+ end
+ local object_vol_thresh = 0
+ local max_waypoints = 1
+ local foundUnits = {}
+
+ local volS = {
+   id = world.VolumeType.SPHERE,
+   params = {
+     point = grp:getUnit(1):getPoint(),  --check if exists, maybe itterate through grp
+     radius = search_radius
+   }
+ }
+ 
+ local ifFound = function(foundItem, val)
+  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
+  if foundItem:hasAttribute("Infantry") ~= true then  --disregard infantry...we only want objects that might provide cover
+    if getObjectVolume(foundItem) > object_vol_thresh then
+      foundUnits[#foundUnits + 1] = foundItem
+      --trigger.action.outText("valid cover item: "..foundItem:getTypeName(), 5) 
+    else --debugMsg("object not large enough: "..foundItem:getTypeName()) 
+    end
+  else --trigger.action.outText("object not the right type", 5)  
+  end
+ return true
+ end
+ 
+ world.searchObjects(1, volS, ifFound)
+ world.searchObjects(3, volS, ifFound)
+ world.searchObjects(5, volS, ifFound)
+ --world.searchObjects(Object.Category.BASE, volS, ifFound)
+ if #foundUnits > 0 then
+   local path = {} 
+   path[1] = mist.ground.buildWP(start_point, '', 5) 
+   local rand_index = math.random(1,#foundUnits)
+   path[#path + 1] = mist.ground.buildWP(foundUnits[rand_index]:getPoint(), '', 3) 
+   mist.goRoute(grp, path)  
+ end   
+end
+
+--helper function to try to determine a point is near many scenery objects
+function RotorOps.pointIsUrban(_point, _radius)
+   local volS = {
+   id = world.VolumeType.SPHERE,
+   params = {
+     point = _point,  
+     radius = _radius
+   }
+ }
+ local foundUnits = {}
+ local ifFound = function(foundItem, val)
+      foundUnits[#foundUnits + 1] = foundItem
+ end
+ 
+ world.searchObjects(5, volS, ifFound)
+ --env.info("Found scenery objects: " .. #foundUnits)
+ if #foundUnits > 10 then
+   return true
+ end
+   return false
+end
+
+
 
 function RotorOps.aiExecute(vars)
   local update_interval = 60
@@ -780,6 +965,7 @@ function RotorOps.aiExecute(vars)
   local group_name = vars.group_name
   local task = RotorOps.ai_tasks[group_name].ai_task
   local zone = RotorOps.ai_tasks[group_name].zone
+  local point = RotorOps.ai_tasks[group_name].point
 
 --  if vars.zone then zone = vars.zone end
 
@@ -862,6 +1048,20 @@ function RotorOps.aiExecute(vars)
     local speed = RotorOps.ground_speed
     local force_offroad = RotorOps.force_offroad
     mist.groupToPoint(group_name, RotorOps.active_zone, formation, final_heading, speed, force_offroad)
+  elseif task == "shift" then
+    local vars = {}
+    vars.grp = Group.getByName(group_name)
+    vars.radius = 250
+	vars.point = point
+    RotorOps.shiftPosition(vars) --takes a group object, not name
+    update_interval = math.random(60,360)
+  elseif task == "guard" then
+    local vars = {}
+    vars.grp = Group.getByName(group_name)
+    vars.radius = 100
+	vars.point = point
+    RotorOps.guardPosition(vars) --takes a group object, not name
+    update_interval = math.random(60,120)
 
   end  
  
@@ -916,28 +1116,38 @@ function RotorOps.assessUnitsInZone(var)
      RotorOps.ai_defending_vehicle_groups = RotorOps.groupsFromUnits(defending_vehicles)
      RotorOps.ai_attacking_infantry_groups = RotorOps.groupsFromUnits(attacking_infantry)
      RotorOps.ai_attacking_vehicle_groups = RotorOps.groupsFromUnits(attacking_vehicles)
+	 
+
    
   for index, group in pairs(RotorOps.ai_defending_infantry_groups) do 
-    if group then
+    if group and not isStaticGroup(group) then
       RotorOps.aiTask(group, "patrol")
     end
   end
   
   for index, group in pairs(RotorOps.ai_attacking_infantry_groups) do 
-    if group then
+    if group and not isStaticGroup(group) then
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
     end
   end
   
   for index, group in pairs(RotorOps.ai_attacking_vehicle_groups) do 
-    if group then
+    if group and not isStaticGroup(group) then
       RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
     end
   end
   
   for index, group in pairs(RotorOps.ai_defending_vehicle_groups) do 
-    if group then
+    if group and not isStaticGroup(group) then
       Group.getByName(group):getController():setOption(AI.Option.Ground.id.DISPERSE_ON_ATTACK , RotorOps.defending_vehicles_disperse)
+	  if RotorOps.defending_vehicles_behavior == "patrol" then
+	    RotorOps.aiTask(group, "patrol")
+	  elseif RotorOps.defending_vehicles_behavior == "shift" then
+	    local unit = RotorOps.getValidUnitFromGroup(group)
+		if unit then
+	      RotorOps.aiTask(group, "shift", nil, unit:getPoint())
+		end
+	  end
     end
   end
   
@@ -953,13 +1163,20 @@ function RotorOps.assessUnitsInZone(var)
      
      --sort infantry spawn zones and spawn quantity
      inf_spawn_zones = {}
+	 local total_spawn_zones = 0
      for zone, zoneobj in pairs(mist.DBs.zonesByName) do 
        if string.find(zone, RotorOps.active_zone) and string.find(zone:lower(), "spawn") then --if we find a zone that has the active zone name and the word spawn
          inf_spawn_zones[#inf_spawn_zones + 1] = zone 
          env.info("ROTOR OPS: spawn zone found:"..zone)
        end
+	   if string.find(zone:lower(), "spawn") then
+	     total_spawn_zones = total_spawn_zones + 1
+	   end
      end
-     RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * #inf_spawn_zones
+     --RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * RotorOps.inf_spawn_multiplier[RotorOps.active_zone_index]
+	 if total_spawn_zones > 0 then
+	   RotorOps.inf_spawns_avail = (RotorOps.inf_spawns_total / total_spawn_zones) * #inf_spawn_zones
+	 end
 
      env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
    end
@@ -973,6 +1190,7 @@ function RotorOps.assessUnitsInZone(var)
      active_zone_initial_defenders = nil
      defenders_remaining_percent = 0
      trigger.action.setUserFlag(defenders_status_flag, 0)  --set the zone's flag to cleared
+	 trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], 0)  --set the zone's flag to cleared
      if RotorOps.defending == true then
        RotorOps.gameMsg(RotorOps.gameMsgs.enemy_cleared_zone, RotorOps.active_zone_index)
      else
@@ -984,6 +1202,7 @@ function RotorOps.assessUnitsInZone(var)
        
    else 
      trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flag to indicate the status of remaining defenders
+	 trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], defenders_remaining_percent)
    end
      
    --are all zones clear?
@@ -998,13 +1217,14 @@ function RotorOps.assessUnitsInZone(var)
    --update staged units remaining flag
    local staged_units_remaining = {}
    for index, unit in pairs(RotorOps.staged_units) do 
-     if unit:isExist() then
+     if unit:isExist() and unit:getLife() > 0 then
        staged_units_remaining[#staged_units_remaining + 1] = unit
      end
    end
    local percent_staged_remain = 0
    percent_staged_remain = math.floor((#staged_units_remaining / #RotorOps.staged_units) * 100) 
    trigger.action.setUserFlag(RotorOps.staged_units_flag, percent_staged_remain)
+   trigger.action.setUserFlag('ROPS_ATTACKERS', percent_staged_remain)
    debugMsg("Staged units remaining percent: "..percent_staged_remain.."%")
    
    
@@ -1013,9 +1233,11 @@ function RotorOps.assessUnitsInZone(var)
     if RotorOps.defending == true then 
       RotorOps.game_state = RotorOps.game_states.lost
       trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.lost)
+	  trigger.action.setUserFlag('ROPS_GAMESTATE', RotorOps.game_states.lost)
     else
       RotorOps.game_state = RotorOps.game_states.won
       trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.won)
+	  trigger.action.setUserFlag('ROPS_GAMESTATE', RotorOps.game_states.won)
     end
     return --we won't reset our timer to fire this function again
    end
@@ -1030,6 +1252,7 @@ function RotorOps.assessUnitsInZone(var)
    if RotorOps.defending and defending_game_won then
      RotorOps.game_state = RotorOps.game_states.won
      trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.won)
+	 trigger.action.setUserFlag('ROPS_GAMESTATE', RotorOps.game_states.won)
      return  --we won't reset our timer to fire this function again
    end 
   
@@ -1064,7 +1287,7 @@ function RotorOps.assessUnitsInZone(var)
        local function timedDeploy()
          if vehicle:isExist() then
            env.info(vehicle:getName().." is deploying troops.")
-           RotorOps.deployTroops(4, vehicle:getGroup(), false)
+           RotorOps.deployTroops(RotorOps.inf_apc_group, vehicle:getGroup(), false)
          end
        end
         
@@ -1086,9 +1309,9 @@ function RotorOps.assessUnitsInZone(var)
       local zone = inf_spawn_zones[rand_index]
 
       if RotorOps.defending then
-        ctld.spawnGroupAtTrigger("blue", 5, zone, 1000)
+        ctld.spawnGroupAtTrigger("blue", RotorOps.inf_spawn_blue, zone, 1000)
       else
-        ctld.spawnGroupAtTrigger("red", 5, zone, 1000)
+        ctld.spawnGroupAtTrigger("red", RotorOps.inf_spawn_red, zone, 1000)
         RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
       end
       
@@ -1120,12 +1343,19 @@ function RotorOps.assessUnitsInZone(var)
    local message = ""
    local header = ""
    local body = ""
+   -- if RotorOps.defending == true then
+     -- header = "[DEFEND "..RotorOps.active_zone .. "]   " 
+     -- body = "RED: " ..#attacking_infantry.. " infantry, " .. #attacking_vehicles .. " vehicles.  BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"
+   -- else 
+     -- header = "[ATTACK "..RotorOps.active_zone .. "]   " 
+     -- body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE: "..#attacking_infantry.. " infantry, " .. #attacking_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"   
+   -- end
    if RotorOps.defending == true then
      header = "[DEFEND "..RotorOps.active_zone .. "]   " 
-     body = "RED: " ..#attacking_infantry.. " infantry, " .. #attacking_vehicles .. " vehicles.  BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"
+     body = "BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
    else 
      header = "[ATTACK "..RotorOps.active_zone .. "]   " 
-     body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE: "..#attacking_infantry.. " infantry, " .. #attacking_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"   
+     body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"   
    end
 
    message = header .. body
@@ -1169,28 +1399,48 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
     trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
   end
   
-
-  for index, pickup_zone in pairs(RotorOps.ctld_pickup_zones)
-  do
-    for c_index, c_zone in pairs(ctld.pickupZones)
-    do
-      if pickup_zone == c_zone[1] then
-       --debugMsg("found our zone in ctld zones, status: "..c_zone[4])
-       local ctld_zone_status = c_zone[4]
-       local point = trigger.misc.getZone(pickup_zone).point
-       local radius = trigger.misc.getZone(pickup_zone).radius
-       local coalition = -1
-       local id = index + 150  --this must be UNIQUE!
-       local color = {1, 1, 1, 0.5}
-       local fill_color = {0, 0.8, 0, 0.1}
-       local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
-       if ctld_zone_status == 'yes' or ctld_zone_status == 1 then
-        --debugMsg("draw the pickup zone")
-        trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
-       end
-      end  
-    end
+  for index, cpz in pairs(ctld.pickupZones) do
+    env.info("CTLD pickzone name: " .. cpz[1])
+    pickup_zone = trigger.misc.getZone(cpz[1])
+    if pickup_zone then
+     env.info("found a ctld pickup zone")
+     local ctld_zone_status = cpz[4]
+     local point = pickup_zone.point
+     local radius = pickup_zone.radius
+     local coalition = -1
+     local id = index + 150  --this must be UNIQUE!
+     local color = {1, 1, 1, 0.5}
+     local fill_color = {0, 0.8, 0, 0.1}
+     local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
+     if ctld_zone_status == 'yes' or ctld_zone_status == 1 then
+	  env.info("pickup zone is active, drawing it to the map")
+	  trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+     end
+    end  
   end
+
+
+  -- for index, pickup_zone in pairs(RotorOps.ctld_pickup_zones)
+  -- do
+    -- for c_index, c_zone in pairs(ctld.pickupZones)
+    -- do
+      -- if pickup_zone == c_zone[1] then
+       -- --debugMsg("found our zone in ctld zones, status: "..c_zone[4])
+       -- local ctld_zone_status = c_zone[4]
+       -- local point = trigger.misc.getZone(pickup_zone).point
+       -- local radius = trigger.misc.getZone(pickup_zone).radius
+       -- local coalition = -1
+       -- local id = index + 150  --this must be UNIQUE!
+       -- local color = {1, 1, 1, 0.5}
+       -- local fill_color = {0, 0.8, 0, 0.1}
+       -- local line_type = 5 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
+       -- if ctld_zone_status == 'yes' or ctld_zone_status == 1 then
+        -- --debugMsg("draw the pickup zone")
+        -- trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+       -- end
+      -- end  
+    -- end
+  -- end
 
   
 end
@@ -1211,17 +1461,17 @@ function RotorOps.setActiveZone(new_index)
   
   if new_index ~= old_index then  --the active zone is changing
     
-    if not RotorOps.defending then
+    -- if not RotorOps.defending then
     
-      if old_index > 0 and RotorOps.apcs_spawn_infantry == false then 
-        ctld.activatePickupZone(RotorOps.zones[old_index].name)  --make the captured zone a pickup zone
-      end
-      ctld.deactivatePickupZone(RotorOps.zones[new_index].name)
-    end
+      -- if old_index > 0 and RotorOps.apcs_spawn_infantry == false then 
+        -- ctld.activatePickupZone(RotorOps.farp_names[old_index])  --make the captured zone a pickup zone
+      -- end
+      -- ctld.deactivatePickupZone(RotorOps.farp_names[new_index])
+    -- end
 
     RotorOps.game_state = new_index
     trigger.action.setUserFlag(RotorOps.game_state_flag, new_index)
-    
+	trigger.action.setUserFlag('ROPS_GAMESTATE', new_index)
     if new_index > old_index then 
       if RotorOps.defending == true then
         RotorOps.gameMsg(RotorOps.gameMsgs.enemy_pushing, new_index)
@@ -1288,6 +1538,28 @@ function RotorOps.setupCTLD()
     {name = "Small Platoon (16)", inf = 9, mg = 3, at = 3, aa = 1 },
     {name = "Platoon (24)", inf = 10, mg = 5, at = 6, aa = 3 },
    }
+   
+   
+   --add to CTLD default pickzone names.  This could be done in a loop but this should be more readable
+   --pickupZones = { "Zone name or Ship Unit Name", "smoke color", "limit (-1 unlimited)", "ACTIVE (yes/no)", "side (0 = Both sides / 1 = Red / 2 = Blue )", flag number (optional) }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "STAGING", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "STAGING_BASE", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "ALPHA_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "BRAVO_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "CHARLIE_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "DELTA_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER", "none", -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER_1", "none", -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops1", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops2", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops3", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops4", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops5", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops6", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops7", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops8", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops9", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "troops10", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
     
 
     
@@ -1310,8 +1582,13 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
   end
   table.insert(RotorOps.zones, {name = _name, defenders_status_flag = _zone_defenders_flag})
   trigger.action.setUserFlag(_zone_defenders_flag, 101)
+  trigger.action.setUserFlag(zone_defenders_flags[1], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[2], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[3], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[4], 101)
   RotorOps.drawZones()
-  RotorOps.addPickupZone(_name, RotorOps.pickup_zone_smoke, -1, "no", 2)
+  local farp_name = _name .. "_FARP"
+  RotorOps.farp_names[#RotorOps.farp_names + 1] = farp_name
 end
 
 
@@ -1320,7 +1597,7 @@ function RotorOps.addStagingZone(_name)
     trigger.action.outText(_name.." trigger zone missing!  Check RotorOps setup!", 60)
     env.warning(_name.." trigger zone missing!  Check RotorOps setup!")
   end
-  RotorOps.addPickupZone(_name, RotorOps.pickup_zone_smoke, -1, "no", 0)
+   
   RotorOps.staging_zones[#RotorOps.staging_zones + 1] = _name
 end
 
@@ -1348,6 +1625,7 @@ function RotorOps.setupConflict(_game_state_flag)
   RotorOps.game_state = RotorOps.game_states.not_started
   processMsgBuffer()
   trigger.action.setUserFlag(RotorOps.game_state_flag, RotorOps.game_states.not_started)
+  trigger.action.setUserFlag('ROPS_GAMESTATE', RotorOps.game_states.not_started)
   trigger.action.outText("ALL TROOPS GET TO TRANSPORT AND PREPARE FOR DEPLOYMENT!" , 10, false)
   if RotorOps.CTLD_sound_effects == true then
     local timer_id = timer.scheduleFunction(RotorOps.registerCtldCallbacks, 1, timer.getTime() + 5) 
@@ -1355,8 +1633,7 @@ function RotorOps.setupConflict(_game_state_flag)
 end
 
 
-function RotorOps.addPickupZone(zone_name, smoke, limit, active, side)
-  RotorOps.ctld_pickup_zones[#RotorOps.ctld_pickup_zones + 1] = zone_name
+function RotorOps.addPickupZone(zone_name, smoke, limit, active, side)  --depreciated, don't use
   ctld.pickupZones[#ctld.pickupZones + 1] = {zone_name, smoke, limit, active, side}
 end
 
@@ -1370,14 +1647,14 @@ function RotorOps.startConflict()
   --missionCommands.removeItem(commandDB['start_conflict']) 
   --commandDB['clear_zone'] = missionCommands.addCommand( "[CHEAT] Force Clear Zone"  , conflict_zones_menu , RotorOps.clearActiveZone)
   
-  RotorOps.staged_units = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), RotorOps.staging_zones)
+  local units_found = mist.getUnitsInZones(mist.makeUnitTable({'[all][vehicle]'}), RotorOps.staging_zones)
   
   --filter out 'static' units
---  for index, unit in pairs(RotorOps.staged_units) do
---    if string.find(Unit.getGroup(unit):getName():lower(), RotorOps.exclude_ai_group_name:lower()) then
---      RotorOps.staged_units[index] = nil --remove 'static' units
---    end
---  end
+  for index, unit in pairs(units_found) do
+    if not isStaticUnit(unit) then
+      RotorOps.staged_units[#RotorOps.staged_units + 1] = unit
+    end
+  end
   
   
   if RotorOps.staged_units[1] == nil then
@@ -1387,22 +1664,34 @@ function RotorOps.startConflict()
   end
   
   if RotorOps.staged_units[1]:getCoalition() == 1 then  --check the coalition in the staging zone to see if we're defending
+    --DEFENSE
+    trigger.action.setUserFlag('ROPS_DEFENDING', 1)
     RotorOps.defending = true
     RotorOps.gameMsg(RotorOps.gameMsgs.start_defense)
-    ctld.activatePickupZone(RotorOps.zones[#RotorOps.zones].name)  --make the last zone a pickup zone for defenders
-    for index, zone in pairs(RotorOps.staging_zones) do
-      ctld.deactivatePickupZone(zone) 
-    end
+	ctld.activatePickupZone(RotorOps.farp_names[#RotorOps.farp_names])  --make the last zone a pickup zone for defenders
     
   else
+    --OFFENSE
     RotorOps.gameMsg(RotorOps.gameMsgs.start)
-    for index, zone in pairs(RotorOps.staging_zones) do
-      ctld.activatePickupZone(zone)
-    end
-    
+	if RotorOps.enable_staging_pickzones then
+    if trigger.misc.getZone("STAGING_BASE") then 
+	  ctld.activatePickupZone("STAGING_BASE")
+    else
+	  ctld.activatePickupZone("STAGING")
+	end
+  end
+	
   end
   
+
+  
+
+  
   RotorOps.setActiveZone(1)
+  
+  if RotorOps.ai_task_by_name then
+	RotorOps.taskByName()
+  end
   
   local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 5)
   world.addEventHandler(RotorOps.eventHandler)
@@ -1431,6 +1720,32 @@ function RotorOps.triggerSpawn(groupName, msg, resume_task)
 
 end
 
+---Search for group names containing key strings to assign AI tasks
+function RotorOps.taskByName()
+  env.info("RotorOps searching for groups to taskByName")
+  for group_name, data in pairs(mist.DBs.groupsByName) do
+	if string.find(group_name:lower(), RotorOps.patrol_task_string:lower()) then
+	  RotorOps.aiTask(group_name, "patrol")
+	  env.info("Tasking " .. group_name .. " as patrol.")
+	elseif string.find(group_name:lower(), RotorOps.aggressive_task_string:lower()) then
+	  RotorOps.aiTask(group_name, "aggressive")
+	  env.info("Tasking " .. group_name .. " as aggressive.")
+	elseif string.find(group_name:lower(), RotorOps.move_to_active_task_string:lower()) then
+	  RotorOps.aiTask(group_name, "move_to_active_zone")
+	  env.info("Tasking " .. group_name .. " to move to active zone.")
+	elseif string.find(group_name:lower(), RotorOps.shift_task_string:lower()) then
+	  RotorOps.aiTask(group_name, "shift")
+	  env.info("Tasking " .. group_name .. " to shift positions.")
+	elseif string.find(group_name:lower(), RotorOps.guard_task_string:lower()) then
+	  RotorOps.aiTask(group_name, "guard")
+	  env.info("Tasking " .. group_name .. " to guard positions.")
+	end
+  end
+  if RotorOps.ai_task_by_name_scheduler then
+    local timer_id = timer.scheduleFunction(RotorOps.taskByName, nil, timer.getTime() + 120)
+  end
+end
+
 
 function RotorOps.spawnAttackHelos()
   RotorOps.triggerSpawn("Enemy Attack Helicopters", RotorOps.gameMsgs.attack_helos_prep, true)
@@ -1443,8 +1758,16 @@ end
 
 
 
-function RotorOps.farpEstablished(index)
+function RotorOps.farpEstablished(index, trigger_zone)
   env.info("RotorOps FARP established at "..RotorOps.zones[index].name)
+  if trigger_zone then
+	if RotorOps.farp_pickups then
+      ctld.activatePickupZone(trigger_zone)
+	end
+    if RotorOps.farp_smoke_color >= 0 and RotorOps.pickup_zone_smoke == 'none' then
+	  trigger.action.smoke(trigger.misc.getZone(trigger_zone).point , RotorOps.farp_smoke_color)
+	end
+  end
   timer.scheduleFunction(function()RotorOps.gameMsg(RotorOps.gameMsgs.farp_established, index) end, {}, timer.getTime() + 15)
 end
 
@@ -1561,6 +1884,7 @@ function RotorOps.spawnTranspHelos(troops, max_drops)
   
   
 end
+
 
 --- USEFUL PUBLIC 'LUA PREDICATE' FUNCTIONS FOR MISSION EDITOR TRIGGERS (don't forget that DCS lua predicate functions should 'return' these function calls)
 
