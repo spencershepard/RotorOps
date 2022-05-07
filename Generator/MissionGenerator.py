@@ -2,6 +2,7 @@ import json
 import yaml
 import sys
 import os
+import operator
 
 import RotorOpsMission as ROps
 import RotorOpsUnits
@@ -28,10 +29,18 @@ import qtmodern.windows
 
 # UPDATE BUILD VERSION
 maj_version = 1
-minor_version = 1
-patch_version = 2
+minor_version = 2
+patch_version = 0
+
+modules_version = 2
+modules_url = 'https://dcs-helicopters.com/user-files/modules/'
+version_url = 'https://dcs-helicopters.com/app-updates/versions.yaml'
+modules_map_url = 'https://dcs-helicopters.com/user-files/modules/module-map-v2.yaml'
+ratings_url = 'https://dcs-helicopters.com/user-files/ratings.php'
+allowed_paths = ['templates\\Scenarios\\downloaded', 'templates\\Forces\\downloaded', 'templates\\Imports\\downloaded']
 
 user_files_url = 'https://dcs-helicopters.com/user-files/'
+version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
 
 #Setup logfile and exception handler
 logger = logging.getLogger(__name__)
@@ -50,27 +59,39 @@ class directories:
             os.chdir("..")
         cls.home_dir = os.getcwd()
         cls.scenarios = cls.home_dir + "\\templates\\Scenarios"
-        cls.forces = cls.home_dir + "\\templates\\Forces"
+        cls.forces_downloaded = cls.home_dir + "\\templates\\Forces\\downloaded"
+        cls.forces_user = cls.home_dir + "\\templates\\Forces\\user"
         cls.scripts = cls.home_dir + "\\scripts"
         cls.sound = cls.home_dir + "\\sound\\embedded"
         cls.output = cls.home_dir + "\\MissionOutput"
         cls.assets = cls.home_dir + "\\assets"
-        cls.imports = cls.home_dir + "\\templates\\Imports"
+        cls.imports_downloaded = cls.home_dir + "\\templates\\Imports\\downloaded"
+        cls.imports_user = cls.home_dir + "\\templates\\Imports\\user"
         cls.user_datafile_path = cls.home_dir + "\\config\\user-data.yaml"
         cls.scenarios_downloaded = cls.scenarios + "\\downloaded"
         cls.scenarios_user = cls.scenarios + "\\user"
         cls.default_config = cls.home_dir + '\\config\\default-config.yaml'
         os.chdir(current_dir)
 
-directories.find()
+    @classmethod
+    def createDirectories(cls):
+        required_dirs = [cls.scenarios_user, cls.scenarios_downloaded, cls.imports_user, cls.imports_downloaded, cls.forces_user, cls.forces_downloaded, cls.output]
+        for path in required_dirs:
+            if not os.path.exists(path):
+                os.makedirs(path)
 
-import MissionGeneratorScenario
+
+directories.find()
+directories.createDirectories()
+
+import MissionGeneratorTemplates
 
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt): #example of handling error subclasses
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
+    QApplication.restoreOverrideCursor()
     logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
     msg = QMessageBox()
     msg.setWindowTitle("Uncaught exception")
@@ -82,9 +103,6 @@ sys.excepthook = handle_exception
 
 
 version_string = str(maj_version) + "." + str(minor_version) + "." + str(patch_version)
-# scenarios = []
-red_forces_files = []
-blue_forces_files = []
 defenders_text = "Defending Forces:"
 attackers_text = "Attacking Forces:"
 ratings_json = None
@@ -120,16 +138,17 @@ class Window(QMainWindow, Ui_MainWindow):
         self.player_slots = []
         self.user_output_dir = None
         self.user_data = None
+        self.forces_list = []
+        self.imports_list = []
 
         self.user_data = self.loadUserData()
 
-        self.m = ROps.RotorOpsMission()
         self.setupUi(self)
         self.connectSignalsSlots()
         self.populateScenarios()
-        self.populateForces("red", self.redforces_comboBox, red_forces_files)
-        self.populateForces("blue", self.blueforces_comboBox, blue_forces_files)
+        self.populateForces()
         self.populateSlotSelection()
+        self.getImports()
 
         # self.blue_forces_label.setText(attackers_text)
         # self.red_forces_label.setText(defenders_text)
@@ -139,11 +158,15 @@ class Window(QMainWindow, Ui_MainWindow):
             "QStatusBar{padding-left:5px;}")
         self.version_label.setText("Version " + version_string)
 
+        self.scenarioChanged()
 
-
-
-
-
+        self.time_comboBox.addItem("Default Time")
+        self.time_comboBox.addItem("Day")
+        self.time_comboBox.addItem("Night")
+        self.time_comboBox.addItem("Dusk")
+        self.time_comboBox.addItem("Dawn")
+        self.time_comboBox.addItem("Noon")
+        self.time_comboBox.addItem("Random")
 
 
     def connectSignalsSlots(self):
@@ -212,7 +235,7 @@ class Window(QMainWindow, Ui_MainWindow):
                         basename = filename.removesuffix('.miz')
                         mizpath = os.path.join(path, folder, filename)
                         # create scenario object
-                        s = MissionGeneratorScenario.Scenario(mizpath, basename)
+                        s = MissionGeneratorTemplates.Scenario(mizpath, basename)
 
                         #apply some properties if found in the downloads directory
                         if path == directories.scenarios_downloaded:
@@ -221,7 +244,6 @@ class Window(QMainWindow, Ui_MainWindow):
                             s.packageID = folder
 
                             if ratings_json:
-                                print(ratings_json)
                                 for module in ratings_json:
                                     if module['package'] == folder:
                                         s.rating = module["avg_rating"]
@@ -256,8 +278,8 @@ class Window(QMainWindow, Ui_MainWindow):
                     t_scenarios.append(s)
             scenarios = t_scenarios.copy()
 
-        #self.scenario_comboBox.addItem(s.name)
-        self.scenarios_list = scenarios.copy()
+        self.scenarios_list = sorted(scenarios, key=lambda x: x.name, reverse=False)
+
         for s in self.scenarios_list:
             self.scenario_comboBox.addItem(s.name)
 
@@ -268,18 +290,65 @@ class Window(QMainWindow, Ui_MainWindow):
         self.populateScenarios()
         # self.scenarioChanged() haven't tried yet
 
-    def populateForces(self, side, combobox, files_list):
-        os.chdir(directories.home_dir)
-        # os.chdir(directories.forces + "/" + side)
-        os.chdir(directories.forces)
-        path = os.getcwd()
-        dir_list = os.listdir(path)
-        logger.info("Looking for " + side + " Forces files in '" + path)
+    def populateForces(self):
+        self.forces_list = []
 
-        for filename in dir_list:
-            if filename.endswith(".miz"):
-                files_list.append(filename)
-                combobox.addItem(filename.removesuffix('.miz'))
+        for path in [directories.forces_downloaded, directories.forces_user]:
+            logger.info("Looking for forces files in " + path)
+            os.chdir(path)
+            module_folders = next(os.walk('.'))[1]
+
+            for folder in module_folders:
+                for filename in os.listdir(folder):
+                    if filename.endswith(".miz"):
+                        basename = filename.removesuffix('.miz')
+                        mizpath = os.path.join(path, folder, filename)
+                        config_file_path = os.path.join(path, folder, basename + '.yaml')
+                        if os.path.exists(config_file_path):
+                            # create forces object with config
+                            try:
+                                config = yaml.safe_load(open(config_file_path))
+                                f = MissionGeneratorTemplates.Forces(mizpath, filename, config)
+                                self.forces_list.append(f)
+                            except:
+                                logger.error("Error in " + config_file_path)
+
+                        else:
+                            # create forces object without config
+                            f = MissionGeneratorTemplates.Forces(mizpath, basename)
+                            self.forces_list.append(f)
+
+        for forces in self.forces_list:
+            self.redforces_comboBox.addItem(forces.name)
+            self.blueforces_comboBox.addItem(forces.name)
+
+    def getImports(self):
+        self.imports_list = []
+
+        for path in [directories.imports_downloaded, directories.imports_user]:
+            logger.info("Looking for imports files in " + path)
+            os.chdir(path)
+            module_folders = next(os.walk('.'))[1]
+
+            for folder in module_folders:
+                for filename in os.listdir(folder):
+                    if filename.endswith(".miz"):
+                        basename = filename.removesuffix('.miz')
+                        mizpath = os.path.join(path, folder, filename)
+                        config_file_path = os.path.join(path, folder, basename + '.yaml')
+                        if os.path.exists(config_file_path):
+                            # create imports object with config
+                            try:
+                                config = yaml.safe_load(config_file_path)
+                                f = MissionGeneratorTemplates.Import(mizpath, filename, config)
+                                self.imports_list.append(f)
+                            except:
+                                logger.error("Error in " + config_file_path)
+
+                        else:
+                            # create imports object without config
+                            f = MissionGeneratorTemplates.Import(mizpath, filename)
+                            self.imports_list.append(f)
 
     def populateSlotSelection(self):
         self.slot_template_comboBox.addItem("Multiple Slots")
@@ -321,8 +390,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
         # reset some UI elements
         self.defense_checkBox.setEnabled(True)
-        if self.lockedSlot():
-            self.slot_template_comboBox.removeItem(self.lockedSlot())
+        self.slot_template_comboBox.removeItem(self.lockedSlot())
 
         self.slot_template_comboBox.setEnabled(True)
         self.slot_template_comboBox.setCurrentIndex(0)
@@ -362,11 +430,14 @@ class Window(QMainWindow, Ui_MainWindow):
                     button.setEnabled(True)
 
             if 'blue_forces' in config:
-                self.blueforces_comboBox.setCurrentIndex(self.blueforces_comboBox.findText(config['blue_forces']))
+                for template in self.forces_list:
+                    if template.basename == config['blue_forces']:
+                        self.blueforces_comboBox.setCurrentIndex(self.blueforces_comboBox.findText(template.name))
 
             if 'red_forces' in config:
-                if self.redforces_comboBox.findText(config['red_forces']) >= 0:
-                    self.redforces_comboBox.setCurrentIndex(self.redforces_comboBox.findText(config['red_forces']))
+                for template in self.forces_list:
+                    if template.basename == config['red_forces']:
+                        self.redforces_comboBox.setCurrentIndex(self.redforces_comboBox.findText(template.name))
 
         except Exception as e:
             logger.error("Error loading config file: " + str(e))
@@ -416,16 +487,16 @@ class Window(QMainWindow, Ui_MainWindow):
             return
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.slot_template_comboBox.setCurrentIndex(0)
 
         self.scenario = self.scenarios_list[self.scenario_comboBox.currentIndex()]
 
+        # reset generator options to default
+        default_config = self.loadScenarioConfig(directories.default_config)
+        self.applyScenarioConfig(default_config)
+
         if self.scenario.config:
             self.applyScenarioConfig(self.scenario.config)
-            self.m.setConfig(self.scenario.config)
-        else:
-            default_config = self.loadScenarioConfig(directories.default_config)
-            self.applyScenarioConfig(default_config)
-            self.m.setConfig(default_config)
 
         path = self.scenario.path.removesuffix(".miz") + ".jpg"
         if os.path.isfile(path):
@@ -462,17 +533,27 @@ class Window(QMainWindow, Ui_MainWindow):
     def generateMissionAction(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
-        red_forces_filename = red_forces_files[self.redforces_comboBox.currentIndex()]
-        blue_forces_filename = blue_forces_files[self.blueforces_comboBox.currentIndex()]
+        red_forces = self.forces_list[self.redforces_comboBox.currentIndex()]
+        blue_forces = self.forces_list[self.blueforces_comboBox.currentIndex()]
         scenario_name = self.scenario.name
         scenario_path = self.scenario.path
-        source = "offline"
+
+        credits = ("'" + scenario_name + "' mission template by " + self.scenario.author + "\n" +
+                   "'" + red_forces.name + "' by " + red_forces.author + "\n" +
+                   "'" + blue_forces.name + "' by " + blue_forces.author + "\n"
+                   )
+
+        objects = {
+            "imports": self.imports_list,
+        }
+
         data = {
-                "source": source,
+                "objects": objects,
+                "credits": credits,
                 "scenario_file": scenario_path,
                 "scenario_name": scenario_name,
-                "red_forces_filename": red_forces_filename,
-                "blue_forces_filename": blue_forces_filename,
+                "red_forces_path": red_forces.path,
+                "blue_forces_path": blue_forces.path,
                 "red_quantity": self.redqty_spinBox.value(),
                 "blue_quantity": self.blueqty_spinBox.value(),
                 "inf_spawn_qty": self.inf_spawn_spinBox.value(),
@@ -483,7 +564,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "f_awacs": self.awacs_checkBox.isChecked(),
                 "f_tankers": self.tankers_checkBox.isChecked(),
                 "voiceovers": self.voiceovers_checkBox.isChecked(),
-                "force_offroad": self.force_offroad_checkBox.isChecked(),
+                "force_offroad": self.scenario.getConfigValue("force_offroad", default=False),
                 "game_display": self.game_status_checkBox.isChecked(),
                 "defending": self.defense_checkBox.isChecked(),
                 "slots": self.slot_template_comboBox.currentText(),
@@ -494,6 +575,17 @@ class Window(QMainWindow, Ui_MainWindow):
                 "smoke_pickup_zones": self.smoke_pickup_zone_checkBox.isChecked(),
                 "player_slots": self.player_slots,
                 "player_hotstart": self.hotstart_checkBox.isChecked(),
+                "random_weather": self.random_weather_checkBox.isChecked(),
+                "time": self.time_comboBox.currentText(),
+                "start_trigger": self.scenario.getConfigValue("start_trigger", default=True),
+                "end_trigger": self.scenario.getConfigValue("end_trigger", default=True),
+                "farp_spawns": self.farp_spawn_checkBox.isChecked(),
+                "staging_logistics_file": self.scenario.getConfigValue("staging_logistics_file", default=None),
+                "zone_farp_file": self.scenario.getConfigValue("zone_farp_file", default=None),
+                "defensive_farp_file": self.scenario.getConfigValue("defensive_farp_file", default=None),
+                "logistics_farp_file": self.scenario.getConfigValue("logistics_farp_file", default=None),
+                "zone_protect_file": self.scenario.getConfigValue("zone_protect_file", default=None),
+                "script": self.scenario.getConfigValue("script", default=None),
                 }
 
         logger.info("Generating mission with options:")
@@ -674,7 +766,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
 def checkVersion(splashscreen):
 
-   version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
+
    try:
         r = requests.get(version_url, allow_redirects=False, timeout=7)
         v = yaml.safe_load(r.content)
@@ -693,31 +785,33 @@ def checkVersion(splashscreen):
 
 
 
-modules_url = 'https://dcs-helicopters.com/user-files/modules/'
-version_url = 'https://dcs-helicopters.com/app-updates/versions.yaml'
-modules_map_url = 'https://dcs-helicopters.com/user-files/modules/module-map.yaml'
-ratings_url = 'https://dcs-helicopters.com/user-files/ratings.php'
-
 def loadModules(splashscreen):
+    msg = QMessageBox()
+    msg.setWindowTitle("Unable to connect to server")
+    msg.setText(
+        "We were unable to connect to the RotorOps server to download content.  This is a temporary problem, so please try again later.  If the problem persists, please get in touch via Discord.")
 
     try:
         r = requests.get(modules_map_url, allow_redirects=False, timeout=7)
         if not r.status_code == 200:
             logger.error("Could not retrieve the modules map.")
+            x = msg.exec_()
             return
     except:
         logger.error("Failed to retrieve module map.")
+        x = msg.exec_()
         return
 
     module_list = yaml.safe_load(r.content)
     files_success = []
     files_failed = []
-    new_scenarios = []
-    updated_scenarios = []
+    new_modules = []
+    updated_modules = []
+    outversioned_modules = []
 
 
     # Download scenarios files
-    #os.chdir(directories.scenarios)
+
     if module_list:
 
         for module in module_list:
@@ -725,15 +819,31 @@ def loadModules(splashscreen):
             should_download = False
             new_module = False
 
+            # only allow predefined paths
+            dp = module_list[module]["path"]
+            if dp not in allowed_paths:
+                logger.warning("Invalid path for module: " + module)
+                continue
+
             # check if local version already exists
-            package_file_path = os.path.join(directories.scenarios_downloaded, module, "package.yaml")
+            package_file_path = os.path.join(directories.home_dir, module_list[module]["path"], module, "package.yaml")
 
             if os.path.exists(package_file_path):
                 pkg_file = yaml.safe_load(open(package_file_path))
             else:
                 pkg_file = None
 
-            #compare local and remote versions
+            # compare required generator version and actual version
+            if 'requires' in module_list[module]:
+                if module_list[module]['requires'] > modules_version:
+                    name = 'unknown module'
+                    if 'name' in module_list[module]:
+                        name = module_list[module]['name']
+                    outversioned_modules.append(name)
+                    continue
+
+
+            # compare local and remote versions
             if pkg_file and 'version' in pkg_file:
                 local_version = pkg_file['version']
 
@@ -744,6 +854,20 @@ def loadModules(splashscreen):
                 should_download = True
                 new_module = True
 
+            # delete modules with 'remove' dist property
+            if 'dist' in module_list[module] and module_list[module]['dist'] == 'remove':
+                for filename in module_list[module]["files"]:
+                    module_dir = os.path.join(directories.home_dir, module_list[module]["path"], module)
+                    file_path = os.path.join(module_dir, filename)
+                    if os.path.exists(file_path):
+                        try:
+                            os.remove(file_path)
+                            print("Removed module file: " + filename)
+                        except:
+                            logger.error("Error while trying to remove " + filename)
+                continue
+
+            # download files
             if should_download:
                 logger.info("Updating module: " + module)
                 module_dir = os.path.join(directories.home_dir, module_list[module]["path"], module)
@@ -751,10 +875,11 @@ def loadModules(splashscreen):
                 # download files in remote package
                 for filename in module_list[module]["files"]:
                     broken_file = False
+                    type_path = module_list[module]["type"]
                     splash.showMessage("Downloading " + filename + " ...", Qt.AlignHCenter | Qt.AlignTop, Qt.white)
                     app.processEvents()
 
-                    url = modules_url + module + "/" + filename
+                    url = modules_url + type_path + "/" + module + "/" + filename
                     try:
                         r = requests.get(url, allow_redirects=False, timeout=10)
                     except:
@@ -771,9 +896,9 @@ def loadModules(splashscreen):
                         # do some stuff for the dialog popup
                         if filename.endswith('.miz') and "name" in module_list[module]:
                             if new_module:
-                                new_scenarios.append(module_list[module]["name"])
+                                new_modules.append(module_list[module]["name"])
                             else:
-                                updated_scenarios.append(module_list[module]["name"])
+                                updated_modules.append(module_list[module]["name"])
                     else:
                         broken_file = True
                         files_failed.append(filename)
@@ -791,7 +916,7 @@ def loadModules(splashscreen):
         logger.error("Problem encountered with modules map.")
 
     # show a popup if we downloaded any packages
-    if len(files_success) > 0 or len(files_failed) > 0:
+    if len(files_success) > 0 or len(files_failed) > 0 or len(outversioned_modules) > 0:
         if len(files_failed) > 0:
             fs = ""
             for filename in files_failed:
@@ -800,16 +925,18 @@ def loadModules(splashscreen):
         msg = QMessageBox()
         msg.setWindowTitle("Downloaded Files")
         message = ""
-        if len(new_scenarios) > 0:
-            message = message + "New scenarios added: \n\n"
-            for name in new_scenarios:
+        if len(new_modules) > 0:
+            message = message + "New modules added: \n\n"
+            for name in new_modules:
                 message = message + name + "\n"
-        if len(updated_scenarios) > 0:
-            message = message + "\nScenarios updated: \n"
-            for name in updated_scenarios:
+        if len(updated_modules) > 0:
+            message = message + "\nModules updated: \n"
+            for name in updated_modules:
                 message = message + name + "\n"
         if len(files_failed) > 0:
             message = message + "\n\n" + str(len(files_failed)) + " files failed."
+        if len(outversioned_modules) > 0:
+            message = message + "\n\n" + str(len(outversioned_modules)) + " modules did not download because you need an required update."
         msg.setText(message)
         x = msg.exec_()
     else:
