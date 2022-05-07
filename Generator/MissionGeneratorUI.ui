@@ -53,7 +53,7 @@
    <widget class="QCheckBox" name="logistics_crates_checkBox">
     <property name="geometry">
      <rect>
-      <x>990</x>
+      <x>980</x>
       <y>211</y>
       <width>251</width>
       <height>28</height>
@@ -66,10 +66,10 @@
      </font>
     </property>
     <property name="statusTip">
-     <string>Enable CTLD logistics crates for building ground units and air defenses.  Pickup logistics containers to create new logistics sites.</string>
+     <string>Enable a base or FARP near the start position that can spawn CTLD crates for building ground units and air defenses.  Sling load the logistics containers to create new logistics sites.</string>
     </property>
     <property name="text">
-     <string>Logistics</string>
+     <string>Logistics Base</string>
     </property>
     <property name="checked">
      <bool>true</bool>
@@ -78,7 +78,7 @@
    <widget class="QCheckBox" name="zone_sams_checkBox">
     <property name="geometry">
      <rect>
-      <x>990</x>
+      <x>980</x>
       <y>320</y>
       <width>241</width>
       <height>28</height>
@@ -91,10 +91,10 @@
      </font>
     </property>
     <property name="statusTip">
-     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed.</string>
+     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed. No effect if Blue on defense.</string>
     </property>
     <property name="text">
-     <string>Inactive Zone SAMs</string>
+     <string>Protect Inactive Zones</string>
     </property>
    </widget>
    <widget class="QLabel" name="red_forces_label">
@@ -191,16 +191,19 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>470</x>
-      <y>120</y>
+      <y>130</y>
       <width>156</width>
       <height>28</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <pointsize>10</pointsize>
+      <pointsize>11</pointsize>
       <bold>false</bold>
      </font>
+    </property>
+    <property name="statusTip">
+     <string>Turn the tables and defend your zones against the enemy's attack.</string>
     </property>
     <property name="text">
      <string>Blue on Defense</string>
@@ -289,8 +292,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QComboBox" name="slot_template_comboBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>384</y>
+      <x>980</x>
+      <y>474</y>
       <width>271</width>
       <height>33</height>
      </rect>
@@ -564,7 +567,7 @@ p, li { white-space: pre-wrap; }
      <number>8</number>
     </property>
     <property name="value">
-     <number>2</number>
+     <number>1</number>
     </property>
    </widget>
    <widget class="QLabel" name="scenario_label_7">
@@ -592,8 +595,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>840</x>
-      <y>390</y>
+      <x>860</x>
+      <y>480</y>
       <width>111</width>
       <height>24</height>
      </rect>
@@ -611,8 +614,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="scenario_label_9">
     <property name="geometry">
      <rect>
-      <x>490</x>
-      <y>450</y>
+      <x>480</x>
+      <y>401</y>
       <width>251</width>
       <height>23</height>
      </rect>
@@ -629,7 +632,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="awacs_checkBox">
     <property name="geometry">
      <rect>
-      <x>990</x>
+      <x>980</x>
       <y>246</y>
       <width>241</width>
       <height>28</height>
@@ -654,7 +657,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="tankers_checkBox">
     <property name="geometry">
      <rect>
-      <x>990</x>
+      <x>980</x>
       <y>282</y>
       <width>241</width>
       <height>28</height>
@@ -679,10 +682,10 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="voiceovers_checkBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>517</y>
+      <x>500</x>
+      <y>594</y>
       <width>171</width>
-      <height>24</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="font">
@@ -703,10 +706,10 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="smoke_pickup_zone_checkBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>460</y>
-      <width>271</width>
-      <height>24</height>
+      <x>500</x>
+      <y>541</y>
+      <width>231</width>
+      <height>20</height>
      </rect>
     </property>
     <property name="font">
@@ -715,7 +718,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>Infinite troop pickup zones will be marked with blue smoke.</string>
+     <string>Troop pickup zones and FARPs will be marked with blue smoke.</string>
     </property>
     <property name="text">
      <string>Smoke at Troop Pickup Zones</string>
@@ -727,10 +730,10 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="game_status_checkBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>490</y>
-      <width>271</width>
-      <height>24</height>
+      <x>500</x>
+      <y>570</y>
+      <width>221</width>
+      <height>21</height>
      </rect>
     </property>
     <property name="font">
@@ -755,7 +758,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>380</y>
+      <y>340</y>
       <width>261</width>
       <height>23</height>
      </rect>
@@ -767,18 +770,18 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>This value is multiplied by the number of spawn zones in the mission template.</string>
+     <string>Total number of infantry groups to spawn per game.</string>
     </property>
     <property name="text">
-     <string>Infantry Spawns per zone</string>
+     <string>Infantry Spawns</string>
     </property>
    </widget>
    <widget class="QSpinBox" name="inf_spawn_spinBox">
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>380</y>
-      <width>47</width>
+      <y>340</y>
+      <width>51</width>
       <height>31</height>
      </rect>
     </property>
@@ -800,15 +803,15 @@ p, li { white-space: pre-wrap; }
      <number>20</number>
     </property>
     <property name="value">
-     <number>2</number>
+     <number>0</number>
     </property>
    </widget>
    <widget class="QSpinBox" name="troop_drop_spinBox">
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>330</y>
-      <width>47</width>
+      <y>300</y>
+      <width>51</width>
       <height>31</height>
      </rect>
     </property>
@@ -833,12 +836,12 @@ p, li { white-space: pre-wrap; }
      <number>4</number>
     </property>
    </widget>
-   <widget class="QCheckBox" name="force_offroad_checkBox">
+   <widget class="QCheckBox" name="random_weather_checkBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>548</y>
-      <width>161</width>
+      <x>980</x>
+      <y>420</y>
+      <width>211</width>
       <height>24</height>
      </rect>
     </property>
@@ -848,10 +851,10 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>May help prevent long travel times or pathfinding issues.  </string>
+     <string>Random weather preset will be applied.</string>
     </property>
     <property name="text">
-     <string>Force Offroad</string>
+     <string>Random Weather</string>
     </property>
     <property name="checked">
      <bool>false</bool>
@@ -864,7 +867,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>330</y>
+      <y>300</y>
       <width>281</width>
       <height>23</height>
      </rect>
@@ -885,7 +888,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="apcs_spawn_checkBox">
     <property name="geometry">
      <rect>
-      <x>990</x>
+      <x>980</x>
       <y>180</y>
       <width>251</width>
       <height>27</height>
@@ -898,10 +901,10 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone.  Disables infinite troop pickups from conflict zones (you must pick up existing troops).</string>
+     <string>Friendly/enemy APCs will drop infantry when reaching a new conflict zone. </string>
     </property>
     <property name="text">
-     <string>Dynamic Troops</string>
+     <string>APCs Spawn Infantry</string>
     </property>
     <property name="checked">
      <bool>true</bool>
@@ -913,7 +916,7 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="geometry">
      <rect>
-      <x>710</x>
+      <x>750</x>
       <y>600</y>
       <width>231</width>
       <height>51</height>
@@ -938,8 +941,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_always">
     <property name="geometry">
      <rect>
-      <x>510</x>
-      <y>480</y>
+      <x>500</x>
+      <y>431</y>
       <width>261</width>
       <height>24</height>
      </rect>
@@ -962,8 +965,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_never">
     <property name="geometry">
      <rect>
-      <x>510</x>
-      <y>540</y>
+      <x>500</x>
+      <y>491</y>
       <width>271</width>
       <height>24</height>
      </rect>
@@ -986,8 +989,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_gunits">
     <property name="geometry">
      <rect>
-      <x>510</x>
-      <y>509</y>
+      <x>500</x>
+      <y>460</y>
       <width>261</width>
       <height>24</height>
      </rect>
@@ -1131,8 +1134,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QCheckBox" name="hotstart_checkBox">
     <property name="geometry">
      <rect>
-      <x>960</x>
-      <y>430</y>
+      <x>980</x>
+      <y>520</y>
       <width>271</width>
       <height>24</height>
      </rect>
@@ -1143,7 +1146,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>Player helicopters start with engines running on the ground.  No effect if player slots says 'Locked to scenario'</string>
+     <string>Player helicopters start with engines running on the ground.  No effect for FARP spawns or if player slots says 'Locked to scenario'</string>
     </property>
     <property name="text">
      <string>Player Hotstart</string>
@@ -1261,6 +1264,52 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="text">
      <string/>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="time_comboBox">
+    <property name="geometry">
+     <rect>
+      <x>980</x>
+      <y>370</y>
+      <width>161</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Mission start time of day.  'Default' is the start time as defined by the mission template designer.</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="farp_spawn_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>980</x>
+      <y>550</y>
+      <width>271</width>
+      <height>24</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Add helicopter slots where zone FARPs will be built.  Helicopters will be empty fuel, requiring the FARP to be established to refuel and rearm.</string>
+    </property>
+    <property name="text">
+     <string>Spawns at zone FARPs</string>
+    </property>
+    <property name="checked">
+     <bool>false</bool>
+    </property>
+    <property name="tristate">
+     <bool>false</bool>
     </property>
    </widget>
   </widget>
@@ -1471,7 +1520,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Single-Player</string>
+    <string>Single-Player Only</string>
    </property>
   </action>
   <action name="actionCo_Op">
@@ -1482,7 +1531,7 @@ p, li { white-space: pre-wrap; }
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Co-Op</string>
+    <string>Co-Op Only</string>
    </property>
   </action>
   <action name="actionMapMenu">
