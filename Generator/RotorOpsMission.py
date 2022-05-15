@@ -132,7 +132,22 @@ class RotorOpsMission:
 
         window.statusBar().showMessage("Loading scenario mission", 10000)
 
-        self.m.load_file(options["scenario_file"])
+        # self.m.load_file(options["scenario_file"])
+
+        # Bypass trig, triggrules, and triggers.  Then load triggers
+        # manually.  We want to get our zones from the template mission, but leave the existing trigger actions and
+        # conditions the same, since pydcs cannot yet handle some of them well.
+
+        self.m.load_file(options["scenario_file"], True)
+        self.m.triggers.load_from_dict(self.m.bypassed_triggers)
+
+        # Create some 'empty' triggerrules so that we can maintain indexing when we merge dictionaries on save
+        for rule in self.m.bypassed_trigrules:
+            trig = dcs.triggers.TriggerOnce(comment="Empty " + str(rule))
+            trig.rules.append(dcs.condition.TimeAfter(1))
+            trig.actions.append(dcs.action.DoScript(dcs.action.String("Filler " + str(rule))))
+            self.m.triggerrules.triggers.append(trig)
+
         # Add countries if they're missing
         if not self.m.country(jtf_red):
             self.m.coalition.get("red").add_country(dcs.countries.CombinedJointTaskForcesRed())
@@ -496,6 +511,16 @@ class RotorOpsMission:
             output_dir = directories.output  # default dir
         os.chdir(output_dir)
         output_filename = options["scenario_name"] + " " + time.strftime('%a%H%M%S') + '.miz'
+
+        # dcs.mission.save will use the bypassed trig, trigrules, and triggers.  Our goal is to leave the trigrules and
+        # trig from the source mission untouched. See comments in self.m.load_file above
+
+        #merge dictionaries
+        self.m.bypassed_trig = self.m.triggerrules.trig() | self.m.bypassed_trig
+        self.m.bypassed_trigrules = self.m.triggerrules.trigrules() | self.m.bypassed_trigrules
+
+        self.m.bypassed_triggers = self.m.triggers.dict()
+
         success = self.m.save(output_filename)
         return {"success": success, "filename": output_filename, "directory": output_dir}  # let the UI know the result
 
