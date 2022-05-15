@@ -40,7 +40,7 @@ RotorOps.pickup_zone_smoke = "blue"
 RotorOps.ai_task_by_name = true  --allow tasking all groups that include key strings in their group names eg 'Patrol'
 RotorOps.ai_task_by_name_scheduler = true --continually search active groups for key strings and ai tasking
 RotorOps.patrol_task_string = 'patrol' --default string to search group names for the patrol task. requires ai_task_by_name
-RotorOps.aggressive_task_string = 'aggressive' --default string to search group names for the patrol task. requires ai_task_by_name
+RotorOps.aggressive_task_string = 'aggressive' --default string to search group names for the aggressive task. requires ai_task_by_name
 RotorOps.move_to_active_task_string = "activezone" --default string to search group names for the move to active zone task. requires ai_task_by_name
 RotorOps.shift_task_string = "shift"
 RotorOps.guard_task_string = "guard"
@@ -900,13 +900,12 @@ function RotorOps.guardPosition(vars)
 	 start_point = first_valid_unit:getPoint()
  end
  local object_vol_thresh = 0
- local max_waypoints = 1
  local foundUnits = {}
 
  local volS = {
    id = world.VolumeType.SPHERE,
    params = {
-     point = grp:getUnit(1):getPoint(),  --check if exists, maybe itterate through grp
+     point = start_point,
      radius = search_radius
    }
  }
@@ -930,9 +929,10 @@ function RotorOps.guardPosition(vars)
  --world.searchObjects(Object.Category.BASE, volS, ifFound)
  if #foundUnits > 0 then
    local path = {} 
-   path[1] = mist.ground.buildWP(start_point, '', 5) 
+   --path[1] = mist.ground.buildWP(RotorOps.getValidUnitFromGroup(grp):getPoint(), '', 2) 
+   path[1] = mist.ground.buildWP(RotorOps.getValidUnitFromGroup(grp):getPoint(), '', 2) 
    local rand_index = math.random(1,#foundUnits)
-   path[#path + 1] = mist.ground.buildWP(foundUnits[rand_index]:getPoint(), '', 3) 
+   path[#path + 1] = mist.ground.buildWP(foundUnits[rand_index]:getPoint(), '', 2) 
    mist.goRoute(grp, path)  
  end   
 end
@@ -1747,7 +1747,7 @@ function RotorOps.taskByName()
 	end
   end
   if RotorOps.ai_task_by_name_scheduler then
-    local timer_id = timer.scheduleFunction(RotorOps.taskByName, nil, timer.getTime() + 120)
+    local timer_id = timer.scheduleFunction(RotorOps.taskByName, nil, timer.getTime() + 500)
   end
 end
 
