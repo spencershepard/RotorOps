@@ -50,6 +50,9 @@ RotorOps.defending_vehicles_behavior = "shift"  --available options: 'none', 'pa
 RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
 RotorOps.enable_staging_pickzones = true
 
+--RotorOps settings that are safe to change only in the script config option in the scenario config file
+RotorOps.draw_conflict_zones = true
+
 ---[[END OF OPTIONS]]---
 
 
@@ -1395,8 +1398,10 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
       --trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
-    trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
-    trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+    if RotorOps.draw_conflict_zones == true then
+      trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+      trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+    end
   end
   
   for index, cpz in pairs(ctld.pickupZones) do
