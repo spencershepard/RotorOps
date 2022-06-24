@@ -33,6 +33,8 @@ RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group n
 RotorOps.pickup_zone_smoke = "blue"
 RotorOps.apc_group = {mg=1,at=0,aa=0,inf=3,mortar=0} --not used yet, but we should define the CTLD groups
 
+--RotorOps settings that are safe to change only in the script config option in the scenario config file
+RotorOps.draw_conflict_zones = true
 
 ---[[END OF OPTIONS]]---
 
@@ -1165,8 +1167,10 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
       --trigger.action.lineToAll(coalition, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
-    trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
-    trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+    if RotorOps.draw_conflict_zones == true then
+      trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+      trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+    end
   end
   
 
