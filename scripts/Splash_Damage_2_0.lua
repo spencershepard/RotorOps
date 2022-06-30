@@ -22,6 +22,18 @@ spencershepard (GRIMM):
  -damage model for ground units that will disable their weapons and ability to move with partial damage before they are killed
  -added options table to allow easy adjustments before release
  -general refactoring and restructure
+ 
+ 31 December 2021
+ spencershepard (GRIMM):
+-added many new weapons
+-added filter for weapons.shells events
+-fixed mission weapon message option
+-changed default for damage_model option
+ 
+ 16 April 2022
+ spencershepard (GRIMM):
+ added new/missing weapons to explTable
+ added new option rocket_multiplier
 --]]
 
 ----[[ ##### SCRIPT CONFIGURATION ##### ]]----
@@ -40,6 +52,7 @@ splash_damage_options = {
   ["infantry_cant_fire_health"] = 90,  --if health is below this value after our explosions, set ROE to HOLD to simulate severe injury
   ["debug"] = false,  --enable debugging messages
   ["weapon_missing_message"] = false, --false disables messages alerting you to weapons missing from the explTable
+  ["rocket_multiplier"] = 1.3, --multiplied by the explTable value for rockets
 }
 
 local script_enable = 1
@@ -156,8 +169,14 @@ explTable = {
   ["AB_250_2_SD_2"] = 100,                       --("AB 250-2 - 144 x SD-2, 250kg CBU with HE submunitions")
   ["AB_250_2_SD_10A"] = 100,                     --("AB 250-2 - 17 x SD-10A, 250kg CBU with 10kg Frag/HE submunitions")
   ["AB_500_1_SD_10A"] = 213,                     --("AB 500-1 - 34 x SD-10A, 500kg CBU with 10kg Frag/HE submunitions")
-  --["LTF_5B"] = 100,                                   --("LTF 5b Aerial Torpedo")
-  --agm-65??
+  ["AGM_114K"] = 10,
+  ["HYDRA_70_M229"] = 8,
+  ["AGM_65D"] = 130,
+  ["AGM_65E"] = 300,
+  ["AGM_65F"] = 300,
+  ["HOT3"] = 15,
+  ["AGR_20A"] = 8,
+  ["GBU_54_V_1B"] = 118,
   
 }
 
@@ -253,9 +272,11 @@ function track_wpns()
           trigger.action.explosion(impactPoint, getWeaponExplosive(wpnData.name))
           --trigger.action.smoke(impactPoint, 0)
       end
-      --if wpnData.cat == Weapon.Category.ROCKET then
-        blastWave(impactPoint, splash_damage_options.blast_search_radius, wpnData.ordnance, getWeaponExplosive(wpnData.name))
-      --end
+	  local explosive = getWeaponExplosive(wpnData.name)
+      if splash_damage_options.rocket_multiplier > 0 and wpnData.cat == Weapon.Category.ROCKET then
+        explosive = explosive * splash_damage_options.rocket_multiplier
+      end
+	  blastWave(impactPoint, splash_damage_options.blast_search_radius, wpnData.ordnance, explosive)
       tracked_weapons[wpn_id_] = nil -- remove from tracked weapons first.         
     end
   end

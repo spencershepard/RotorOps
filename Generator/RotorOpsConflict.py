@@ -16,7 +16,6 @@ def triggerSetup(rops, options):
     # Add the first trigger
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Setup Scripts")
     trig.rules.append(dcs.condition.TimeAfter(1))
-    #trig.actions.append(dcs.action.DoScriptFile(rops.scripts["mist_4_4_90.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["mist_4_5_107_grimm.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["Splash_Damage_2_0.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["CTLD.lua"]))
@@ -29,11 +28,13 @@ def triggerSetup(rops, options):
               "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
               "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
               "RotorOps.inf_spawn_messages = true\n\n" +
-              "RotorOps.inf_spawns_per_zone = " + lb("inf_spawn_qty") + "\n\n" +
+              "RotorOps.inf_spawns_total = " + lb("inf_spawn_qty") + "\n\n" +
               "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n")
     if not options["smoke_pickup_zones"]:
         script = script + 'RotorOps.pickup_zone_smoke = "none"\n\n'
     trig.actions.append(dcs.action.DoScript(dcs.action.String((script))))
+    if options["script"]:
+        trig.actions.append(dcs.action.DoScript(dcs.action.String((options["script"]))))
     rops.m.triggerrules.triggers.append(trig)
 
     # Add the second trigger
@@ -50,11 +51,12 @@ def triggerSetup(rops, options):
 
     rops.m.triggerrules.triggers.append(trig)
 
-    # Add the third trigger
-    trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict Start")
-    trig.rules.append(dcs.condition.TimeAfter(10))
-    trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
-    rops.m.triggerrules.triggers.append(trig)
+    # Add the start trigger
+    if options["start_trigger"] is not False:
+        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict Start")
+        trig.rules.append(dcs.condition.TimeAfter(10))
+        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
+        rops.m.triggerrules.triggers.append(trig)
 
     # Add generic zone-based triggers
     for index, zone_name in enumerate(rops.conflict_zones):
@@ -81,6 +83,19 @@ def triggerSetup(rops, options):
                 dcs.action.String("Group.destroy(Group.getByName('Static " + zone_name + " Protection SAM'))")))
             rops.m.triggerrules.triggers.append(z_sams_trig)
 
+    # Deactivate zone FARPs and player slots in defensive mode:
+    # this will also deactivate players already in the air.
+    # if options["defending"]:
+    #     for index, zone_name in enumerate(rops.conflict_zones):
+    #         z_farps_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " FARP")
+    #         z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
+    #         z_farps_trig.actions.append(dcs.action.DeactivateGroup(rops.m.country(jtf_blue).find_group(zone_name + " FARP Static").id))
+    #         for group in rops.all_zones[zone_name].player_helo_spawns:
+    #             z_farps_trig.actions.append(
+    #                 dcs.action.DeactivateGroup(
+    #                     group.id))
+    #         rops.m.triggerrules.triggers.append(z_farps_trig)
+
     # Zone FARPS always
     if options["zone_farps"] == "farp_always" and not options["defending"]:
         for index, zone_name in enumerate(rops.conflict_zones):
@@ -92,9 +107,13 @@ def triggerSetup(rops, options):
                 z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
                 z_farps_trig.actions.append(
                     dcs.action.ActivateGroup(rops.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                # z_farps_trig.actions.append(dcs.action.SoundToAll(str(rops.res_map['forward_base_established.ogg'])))
+                # Activate late-activated helicopters at FARPs.  Doesn't work consistently
+                # for group in rops.all_zones[previous_zone].player_helo_spawns:
+                #     z_farps_trig.actions.append(
+                #         dcs.action.ActivateGroup(
+                #             group.id))
                 z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
-                    "RotorOps.farpEstablished(" + str(index) + ")")))
+                    "RotorOps.farpEstablished(" + str(index) + ", '" + previous_zone + "_FARP')")))
                 rops.m.triggerrules.triggers.append(z_farps_trig)
 
     # Zone FARPS conditional on staged units remaining
@@ -111,9 +130,13 @@ def triggerSetup(rops, options):
                     "--The 100 flag indicates which zone is active.  The 111 flag value is the percentage of staged units remaining")))
                 z_farps_trig.actions.append(
                     dcs.action.ActivateGroup(rops.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                # z_farps_trig.actions.append(dcs.action.SoundToAll(str(rops.res_map['forward_base_established.ogg'])))
+                # Activate late-activated helicopters at FARPs.  Doesn't work consistently
+                # for group in rops.all_zones[previous_zone].player_helo_spawns:
+                #     z_farps_trig.actions.append(
+                #         dcs.action.ActivateGroup(
+                #             group.id))
                 z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
-                    "RotorOps.farpEstablished(" + str(index) + ")")))
+                    "RotorOps.farpEstablished(" + str(index) + ", '" + previous_zone + "_FARP')")))
                 rops.m.triggerrules.triggers.append(z_farps_trig)
 
     # Add attack helos triggers
@@ -156,17 +179,23 @@ def triggerSetup(rops, options):
         rops.m.triggerrules.triggers.append(z_weak_trig)
 
     # Add game won/lost triggers
-    trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
-    trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
-    trig.actions.append(
-        dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
-    trig.actions.append(
-        dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
-    rops.m.triggerrules.triggers.append(trig)
-    trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
-    trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
-    trig.actions.append(
-        dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
-    trig.actions.append(
-        dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
-    rops.m.triggerrules.triggers.append(trig)
+
+
+        # Add game won triggers
+        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
+        trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
+        trig.actions.append(
+            dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
+        if options["end_trigger"] is not False:
+            trig.actions.append(
+                dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
+        rops.m.triggerrules.triggers.append(trig)
+
+        # Add game lost triggers
+        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
+        trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
+        trig.actions.append(
+            dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
+        if options["end_trigger"] is not False:
+            trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
+        rops.m.triggerrules.triggers.append(trig)
