@@ -37,6 +37,9 @@ RotorOps.CTLD_crates = false
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
 RotorOps.pickup_zone_smoke = "blue"
+
+--RotorOps settings that are safe to change only in the script config option in the scenario config file
+RotorOps.draw_conflict_zones = true
 RotorOps.ai_task_by_name = true  --allow tasking all groups that include key strings in their group names eg 'Patrol'
 RotorOps.ai_task_by_name_scheduler = true --continually search active groups for key strings and ai tasking
 RotorOps.patrol_task_string = 'patrol' --default string to search group names for the patrol task. requires ai_task_by_name
@@ -1401,8 +1404,11 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
       --trigger.action.lineToAll(coal, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
-    trigger.action.circleToAll(coal, id, point, radius, color, fill_color, line_type)
-    trigger.action.textToAll(coal, id + 100, point, color, text_fill_color, font_size, read_only, text)
+
+    if RotorOps.draw_conflict_zones == true then
+      trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
+      trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+    end
   end
   
   for index, cpz in pairs(ctld.pickupZones) do
