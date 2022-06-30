@@ -21,7 +21,7 @@ spinboxes:
     e_attack_planes_spinBox: 1
     e_transport_helos_spinBox: 1
     troop_drop_spinBox: 4
-    inf_spawn_spinBox: 2
+    inf_spawn_spinBox: 0
 radiobuttons: farp_gunits,
 red_forces: "RED Default Armor (HARD)"
 blue_forces: "BLUE Default US Armor"
