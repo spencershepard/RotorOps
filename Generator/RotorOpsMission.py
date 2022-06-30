@@ -32,6 +32,10 @@ class RotorOpsMission:
         self.res_map = {}
         self.config = None  # not used
         self.imports = None
+        self.red_zones = {}
+        self.blue_zones = {}
+        self.primary_e_airport = None
+
 
     class RotorOpsZone:
         def __init__(self, name: str, flag: int, position: dcs.point, size: int):
@@ -215,11 +219,11 @@ class RotorOpsMission:
             elif zone.name.rfind("SPAWN") >= 0:
                 self.addZone(self.spawn_zones, self.RotorOpsZone(zone.name, None, zone.position, zone.radius))
 
-        blue_zones = self.staging_zones
-        red_zones = self.conflict_zones
+        self.blue_zones = self.staging_zones
+        self.red_zones = self.conflict_zones
         if options["defending"]:
-            blue_zones = self.conflict_zones
-            red_zones = self.staging_zones
+            self.blue_zones = self.conflict_zones
+            self.red_zones = self.staging_zones
             # swap airport sides
             self.swapSides(options)
 
@@ -229,119 +233,10 @@ class RotorOpsMission:
         if options["player_hotstart"]:
             start_type = dcs.mission.StartType.Warm
 
-        # Adds vehicles as a single group (for easy late activation), and helicopters if enabled in settings
-        # def addZoneFARP(_zone_name, country, file):
-        #
-        #     farp_flag = self.m.find_group(_zone_name)
-        #
-        #     if farp_flag:
-        #         farp_position = farp_flag.units[0].position
-        #         farp_heading = farp_flag.units[0].heading
-        #     else:
-        #         farp_position = self.all_zones[_zone_name].position
-        #         farp_heading = 0
-        #
-        #     # Add the basic invisible farp object
-        #     farp = self.m.farp(self.m.country(country), _zone_name + " FARP", farp_position,
-        #                        hidden=False, dead=False,
-        #                        farp_type=dcs.unit.InvisibleFARP)
-        #
-        #     # Use alternate template file if it has been defined in scenario config
-        #     if options["zone_farp_file"]:
-        #
-        #         for i in imports:
-        #             if i.filename.removesuffix('.miz') == options["zone_farp_file"]:
-        #                 file = i.path
-        #                 # if multiple files found, we want the latest file to override the first
-        #
-        #     i = ImportObjects(file)
-        #     i.anchorByGroupName("ANCHOR")
-        #     farp_group = i.copyVehiclesAsGroup(self.m, country, _zone_name + " FARP Static", farp_position,
-        #                                        farp_heading)
-        #     # Add client helicopters
-        #     if options["farp_spawns"]:
-        #         helicopter_groups = i.copyHelicopters(self.m, jtf_blue, "ZONE " + _zone_name + " EMPTY ", farp_position, farp_heading)
-        #         for group in helicopter_groups:
-        #             self.all_zones[_zone_name].player_helo_spawns.append(group)
-        #
-        #     return farp_group
 
-        # # Adds statics, vehicles, and helicopters. Late activation is not possible
-        # def addLogisticsZone(_zone_name, country, file, config_name, helicopters=False):
-        #     flag = self.m.find_group(_zone_name)
-        #     if flag:
-        #         position = flag.units[0].position
-        #         heading = flag.units[0].heading
-        #     else:
-        #         position = self.all_zones[_zone_name].position
-        #         heading = 0
-        #
-        #     # Use alternate template file if it has been defined in scenario config
-        #     if options[config_name]:
-        #
-        #         for i in imports:
-        #             if i.filename.removesuffix('.miz') == options[config_name]:
-        #                 file = i.path
-        #                 # if multiple files found, we want the latest file to override the first
-        #
-        #     # Import statics and vehicles
-        #     i = ImportObjects(file)
-        #     i.anchorByGroupName("ANCHOR")
-        #     i.copyStatics(self.m, country, _zone_name + " Logistics Zone",
-        #                   position, heading)
-        #     i.copyVehicles(self.m, country, _zone_name + " Logistics Zone",
-        #                    position, heading)
-        #
-        #     # Add client helicopters
-        #     if helicopters:
-        #         helicopter_groups = i.copyHelicopters(self.m, jtf_blue, "ZONE " + _zone_name + " EMPTY ", position,
-        #                                               heading)
-        #         for group in helicopter_groups:
-        #             self.all_zones[_zone_name].player_helo_spawns.append(group)
-
-        # Adds statics, vehicles, and helicopters (if enabled).  Late activation is not possible.
-        # def addDefensiveFARP(_zone_name, country, file):
-        #
-        #     farp_flag = self.m.find_group(_zone_name)
-        #
-        #     if farp_flag:
-        #         farp_position = farp_flag.units[0].position
-        #         farp_heading = farp_flag.units[0].heading
-        #     else:
-        #         farp_position = self.all_zones[_zone_name].position
-        #         farp_heading = 0
-        #
-        #     # Add the basic invisible farp object
-        #     farp = self.m.farp(self.m.country(country), _zone_name + " FARP", farp_position,
-        #                        hidden=False, dead=False,
-        #                        farp_type=dcs.unit.InvisibleFARP)
-        #
-        #     # Use alternate template file if it has been defined in scenario config
-        #     if options["defensive_farp_file"]:
-        #
-        #         for i in imports:
-        #             if i.filename.removesuffix('.miz') == options["defensive_farp_file"]:
-        #                 file = i.path
-        #                 # if multiple files found, we want the latest file to override the first
-        #
-        #     # Import statics and vehicles
-        #     i = ImportObjects(file)
-        #     i.anchorByGroupName("ANCHOR")
-        #     i.copyStatics(self.m, country, _zone_name + " Logistics Zone",
-        #                   farp_position, farp_heading)
-        #     i.copyVehicles(self.m, country, _zone_name + " Logistics Zone",
-        #                    farp_position, farp_heading)
-        #
-        #     # Import player helicopters
-        #     if options["farp_spawns"]:
-        #         helicopter_groups = i.copyHelicopters(self.m, jtf_blue, "ZONE " + _zone_name + " EMPTY ", farp_position,
-        #                                               farp_heading)
-        #         for group in helicopter_groups:
-        #             self.all_zones[_zone_name].player_helo_spawns.append(group)
-
-        for zone_name in red_zones:
+        for zone_name in self.red_zones:
             if red_forces["vehicles"]:
-                self.addGroundGroups(red_zones[zone_name], self.m.country(jtf_red), red_forces["vehicles"],
+                self.addGroundGroups(self.red_zones[zone_name], self.m.country(jtf_red), red_forces["vehicles"],
                                      options["red_quantity"])
 
             if options["zone_farps"] != "farp_never" and not options["defending"]:
@@ -367,34 +262,21 @@ class RotorOpsMission:
                                                  )
                 vehicle_group.late_activation = True
 
-            # For SAMs: Add vehicles as a single group (for easy late activation)
-            if options["zone_protect_sams"]:
+
+            if options["advanced_defenses"]:
                 sam_group = self.addZoneBase(options, zone_name, jtf_red,
                                              file=zone_protect,
                                              config_name="zone_protect_file",
                                              copy_vehicles=True,
-                                             vehicles_name=zone_name + " Protect Static",
-                                             vehicles_single_group=True
+                                             vehicles_name=zone_name + " Defense Static",
+                                             vehicles_single_group=False
                                              )
-                # farp_flag = self.m.find_group(zone_name)
-                #
-                # if farp_flag:
-                #     farp_position = farp_flag.units[0].position
-                #     farp_heading = farp_flag.units[0].heading
-                # else:
-                #     farp_position = self.all_zones[zone_name].position
-                #     farp_heading = 0
-                #
-                # i = ImportObjects(zone_protect)
-                # i.anchorByGroupName("ANCHOR")
-                # farp_group = i.copyVehiclesAsGroup(self.m, jtf_red, "Static " + zone_name + " Protection SAM",
-                #                                    farp_position,
-                #                                    farp_heading)
+
 
         # Populate Blue zones with ground units
-        for i, zone_name in enumerate(blue_zones):
+        for i, zone_name in enumerate(self.blue_zones):
             if blue_forces["vehicles"]:
-                self.addGroundGroups(blue_zones[zone_name], self.m.country(jtf_blue), blue_forces["vehicles"],
+                self.addGroundGroups(self.blue_zones[zone_name], self.m.country(jtf_blue), blue_forces["vehicles"],
                                      options["blue_quantity"])
 
             # Add blue zone FARPS (not late activated) for defensive mode
@@ -404,7 +286,7 @@ class RotorOpsMission:
                 if options["farp_spawns"]:
                     helicopters = True
 
-                if options["crates"] and i == len(blue_zones) - 1:
+                if options["crates"] and i == len(self.blue_zones) - 1:
                     # add a logistics zone to the last conflict zone
                     # addLogisticsZone(zone_name, jtf_blue, logistics_farp, "logistics_farp_file", helicopters)
                     self.addZoneBase(options, zone_name, jtf_blue,
@@ -458,7 +340,9 @@ class RotorOpsMission:
 
         # Add player slots
         window.statusBar().showMessage("Adding flights to mission...", 10000)
-        if options["slots"] != "Locked to Scenario" and options["slots"] != "None":
+        if options["slots"] == "Locked to Scenario" or options["slots"] == "None":
+            pass
+        else:
             self.addPlayerHelos(options)
 
         # Add AI Flights
@@ -728,7 +612,7 @@ class RotorOpsMission:
         for helicopter in dcs.helicopters.helicopter_map:
             if helicopter == options["slots"]:
                 client_helos = [dcs.helicopters.helicopter_map[
-                                    helicopter]]  # if out ui slot option matches a specific helicopter type name
+                                    helicopter]]  # if our ui slot option matches a specific helicopter type name
 
         # get loadouts from miz file and put into a simple dict
         default_loadouts = {}
@@ -782,6 +666,8 @@ class RotorOpsMission:
             helotype = None
             if helicopter_id in dcs.helicopters.helicopter_map:
                 helotype = dcs.helicopters.helicopter_map[helicopter_id]
+            elif helicopter_id in dcs.planes.plane_map:
+                helotype = dcs.planes.plane_map[helicopter_id]
             else:
                 continue
             if carrier:
@@ -871,7 +757,7 @@ class RotorOpsMission:
             heading = enemy_heading + random.randrange(70, 110)
             race_dist = random.randrange(40 * 1000, 80 * 1000)
             center_pt = dcs.mapping.point_from_heading(friendly_pt.x, friendly_pt.y,
-                                                       enemy_heading - random.randrange(140, 220), 10000)
+                                                       enemy_heading - random.randrange(140, 220), 20000)
             pt1 = dcs.mapping.point_from_heading(center_pt[0], center_pt[1], enemy_heading - 90,
                                                  random.randrange(20 * 1000, 40 * 1000))
             return dcs.mapping.Point(pt1[0], pt1[1], terrain), heading, race_dist
@@ -881,6 +767,7 @@ class RotorOpsMission:
         combinedJointTaskForcesRed = self.m.country(dcs.countries.CombinedJointTaskForcesRed.name)
         friendly_airports, primary_f_airport = self.getCoalitionAirports("blue")
         enemy_airports, primary_e_airport = self.getCoalitionAirports("red")
+
 
         # find enemy carriers and farps
         carrier = self.m.country(jtf_red).find_ship_group(name="HELO_CARRIER")
@@ -900,6 +787,27 @@ class RotorOpsMission:
             primary_f_airport.position.x, primary_f_airport.position.y, primary_f_airport.position.x,
             primary_f_airport.position.y
         )
+
+        self.primary_e_airport = primary_e_airport
+        self.m.triggers.add_triggerzone(primary_e_airport.position, 1500, hidden=True, name="RED_AIRBASE")
+
+        if options["red_cap"]:
+            scenario_red_cap_spawn_zone = None
+            for zone in self.m.triggers.zones():
+                if zone.name == "RED_CAP_SPAWN":
+                    scenario_red_cap_spawn_zone = True
+            if not scenario_red_cap_spawn_zone:
+                e_cap_spawn_point = primary_e_airport.position.point_from_heading(e_airport_heading, 100000)
+                self.m.triggers.add_triggerzone(e_cap_spawn_point, 30000, hidden=True, name="RED_CAP_SPAWN")
+
+        if options["blue_cap"]:
+            scenario_blue_cap_spawn_zone = None
+            for zone in self.m.triggers.zones():
+                if zone.name == "BLUE_CAP_SPAWN":
+                    scenario_blue_cap_spawn_zone = True
+            if not scenario_blue_cap_spawn_zone:
+                f_cap_spawn_point = primary_f_airport.position.point_from_heading(e_airport_heading + 180, 100000)
+                self.m.triggers.add_triggerzone(f_cap_spawn_point, 30000, hidden=True, name="BLUE_CAP_SPAWN")
 
         if options["f_awacs"]:
             awacs_name = "AWACS"
@@ -986,6 +894,7 @@ class RotorOpsMission:
             briefing = self.m.description_text() + "\n\n" + t1_name + "  " + str(
                 t1_freq) + ".00  " + t1_tac + "\n" + t2_name + "  " + str(t2_freq) + ".00  " + t2_tac + "\n\n"
             self.m.set_description_text(briefing)
+
 
         def zone_attack(fg, airport):
             fg.set_skill(dcs.unit.Skill.High)
@@ -1117,6 +1026,139 @@ class RotorOpsMission:
                     for unit in afg.units:
                         unit.pylons = source_helo.pylons
                         unit.livery_id = source_helo.livery_id
+
+        if False:
+            for i in range(1,4):
+                randzone = random.choice(list(self.red_zones))
+                pt2 = self.red_zones[randzone].position
+                source_plane = None
+                if red_forces["fighter_planes"]:
+                    source_group = random.choice(red_forces["fighter_planes"])
+                    source_plane = source_group.units[0]
+                    plane_type = source_plane.unit_type
+                    group_size = random.randrange(1, 2)
+
+                else:
+                    group_size = random.randrange(1, 2)
+                    plane_type = random.choice(RotorOpsUnits.e_attack_helos)
+
+                airport = self.getParking(primary_e_airport, plane_type, enemy_airports, group_size)
+
+                enemy_cap = self.m.patrol_flight(airport=airport,
+                                                 name="Enemy CAP " + str(i),
+                                                 country=combinedJointTaskForcesRed,
+                                                 patrol_type=plane_type,
+                                                 pos1=primary_e_airport.position,
+                                                 pos2=pt2,
+                                                 altitude=3000,
+                                                 group_size=group_size,
+                                                 max_engage_distance=40 * 1000
+                                                 )
+
+                # enemy_cap.points[0].tasks[0] = dcs.task.EngageTargets(max_engage_distance, [dcs.task.Targets.All.Air.Planes])
+
+                for unit in enemy_cap.units:
+                    unit.skill = dcs.unit.Skill.Random
+
+                if source_plane:
+                    for unit in enemy_cap.units:
+                        unit.pylons = source_plane.pylons
+                        unit.livery_id = source_plane.livery_id
+
+        if options["red_cap"]:
+
+            if red_forces["fighter_planes"]:
+                for fighter_plane_group in red_forces["fighter_planes"]:
+                    source_group = random.choice(red_forces["fighter_planes"])
+                    source_plane = source_group.units[0]
+                    plane_type = source_plane.unit_type
+
+                    enemy_cap = self.m.flight_group(
+                        country=combinedJointTaskForcesRed,
+                        name="RED CAP",
+                        aircraft_type=plane_type,
+                        airport=None,
+                        maintask=dcs.task.CAP,
+                        group_size=1,
+                        position=e_cap_spawn_point,
+                        altitude=5000,
+                        speed=300
+                    )
+
+                    enemy_cap.late_activation = True
+
+                    for unit in enemy_cap.units:
+                        unit.skill = dcs.unit.Skill.Random
+                        unit.pylons = source_plane.pylons
+                        unit.livery_id = source_plane.livery_id
+
+            else:
+                plane_type = random.choice(RotorOpsUnits.e_fighter_planes)
+
+                enemy_cap = self.m.flight_group(
+                    country=combinedJointTaskForcesRed,
+                    name="RED CAP",
+                    aircraft_type=plane_type,
+                    airport=None,
+                    maintask=dcs.task.CAP,
+                    group_size=1,
+                    position=e_cap_spawn_point,
+                    altitude=5000,
+                    speed=300
+                )
+
+                enemy_cap.late_activation = True
+
+                for unit in enemy_cap.units:
+                    unit.skill = dcs.unit.Skill.Random
+
+        if options["blue_cap"]:
+
+            if blue_forces["fighter_planes"]:
+                for fighter_plane_group in blue_forces["fighter_planes"]:
+                    source_group = random.choice(blue_forces["fighter_planes"])
+                    source_plane = source_group.units[0]
+                    plane_type = source_plane.unit_type
+
+                    friendly_cap = self.m.flight_group(
+                        country=combinedJointTaskForcesBlue,
+                        name="BLUE CAP",
+                        aircraft_type=plane_type,
+                        airport=None,
+                        maintask=dcs.task.CAP,
+                        group_size=1,
+                        position=f_cap_spawn_point,
+                        altitude=5000,
+                        speed=300
+                    )
+
+                    friendly_cap.late_activation = True
+
+                    for unit in friendly_cap.units:
+                        unit.skill = dcs.unit.Skill.Random
+                        unit.pylons = source_plane.pylons
+                        unit.livery_id = source_plane.livery_id
+
+            else:
+                plane_type = random.choice(RotorOpsUnits.f_fighter_planes)
+
+                friendly_cap = self.m.flight_group(
+                    country=combinedJointTaskForcesBlue,
+                    name="BLUE CAP",
+                    aircraft_type=plane_type,
+                    airport=None,
+                    maintask=dcs.task.CAP,
+                    group_size=1,
+                    position=f_cap_spawn_point,
+                    altitude=5000,
+                    speed=300
+                )
+
+                friendly_cap.late_activation = True
+
+                for unit in friendly_cap.units:
+                    unit.skill = dcs.unit.Skill.Random
+
 
     def importObjects(self, data):
 
