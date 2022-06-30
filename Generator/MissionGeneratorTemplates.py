@@ -19,6 +19,8 @@ class Scenario:
         self.rating_qty = None
         self.packageID = None
         self.local_rating = None
+        self.author = "unknown"
+
 
     def applyConfig(self, config):
         self.config = config
@@ -31,7 +33,15 @@ class Scenario:
         if 'tags' in config:
             for tag in config['tags']:
                 self.tags.append(tag)
+        if 'author' in config:
+            self.author = config["author"]
 
+
+    def getConfigValue(self, key, default):
+        if self.config and key in self.config:
+            return self.config[key]
+        else:
+            return default
 
 
     def evaluateMiz(self):
@@ -116,3 +126,35 @@ class Scenario:
 
 
 
+class Forces:
+
+    def __init__(self, path, filename, config=None):
+        self.path = path
+        self.filename = filename
+        self.basename = filename.removesuffix('.miz')
+        self.name = filename.removesuffix('.miz')
+        self.author = "unknown"
+
+
+        if config:
+            if 'name' in config:
+                self.name = config["name"]
+
+            if 'author' in config:
+                self.author = config["author"]
+
+class Import:
+
+    def __init__(self, path, filename, config=None):
+        self.path = path
+        self.filename = filename
+        self.name = filename.removesuffix('.miz')
+        self.author = "unknown"
+
+
+        if config:
+            if 'name' in config:
+                self.name = config["name"]
+
+            if 'author' in config:
+                self.author = config["author"]

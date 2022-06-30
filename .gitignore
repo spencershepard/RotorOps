@@ -15,5 +15,14 @@ Generator/utils/extract units/units.txt
 generator.log
 templates/Scenarios/user
 templates/Scenarios/downloaded
+templates/Imports/user
+templates/Imports/downloaded
+templates/Forces/user
+templates/Forces/downloaded
 config/user-data.yaml
 *.exe
+config/user-data.yaml
+server/user-files/modules/mapscript-sql.py
+distribution/
+MissionOutput/
+
