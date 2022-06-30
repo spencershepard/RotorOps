@@ -54,7 +54,7 @@
     <property name="geometry">
      <rect>
       <x>980</x>
-      <y>211</y>
+      <y>231</y>
       <width>251</width>
       <height>28</height>
      </rect>
@@ -75,11 +75,11 @@
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QCheckBox" name="zone_sams_checkBox">
+   <widget class="QCheckBox" name="advanced_defenses_checkBox">
     <property name="geometry">
      <rect>
-      <x>980</x>
-      <y>320</y>
+      <x>510</x>
+      <y>350</y>
       <width>241</width>
       <height>28</height>
      </rect>
@@ -91,10 +91,10 @@
      </font>
     </property>
     <property name="statusTip">
-     <string>Inactive conflict zones will be protected by SAMs. When a zone is cleared, SAMs at next active zone will be destroyed. No effect if Blue on defense.</string>
+     <string>Each enemy conflict zone spawns a template of AA defenses and radar units that may spawn fighter intercepts for detected aircraft.  A good difficulty multiplier for multiplayer.</string>
     </property>
     <property name="text">
-     <string>Protect Inactive Zones</string>
+     <string>Enemy Advanced Defenses</string>
     </property>
    </widget>
    <widget class="QLabel" name="red_forces_label">
@@ -190,8 +190,8 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="geometry">
      <rect>
-      <x>470</x>
-      <y>130</y>
+      <x>980</x>
+      <y>140</y>
       <width>156</width>
       <height>28</height>
      </rect>
@@ -271,7 +271,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>220</y>
+      <y>180</y>
       <width>271</width>
       <height>24</height>
      </rect>
@@ -438,7 +438,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>260</y>
+      <y>220</y>
       <width>271</width>
       <height>24</height>
      </rect>
@@ -460,7 +460,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>260</y>
+      <y>220</y>
       <width>51</width>
       <height>31</height>
      </rect>
@@ -496,7 +496,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>220</y>
+      <y>180</y>
       <width>51</width>
       <height>31</height>
      </rect>
@@ -532,7 +532,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>180</y>
+      <y>140</y>
       <width>51</width>
       <height>31</height>
      </rect>
@@ -574,7 +574,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>180</y>
+      <y>140</y>
       <width>271</width>
       <height>24</height>
      </rect>
@@ -633,7 +633,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>980</x>
-      <y>246</y>
+      <y>266</y>
       <width>241</width>
       <height>28</height>
      </rect>
@@ -658,7 +658,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>980</x>
-      <y>282</y>
+      <y>302</y>
       <width>241</width>
       <height>28</height>
      </rect>
@@ -758,7 +758,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>340</y>
+      <y>300</y>
       <width>261</width>
       <height>23</height>
      </rect>
@@ -780,7 +780,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>340</y>
+      <y>300</y>
       <width>51</width>
       <height>31</height>
      </rect>
@@ -810,7 +810,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>300</y>
+      <y>260</y>
       <width>51</width>
       <height>31</height>
      </rect>
@@ -867,7 +867,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>300</y>
+      <y>260</y>
       <width>281</width>
       <height>23</height>
      </rect>
@@ -889,7 +889,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>980</x>
-      <y>180</y>
+      <y>200</y>
       <width>251</width>
       <height>27</height>
      </rect>
