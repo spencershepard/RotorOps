@@ -74,14 +74,14 @@ def triggerSetup(rops, options):
     #         dcs.action.DoScript(dcs.action.String("ctld.createRadioBeaconAtZone('" + c_zone + "','blue', 1440,'" + c_zone + "')")))
     # rops.m.triggerrules.triggers.append(trig)
 
-    # Zone protection SAMs
-    if options["zone_protect_sams"]:
-        for index, zone_name in enumerate(rops.conflict_zones):
-            z_sams_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " SAMs")
-            z_sams_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
-            z_sams_trig.actions.append(dcs.action.DoScript(
-                dcs.action.String("Group.destroy(Group.getByName('Static " + zone_name + " Protection SAM'))")))
-            rops.m.triggerrules.triggers.append(z_sams_trig)
+    # # Zone protection SAMs
+    # if options["zone_protect_sams"]:
+    #     for index, zone_name in enumerate(rops.conflict_zones):
+    #         z_sams_trig = dcs.triggers.TriggerOnce(comment="Deactivate " + zone_name + " SAMs")
+    #         z_sams_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
+    #         z_sams_trig.actions.append(dcs.action.DoScript(
+    #             dcs.action.String("Group.destroy(Group.getByName('" + zone_name + " Protect Static'))")))
+    #         rops.m.triggerrules.triggers.append(z_sams_trig)
 
     # Deactivate zone FARPs and player slots in defensive mode:
     # this will also deactivate players already in the air.
@@ -178,24 +178,31 @@ def triggerSetup(rops, options):
             dcs.action.String("RotorOps.spawnTranspHelos(8," + str(options["transport_drop_qty"]) + ")")))
         rops.m.triggerrules.triggers.append(z_weak_trig)
 
+    # Add enemy CAP spawn trigger
+    cap_trig = dcs.triggers.TriggerContinious(comment="Spawn Enemy CAP")
+    cap_trig.rules.append(dcs.condition.TimeAfter(10))
+    cap_trig.rules.append(dcs.condition.Predicate(dcs.action.String("return RotorOps.predSpawnRedCap()")))
+    cap_trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.deployFighters()")))
+    rops.m.triggerrules.triggers.append(cap_trig)
+
     # Add game won/lost triggers
 
 
-        # Add game won triggers
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
-        trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
+    # Add game won triggers
+    trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
+    trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
+    trig.actions.append(
+        dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
+    if options["end_trigger"] is not False:
         trig.actions.append(
-            dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is WON")))
-        if options["end_trigger"] is not False:
-            trig.actions.append(
-                dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
-        rops.m.triggerrules.triggers.append(trig)
+            dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
+    rops.m.triggerrules.triggers.append(trig)
 
-        # Add game lost triggers
-        trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
-        trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
-        trig.actions.append(
-            dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
-        if options["end_trigger"] is not False:
-            trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
-        rops.m.triggerrules.triggers.append(trig)
+    # Add game lost triggers
+    trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict LOST")
+    trig.rules.append(dcs.condition.FlagEquals(game_flag, 98))
+    trig.actions.append(
+        dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
+    if options["end_trigger"] is not False:
+        trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
+    rops.m.triggerrules.triggers.append(trig)

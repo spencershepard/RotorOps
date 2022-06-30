@@ -20,6 +20,7 @@ player_helos = [
     dcs.helicopters.SA342Mistral,
     dcs.helicopters.UH_1H,
     aircraftMods.UH_60L,
+    dcs.planes.AV8BNA,
 ]
 
 e_attack_helos = [
@@ -37,6 +38,14 @@ e_transport_helos = [
 
 e_attack_planes = [
     dcs.planes.A_10C,
+]
+
+e_fighter_planes = [
+    dcs.planes.Su_27,
+]
+
+f_fighter_planes = [
+    dcs.planes.FA_18C_hornet,
 ]
 
 e_zone_sams = [

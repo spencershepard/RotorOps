@@ -126,6 +126,7 @@ class ImportObjects:
                                                group.units[0].heading)
 
                     # ng.units[0].livery_id = group.units[0].livery_id
+                    ng.units[0].name = dest_name + " " + group.units[i].name
                     new_groups.append(ng)
 
                 else:
@@ -211,6 +212,7 @@ class ImportObjects:
                                                       group.units[0].heading)
                     unit_count = unit_count + 1
                     # new_group.units[0].livery_id = group.units[0].livery_id
+                    new_group.units[0].name = dest_name + " " + group.units[i].name
 
                 else:
 

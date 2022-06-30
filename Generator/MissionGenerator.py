@@ -29,8 +29,8 @@ import qtmodern.windows
 
 # UPDATE BUILD VERSION
 maj_version = 1
-minor_version = 2
-patch_version = 0
+minor_version = 3
+patch_version = 1
 
 modules_version = 2
 modules_url = 'https://dcs-helicopters.com/user-files/modules/'
@@ -421,6 +421,12 @@ class Window(QMainWindow, Ui_MainWindow):
                     if qobj:
                         qobj.setValue(config['spinboxes'][box])
 
+            for box in QObject.findChildren(self, QSpinBox):
+                if 'disable_spinboxes' in config and config['disable_spinboxes'] is not None and box.objectName() in config['disable_spinboxes']:
+                    box.setEnabled(False)
+                else:
+                    box.setEnabled(True)
+
             for button in QObject.findChildren(self, QRadioButton):
                 if 'radiobuttons' in config and button.objectName() in config['radiobuttons']:
                     button.setChecked(True)
@@ -570,7 +576,6 @@ class Window(QMainWindow, Ui_MainWindow):
                 "game_display": self.game_status_checkBox.isChecked(),
                 "defending": self.defense_checkBox.isChecked(),
                 "slots": self.slot_template_comboBox.currentText(),
-                "zone_protect_sams": self.zone_sams_checkBox.isChecked(),
                 "zone_farps": self.farp_buttonGroup.checkedButton().objectName(),
                 "e_transport_helos": self.e_transport_helos_spinBox.value(),
                 "transport_drop_qty": self.troop_drop_spinBox.value(),
@@ -588,6 +593,9 @@ class Window(QMainWindow, Ui_MainWindow):
                 "logistics_farp_file": self.scenario.getConfigValue("logistics_farp_file", default=None),
                 "zone_protect_file": self.scenario.getConfigValue("zone_protect_file", default=None),
                 "script": self.scenario.getConfigValue("script", default=None),
+                "advanced_defenses": self.advanced_defenses_checkBox.isChecked(),
+                "red_cap": self.scenario.getConfigValue("red_cap", default=True),
+                "blue_cap": self.scenario.getConfigValue("blue_cap", default=True),
                 }
 
         logger.info("Generating mission with options:")
