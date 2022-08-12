@@ -49,6 +49,7 @@ RotorOps.guard_task_string = "guard"
 RotorOps.defending_vehicles_behavior = "shift"  --available options: 'none', 'patrol', 'shift'
 RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
 RotorOps.enable_staging_pickzones = true
+RotorOps.persistent_tasking = false --prevent the script from restasking in a loop --might help with odd movement patterns between zones
 
 --RotorOps settings that are safe to change only in the script config option in the scenario config file
 RotorOps.draw_conflict_zones = true
@@ -1009,17 +1010,13 @@ function RotorOps.aiExecute(vars)
   
   local should_update = true
   
---  if task == last_task then
---    should_update = false
---  end
---  
---  if same_zone then
---    should_update = false
---  end
---  
---  if task == "patrol" then 
---    should_update = true
---  end  
+  if RotorOps.persistent_tasking and task == last_task then
+   if task == "move_to_active_zone" or task == "move_to_zone" then
+     if same_zone then
+	   should_update = false
+	 end
+   end
+  end
     
   
  if should_update then  --check to make sure we don't have the same task
