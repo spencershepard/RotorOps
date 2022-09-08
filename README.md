@@ -99,3 +99,9 @@ Mr. Nobody: For awesome scenario and forces templates and helping to indroduce t
 Chat about anything RotorOps or join up to fly!
 
 https://discord.gg/HFqjrZV9xD
+
+# Support this project on Patreon
+
+Any membership level is a huge help to push this project forward, including our goals for new features and a full-time multiplayer server.  Thank you!
+
+https://www.patreon.com/dcs_rotorops
