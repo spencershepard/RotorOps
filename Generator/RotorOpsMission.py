@@ -250,8 +250,8 @@ class RotorOpsMission:
                                                  file=activated_farp,
                                                  config_name="zone_farp_file",
                                                  copy_helicopters=helicopters,
-                                                 helicopters_name="ZONE " + zone_name + " EMPTY",
-                                                 heli_start_type=dcs.mission.StartType.Cold,
+                                                 helicopters_name="ZONE " + zone_name,
+                                                 heli_start_type=None,
                                                  copy_vehicles=True,
                                                  vehicles_name=zone_name + " FARP Static",
                                                  copy_statics=False,
@@ -294,7 +294,7 @@ class RotorOpsMission:
                                      config_name="logistics_farp_file",
                                      copy_helicopters=helicopters,
                                      helicopters_name="ZONE " + zone_name + " LOGISTICS",
-                                     heli_start_type=start_type,
+                                     heli_start_type=None,
                                      copy_vehicles=True,
                                      vehicles_name=zone_name + " Logistics FARP",
                                      copy_statics=True,
@@ -310,7 +310,7 @@ class RotorOpsMission:
                                      config_name="defensive_farp_file",
                                      copy_helicopters=helicopters,
                                      helicopters_name="ZONE " + zone_name + " EMPTY",
-                                     heli_start_type=dcs.mission.StartType.Cold,
+                                     heli_start_type=None,
                                      copy_vehicles=True,
                                      vehicles_name=zone_name + " Defensive FARP",
                                      copy_statics=True,
@@ -410,7 +410,7 @@ class RotorOpsMission:
 
     # Use the ImportObjects class to place farps and bases
     def addZoneBase(self, options, _zone_name, country, file, config_name=None, copy_helicopters=False,
-                    helicopters_name="", heli_start_type=dcs.mission.StartType.Cold,
+                    helicopters_name="", heli_start_type=None,
                     copy_vehicles=False, vehicles_name="", copy_statics=False, statics_names="",
                     vehicles_single_group=False, trigger_name=None, trigger_radius=110, farp=True):
 

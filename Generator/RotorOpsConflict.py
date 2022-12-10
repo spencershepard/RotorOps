@@ -58,6 +58,18 @@ def triggerSetup(rops, options):
         trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
         rops.m.triggerrules.triggers.append(trig)
 
+    #Slot block the zone spawns if SSB is available
+    trig = dcs.triggers.TriggerOnce(comment="RotorOps Set Up Server")
+    trig.rules.append(dcs.condition.TimeAfter(4))
+    trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOpsServer.lua"]))
+    trig.actions.append(dcs.action.SetFlagValue('SSB', 100))
+    for c_zone in rops.conflict_zones:
+        for group in rops.all_zones[c_zone].player_helo_spawns:
+            trig.actions.append(dcs.action.SetFlagValue(group.name, 100))
+
+    rops.m.triggerrules.triggers.append(trig)
+
+
     # Add generic zone-based triggers
     for index, zone_name in enumerate(rops.conflict_zones):
         z_active_trig = dcs.triggers.TriggerOnce(comment=zone_name + " Active")
@@ -107,11 +119,10 @@ def triggerSetup(rops, options):
                 z_farps_trig.rules.append(dcs.condition.FlagEquals(game_flag, index + 1))
                 z_farps_trig.actions.append(
                     dcs.action.ActivateGroup(rops.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                # Activate late-activated helicopters at FARPs.  Doesn't work consistently
-                # for group in rops.all_zones[previous_zone].player_helo_spawns:
-                #     z_farps_trig.actions.append(
-                #         dcs.action.ActivateGroup(
-                #             group.id))
+                # Activate late-activated helicopters at FARPs if SSB slot blocking script is available
+                for group in rops.all_zones[previous_zone].player_helo_spawns:
+                    z_farps_trig.actions.append(
+                        dcs.action.SetFlagValue(group.name, 0))
                 z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
                     "RotorOps.farpEstablished(" + str(index) + ", '" + previous_zone + "_FARP')")))
                 rops.m.triggerrules.triggers.append(z_farps_trig)
@@ -130,11 +141,10 @@ def triggerSetup(rops, options):
                     "--The 100 flag indicates which zone is active.  The 111 flag value is the percentage of staged units remaining")))
                 z_farps_trig.actions.append(
                     dcs.action.ActivateGroup(rops.m.country(jtf_blue).find_group(previous_zone + " FARP Static").id))
-                # Activate late-activated helicopters at FARPs.  Doesn't work consistently
-                # for group in rops.all_zones[previous_zone].player_helo_spawns:
-                #     z_farps_trig.actions.append(
-                #         dcs.action.ActivateGroup(
-                #             group.id))
+                # Activate late-activated helicopters at FARPs if SSB slot blocking script is available
+                for group in rops.all_zones[previous_zone].player_helo_spawns:
+                    z_farps_trig.actions.append(
+                        dcs.action.SetFlagValue(group.name, 0))
                 z_farps_trig.actions.append(dcs.action.DoScript(dcs.action.String(
                     "RotorOps.farpEstablished(" + str(index) + ", '" + previous_zone + "_FARP')")))
                 rops.m.triggerrules.triggers.append(z_farps_trig)
@@ -189,6 +199,7 @@ def triggerSetup(rops, options):
 
 
     # Add game won triggers
+    mission_end_delay = 600
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
     trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
     trig.actions.append(
@@ -196,6 +207,17 @@ def triggerSetup(rops, options):
     if options["end_trigger"] is not False:
         trig.actions.append(
             dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.success)")))
+        trig.actions.append(dcs.action.DoScript(dcs.action.String(
+            "timer.scheduleFunction(function()trigger.action.setUserFlag('mission_end', 2) end, {}, timer.getTime() + " + str(
+                mission_end_delay) + ")")))
+        trig.actions.append(dcs.action.MessageToAll(dcs.action.String("Time to RTB.  Mission will end soon."), mission_end_delay))
+
+        mission_end_trigger = dcs.triggers.TriggerOnce(comment="End the mission")
+        mission_end_trigger.rules.append(dcs.condition.FlagEquals("mission_end", 2))
+        mission_end_trigger.actions.append(dcs.action.EndMission(text=dcs.action.String("Blue forces won!")))
+        rops.m.triggerrules.triggers.append(mission_end_trigger)
+
+
     rops.m.triggerrules.triggers.append(trig)
 
     # Add game lost triggers
@@ -205,4 +227,14 @@ def triggerSetup(rops, options):
         dcs.action.DoScript(dcs.action.String("---Add an action you want to happen when the game is LOST")))
     if options["end_trigger"] is not False:
         trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.gameMsg(RotorOps.gameMsgs.failure)")))
+        trig.actions.append(dcs.action.DoScript(dcs.action.String(
+            "timer.scheduleFunction(function()trigger.action.setUserFlag('mission_end', 1) end, {}, timer.getTime() + " + str(
+                mission_end_delay) + ")")))
+        trig.actions.append(
+            dcs.action.MessageToAll(dcs.action.String("Time to RTB.  Mission will end soon."), mission_end_delay))
+        mission_end_trigger = dcs.triggers.TriggerOnce(comment="End the mission")
+        mission_end_trigger.rules.append(dcs.condition.FlagEquals("mission_end", 1))
+        mission_end_trigger.actions.append(dcs.action.EndMission(text=dcs.action.String("Red forces won!")))
+        rops.m.triggerrules.triggers.append(mission_end_trigger)
+
     rops.m.triggerrules.triggers.append(trig)

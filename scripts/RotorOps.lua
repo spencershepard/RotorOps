@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.3.0"
+RotorOps.version = "1.3.2"
 local debug = true
 
 
@@ -74,6 +74,13 @@ RotorOps.ai_attacking_vehicle_groups = {}
 RotorOps.ai_tasks = {} 
 RotorOps.defending = false
 RotorOps.staged_units_flag = 111  -- shows a percentage of the units found in the staging zone when the game starts. you can also use 'ROPS_ATTACKERS' for readability
+
+--fighter variables
+local fighters_by_detected_unitname = {}
+RotorOps.fighter_radar_unit_string = 'FIGHTER_DEPLOYMENT'  --any unit capable of detecting aircraft by radar can be used as a detection source to spawn intercept fighters, if this string is in the unit name
+RotorOps.fighter_min_detection_alt = 609 --aircraft below this agl altitude (meters) will not be 'detected' by radar units. 
+RotorOps.fighter_max_detection_dist = 7000 --default max range from radar to target in order for intercept fighters to spawn (you can also set range for individual radar sources via unit name)
+RotorOps.fighter_max_active = 4 --total maximum active deployed fighters, shared between red/blue
 
 trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
@@ -297,16 +304,19 @@ ctld.addCallback(function(_args)
     local unit = _args.unit
     local picked_troops = _args.onboard
     local dropped_troops = _args.unloaded
-    --trigger.action.outText("dbg: ".. mist.utils.tableShow(_args), 5) 
+    --env.info("ctld callback: ".. mist.utils.tableShow(_args)) 
+	  
+	  
     if action == "load_troops" or action == "extract_troops" then
       trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troop_pickup[math.random(1, #sound_effects.troop_pickup)])
     elseif action == "unload_troops_zone" or action == "dropped_troops" then
       trigger.action.outSoundForGroup(unit:getGroup():getID() , sound_effects.troop_dropoff[math.random(1, #sound_effects.troop_dropoff)])
       if RotorOps.isUnitInZone(unit, RotorOps.active_zone) then
         local id = timer.scheduleFunction(RotorOps.gameMsgHandler, RotorOps.gameMsgs.friendly_troops_dropped, timer.getTime() + 6)  --allow some extra time so we don't step on the player's troop/unload sound effects
+
       end
       if dropped_troops.jtac == true then
-        local id = timer.scheduleFunction(RotorOps.gameMsgHandler, RotorOps.gameMsgs.jtac, timer.getTime() + 6) --allow some extra time so we don't step on the player's troop/unload sound effects
+        local id = timer.scheduleFunction(RotorOps.gameMsgHandler, RotorOps.gameMsgs.jtac, timer.getTime() + 12) --allow some extra time so we don't step on the player's troop/unload sound effects
       end
     end
 
@@ -889,7 +899,7 @@ function RotorOps.guardPosition(vars)
  local grp = vars.grp
  local search_radius = vars.radius or 100
  local first_valid_unit
- if grp:isExist() ~= true then return end
+ if not grp or grp:isExist() ~= true then return end
  local start_point = vars.point
  
  if not start_point then
@@ -1322,7 +1332,7 @@ function RotorOps.assessUnitsInZone(var)
       end
       
       RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
-      env.info("ROTOR OPS: Spawned infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
+      env.info("ROTOR OPS: Attempting to spawn infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
     end
   end
   
@@ -1402,8 +1412,8 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
     end
     previous_point = point
     if RotorOps.draw_conflict_zones == true then
-      trigger.action.circleToAll(coalition, id, point, radius, color, fill_color, line_type)
-      trigger.action.textToAll(coalition, id + 100, point, color, text_fill_color, font_size, read_only, text)
+      trigger.action.circleToAll(coal, id, point, radius, color, fill_color, line_type)
+      trigger.action.textToAll(coal, id + 100, point, color, text_fill_color, font_size, read_only, text)
     end
   end
   
@@ -1556,8 +1566,8 @@ function RotorOps.setupCTLD()
    ctld.pickupZones[#ctld.pickupZones + 1] = { "BRAVO_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "CHARLIE_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "DELTA_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
-   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER", "none", -1, "no", 0 }
-   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER_1", "none", -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER", "none", -1, "yes", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER_1", "none", -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops1", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops2", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops3", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
@@ -2030,12 +2040,7 @@ function RotorOps.spawnCap(destination_point, _spawn_zone, coal)
   
 end
 
---fighter variables
-local fighters_by_detected_unitname = {}
-RotorOps.fighter_radar_unit_string = 'FIGHTER_DEPLOYMENT'  --any unit capable of detecting aircraft by radar can be used as a detection source to spawn intercept fighters, if this string is in the unit name
-RotorOps.fighter_min_detection_alt = 305 --aircraft below this agl altitude (meters) will not be 'detected' by radar units. 
-RotorOps.fighter_max_detection_dist = 7000 --default max range from radar to target in order for intercept fighters to spawn (you can also set range for individual radar sources via unit name)
-RotorOps.fighter_max_active = 8 --total maximum active deployed fighters, shared between red/blue
+
 
 function RotorOps.deployFighters()
   local function spawn(dest_point, target_unit, coal)
@@ -2122,8 +2127,11 @@ function RotorOps.deployFighters()
 	  local max_distance = RotorOps.fighter_max_detection_dist
 	  local dist_str = string.sub(uName, str_index + #RotorOps.fighter_radar_unit_string + 1)
 	  if #dist_str > 3 then
-	    --env.info("Radar unit name has the max detection distance property:".. dist_str)
-		max_distance = tonumber(dist_str)
+	    --env.info("RotorOps: Radar unit name has the max detection distance property:".. dist_str)
+		local dist = tonumber(dist_str)
+		if dist and dist > 0 then
+		  max_distance = dist
+		end
 	  end
 	  
 	  if radar_unit and radar_unit:getLife() > 0 then
@@ -2140,10 +2148,10 @@ function RotorOps.deployFighters()
 				  local terrain_height = land.getHeight({x = target_pos.x, y = target_pos.z})
 				  local target_agl = target_pos.y - terrain_height
 				  
-				  --trigger.action.outText(uData.unitName .. "detected " .. detected_unitname .. " at " .. target_distance .. " agl:" .. target_agl, 2)
+				  env.info(uData.unitName .. "detected " .. detected_unitname .. " at " .. target_distance .. " agl:" .. target_agl)
 				  
 				  if target_distance <= max_distance and target_agl >= RotorOps.fighter_min_detection_alt then
-					--trigger.action.outText(uData.unitName .. " has detected "..detected_unitname, 2)
+					env.info('RotorOps: ' .. uData.unitName .. " has detected "..detected_unitname .. "at agl=" .. target_agl .. " distance=" .. target_distance)
 					
 					if tableHasKey(fighters_by_detected_unitname, detected_unitname) then
 					  --trigger.action.outText(detected_unitname .. " already in table with " .. fighters_by_detected_unitname[detected_unitname], 2)

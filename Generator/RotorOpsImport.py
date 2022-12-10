@@ -141,7 +141,7 @@ class ImportObjects:
         return new_groups
 
     def copyHelicopters(self, mission, dest_country_name, dest_name, dest_point, dest_heading=0,
-                        start_type=dcs.mission.StartType.Cold):
+                        start_type=None):
         logger.info("Copying " + str(len(self.helicopters)) + " helicopters as " + dest_name)
         new_groups = []
 
@@ -177,9 +177,12 @@ class ImportObjects:
                     if start_type == dcs.mission.StartType.Warm:
                         ng.points[0].action = dcs.point.PointAction.FromGroundAreaHot
                         ng.points[0].type = "TakeOffGroundHot"
-                    else:
+                    elif start_type == dcs.mission.StartType.Cold:
                         ng.points[0].action = dcs.point.PointAction.FromGroundArea
                         ng.points[0].type = "TakeOffGround"
+                    else:
+                        ng.points[0].action = group.points[0].action
+                        ng.points[0].type = group.points[0].type
                     ng.units[0].heading = group.units[0].heading
                     ng.units[0].skill = group.units[0].skill
                     ng.units[0].livery_id = group.units[0].livery_id
