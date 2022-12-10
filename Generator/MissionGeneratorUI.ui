@@ -421,11 +421,16 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="version_label">
     <property name="geometry">
      <rect>
-      <x>1140</x>
+      <x>1070</x>
       <y>650</y>
-      <width>111</width>
+      <width>181</width>
       <height>20</height>
      </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+     </font>
     </property>
     <property name="text">
      <string>Version string</string>
@@ -791,7 +796,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="statusTip">
-     <string>This value is multiplied by the number of spawn zones in the mission template.</string>
+     <string>Total number of infantry groups to spawn per game.</string>
     </property>
     <property name="buttonSymbols">
      <enum>QAbstractSpinBox::PlusMinus</enum>

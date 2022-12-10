@@ -2,7 +2,6 @@ import json
 import yaml
 import sys
 import os
-import operator
 
 import RotorOpsMission as ROps
 import RotorOpsUnits
@@ -19,7 +18,6 @@ from PyQt5.QtWidgets import (
 from PyQt5 import QtGui
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import QObject, QEvent, Qt, QUrl
-from PyQt5.QtWebEngineWidgets import QWebEngineView
 import resources # pyqt resource file
 
 from MissionGeneratorUI import Ui_MainWindow
@@ -30,7 +28,7 @@ import qtmodern.windows
 # UPDATE BUILD VERSION
 maj_version = 1
 minor_version = 3
-patch_version = 1
+patch_version = 2
 
 modules_version = 2
 modules_url = 'https://dcs-helicopters.com/user-files/modules/'
@@ -640,20 +638,20 @@ class Window(QMainWindow, Ui_MainWindow):
 
 
     # works fine but no use for this currently
-    class myWebView(QDialog):
-        def __init__(self, window, parent=None):
-            QDialog.__init__(self, parent)
-            vbox = QVBoxLayout(self)
-
-            self.webEngineView = QWebEngineView()
-            self.webEngineView.load(QUrl('https://dcs-helicopters.com'))
-
-            vbox.addWidget(self.webEngineView)
-
-            self.setLayout(vbox)
-
-            self.setGeometry(600, 600, 700, 500)
-            self.setWindowTitle('QWebEngineView')
+    # class myWebView(QDialog):
+    #     def __init__(self, window, parent=None):
+    #         QDialog.__init__(self, parent)
+    #         vbox = QVBoxLayout(self)
+    #
+    #         self.webEngineView = QWebEngineView()
+    #         self.webEngineView.load(QUrl('https://dcs-helicopters.com'))
+    #
+    #         vbox.addWidget(self.webEngineView)
+    #
+    #         self.setLayout(vbox)
+    #
+    #         self.setGeometry(600, 600, 700, 500)
+    #         self.setWindowTitle('QWebEngineView')
 
     class slotDialog(QDialog):
         def __init__(self, window, parent=None):
