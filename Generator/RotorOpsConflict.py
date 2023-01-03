@@ -29,7 +29,9 @@ def triggerSetup(rops, options):
               "RotorOps.zone_status_display = " + lb("game_display") + "\n\n" +
               "RotorOps.inf_spawn_messages = true\n\n" +
               "RotorOps.inf_spawns_total = " + lb("inf_spawn_qty") + "\n\n" +
-              "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n")
+              "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n" +
+              "RotorOps.fighter_min_detection_alt = 609\n\n" +
+              "RotorOps.fighter_max_active = 2\n\n")
     if not options["smoke_pickup_zones"]:
         script = script + 'RotorOps.pickup_zone_smoke = "none"\n\n'
     trig.actions.append(dcs.action.DoScript(dcs.action.String((script))))
@@ -58,16 +60,18 @@ def triggerSetup(rops, options):
         trig.actions.append(dcs.action.DoScript(dcs.action.String("RotorOps.startConflict(100)")))
         rops.m.triggerrules.triggers.append(trig)
 
-    #Slot block the zone spawns if SSB is available
-    trig = dcs.triggers.TriggerOnce(comment="RotorOps Set Up Server")
-    trig.rules.append(dcs.condition.TimeAfter(4))
-    trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOpsServer.lua"]))
-    trig.actions.append(dcs.action.SetFlagValue('SSB', 100))
-    for c_zone in rops.conflict_zones:
-        for group in rops.all_zones[c_zone].player_helo_spawns:
-            trig.actions.append(dcs.action.SetFlagValue(group.name, 100))
+    if options["rotorops_server"]:
 
-    rops.m.triggerrules.triggers.append(trig)
+        trig = dcs.triggers.TriggerOnce(comment="RotorOps Set Up Server")
+        trig.rules.append(dcs.condition.TimeAfter(4))
+        trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOpsServer.lua"]))
+        # Slot block the zone spawns if SSB is available
+        trig.actions.append(dcs.action.SetFlagValue('SSB', 100))
+        for c_zone in rops.conflict_zones:
+            for group in rops.all_zones[c_zone].player_helo_spawns:
+                trig.actions.append(dcs.action.SetFlagValue(group.name, 100))
+
+        rops.m.triggerrules.triggers.append(trig)
 
 
     # Add generic zone-based triggers
@@ -199,7 +203,7 @@ def triggerSetup(rops, options):
 
 
     # Add game won triggers
-    mission_end_delay = 600
+    mission_end_delay = 1200
     trig = dcs.triggers.TriggerOnce(comment="RotorOps Conflict WON")
     trig.rules.append(dcs.condition.FlagEquals(game_flag, 99))
     trig.actions.append(

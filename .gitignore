@@ -8,7 +8,6 @@ Generator/build
 Generator/venv
 Generator/dist
 Generator/generator.log
-MissionGenerator.exe
 incoming templates/
 Generator/utils/extract units/source.miz
 Generator/utils/extract units/units.txt
@@ -20,9 +19,10 @@ templates/Imports/downloaded
 templates/Forces/user
 templates/Forces/downloaded
 config/user-data.yaml
-*.exe
 config/user-data.yaml
 server/user-files/modules/mapscript-sql.py
 distribution/
 MissionOutput/
-
+.idea
+*.env
+RotorOps_setup.exe

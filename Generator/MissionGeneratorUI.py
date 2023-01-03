@@ -627,7 +627,7 @@ class Ui_MainWindow(object):
         self.game_status_checkBox.setText(_translate("MainWindow", "Game Status Display"))
         self.label.setStatusTip(_translate("MainWindow", "Total number of infantry groups to spawn per game."))
         self.label.setText(_translate("MainWindow", "Infantry Spawns"))
-        self.inf_spawn_spinBox.setStatusTip(_translate("MainWindow", "This value is multiplied by the number of spawn zones in the mission template."))
+        self.inf_spawn_spinBox.setStatusTip(_translate("MainWindow", "Total number of infantry groups to spawn per game."))
         self.troop_drop_spinBox.setStatusTip(_translate("MainWindow", "The number of troop drops per transport helicopter flight."))
         self.random_weather_checkBox.setStatusTip(_translate("MainWindow", "Random weather preset will be applied."))
         self.random_weather_checkBox.setText(_translate("MainWindow", "Random Weather"))

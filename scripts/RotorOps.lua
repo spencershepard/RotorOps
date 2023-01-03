@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.3.2"
+RotorOps.version = "1.3.3"
 local debug = true
 
 
@@ -80,7 +80,7 @@ local fighters_by_detected_unitname = {}
 RotorOps.fighter_radar_unit_string = 'FIGHTER_DEPLOYMENT'  --any unit capable of detecting aircraft by radar can be used as a detection source to spawn intercept fighters, if this string is in the unit name
 RotorOps.fighter_min_detection_alt = 609 --aircraft below this agl altitude (meters) will not be 'detected' by radar units. 
 RotorOps.fighter_max_detection_dist = 7000 --default max range from radar to target in order for intercept fighters to spawn (you can also set range for individual radar sources via unit name)
-RotorOps.fighter_max_active = 4 --total maximum active deployed fighters, shared between red/blue
+RotorOps.fighter_max_active = 2 --total maximum active deployed fighters, shared between red/blue
 
 trigger.action.outText("ROTOR OPS STARTED: "..RotorOps.version, 5)
 env.info("ROTOR OPS STARTED: "..RotorOps.version)
@@ -2141,7 +2141,7 @@ function RotorOps.deployFighters()
 		if raw_detected_units then
 			for i, target in pairs(raw_detected_units) do
 			  --debugTable(target)
-			  if target.object then
+			  if target.object and target.object:getCategory() == Object.Category.UNIT then
 				  local detected_unitname = target.object:getName()
 				  local target_pos = target.object:getPosition().p
 				  local target_distance = mist.utils.get2DDist(radar_unit:getPosition().p, target_pos)
