@@ -1411,6 +1411,7 @@ function RotorOps.drawZones()  --this could use a lot of work, we should use tri
       --trigger.action.lineToAll(coal, id + 200, point, previous_point, color, line_type)
     end
     previous_point = point
+
     if RotorOps.draw_conflict_zones == true then
       trigger.action.circleToAll(coal, id, point, radius, color, fill_color, line_type)
       trigger.action.textToAll(coal, id + 100, point, color, text_fill_color, font_size, read_only, text)
