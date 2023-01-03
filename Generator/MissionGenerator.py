@@ -5,11 +5,13 @@ import os
 
 import RotorOpsMission as ROps
 import RotorOpsUnits
+import version
 import user
 import logging
 
 import requests
-from packaging import version
+from packaging import version as ver
+
 
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QMainWindow, QMessageBox, QCheckBox, QSpinBox, QSplashScreen, QFileDialog, QRadioButton,
@@ -25,20 +27,15 @@ from MissionGeneratorUI import Ui_MainWindow
 import qtmodern.styles
 import qtmodern.windows
 
-# UPDATE BUILD VERSION
-maj_version = 1
-minor_version = 3
-patch_version = 2
 
 modules_version = 2
 modules_url = 'https://dcs-helicopters.com/user-files/modules/'
-version_url = 'https://dcs-helicopters.com/app-updates/versions.yaml'
 modules_map_url = 'https://dcs-helicopters.com/user-files/modules/module-map-v2.yaml'
 ratings_url = 'https://dcs-helicopters.com/user-files/ratings.php'
 allowed_paths = ['templates\\Scenarios\\downloaded', 'templates\\Forces\\downloaded', 'templates\\Imports\\downloaded']
 
-user_files_url = 'https://dcs-helicopters.com/user-files/'
-version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
+version.version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
+
 
 #Setup logfile and exception handler
 logger = logging.getLogger(__name__)
@@ -100,17 +97,16 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 sys.excepthook = handle_exception
 
 
-version_string = str(maj_version) + "." + str(minor_version) + "." + str(patch_version)
 defenders_text = "Defending Forces:"
 attackers_text = "Attacking Forces:"
 ratings_json = None
 
-logger.info("RotorOps v" + version_string)
+logger.info("RotorOps v" + version.version_string)
 
 # Try to set windows app ID to display taskbar icon properly
 try:
     from ctypes import windll
-    appid = 'RotorOps.MissionGenerator.' + version_string
+    appid = 'RotorOps.MissionGenerator.' + version.version_string
     windll.shell32.SetCurrentProcessExplicitAppUserModelID(appid)
 except ImportError:
     pass
@@ -154,7 +150,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.statusbar = self.statusBar()
         self.statusbar.setStyleSheet(
             "QStatusBar{padding-left:5px;}")
-        self.version_label.setText("Version " + version_string)
+        self.version_label.setText("Version " + version.version_string)
 
         self.scenarioChanged()
 
@@ -594,6 +590,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "advanced_defenses": self.advanced_defenses_checkBox.isChecked(),
                 "red_cap": self.scenario.getConfigValue("red_cap", default=True),
                 "blue_cap": self.scenario.getConfigValue("blue_cap", default=True),
+                "rotorops_server": self.scenario.getConfigValue("rotorops_server", default=False),
                 }
 
         logger.info("Generating mission with options:")
@@ -612,11 +609,9 @@ class Window(QMainWindow, Ui_MainWindow):
             msg.setText("Awesome, your mission is ready! It's located in this directory: \n" +
                         result["directory"] + "\n" +
                         "\n" +
-                        "Next, you should use the DCS Mission Editor to fine tune unit placements.  Don't be afraid to edit the missions that this generator produces. \n" +
+                        "You MUST use the DCS Mission Editor to open the mission, or else it may not work correctly. Save the mission or launch it directly from the editor.\n" +
                         "\n" +
-                        "There are no hidden script changes, everything is visible in the ME.  Triggers have been created to help you to add your own actions based on active zone and game status. \n" +
-                        "\n" +
-                        "Units can be changed or moved without issue.  Player slots can be changed or moved without issue (one per group though!) \n" +
+                        "It's also highly recommended to fine-tune ground unit placements.\n" +
                         "\n" +
                         "Don't forget, you can also create your own templates that can include any mission options, objects, or even scripts. \n" +
                         "\n" +
@@ -776,10 +771,14 @@ def checkVersion(splashscreen):
 
 
    try:
-        r = requests.get(version_url, allow_redirects=False, timeout=7)
+        r = requests.get(version.version_url, allow_redirects=False, timeout=7)
         v = yaml.safe_load(r.content)
         avail_build = v["version"]
-        if version.parse(avail_build) > version.parse(version_string):
+        avail_version = ver.parse(avail_build)
+        current_version = ver.parse(version.version_string)
+        current_maj_min = ver.parse(str(current_version.major) + "." + str(current_version.minor))
+        avail_maj_min = ver.parse(str(avail_version.major) + "." + str(avail_version.minor))
+        if avail_maj_min > current_maj_min:
             logger.warning("New version available. Please update to available version " + v["version"])
             msg = QMessageBox()
             msg.setWindowTitle(v["title"])
@@ -787,7 +786,7 @@ def checkVersion(splashscreen):
             msg.setIcon(QMessageBox.Icon.Information)
             x = msg.exec_()
         else:
-            logger.info("Version check complete: running the latest version.")
+            logger.info("Version check complete: running the latest version. (micro version ignored)")
    except:
         logger.error("Online version check failed.")
 

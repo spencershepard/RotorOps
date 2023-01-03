@@ -381,11 +381,15 @@ class RotorOpsMission:
             self.m.weather.wind_at_8000.direction = (wind_dir + random.randrange(-90, 90) - 180) % 360
             self.m.weather.wind_at_8000.speed = wind_speed + random.randrange(-1, 10)
 
+            self.m.weather.halo.preset = dcs.weather.Halo.Preset.Auto
+            self.m.weather.halo.crystals = None
+
             logger.info("Cloud preset = " + cloud_preset.ui_name + ", ground windspeed = " + str(
                 self.m.weather.wind_at_ground.speed))
 
         if options["time"] != "Default Time":
             self.m.random_daytime(options["time"].lower())
+            print("Time set to " + options["time"])
 
         # Save the mission file
         window.statusBar().showMessage("Saving mission...", 10000)
@@ -507,7 +511,7 @@ class RotorOpsMission:
 
         if len(airport.free_parking_slots(aircraft)) >= group_size:
             if not (aircraft.id in dcs.planes.plane_map and (
-                    len(airport.runways) == 0 or airport.runways[0].ils is None)):
+                    len(airport.runways) == 0 or not hasattr(airport.runways[0], "ils"))):
                 return airport
 
         if alt_airports:
