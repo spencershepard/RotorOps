@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.3.3"
+RotorOps.version = "1.3.4"
 local debug = true
 
 
@@ -1517,6 +1517,10 @@ end
 
 --make some changes to the CTLD script/settings
 function RotorOps.setupCTLD()
+  if not ctld then
+    trigger.action.outText("ERROR: CTLD Not Loaded!!", 90)
+    return
+  end
   if type(ctld.pickupZones[1][2]) == "number" then --ctld converts its string table to integer on load, so we'll see if that's happened already
     trigger.action.outText("ERROR: CTLD Loaded Too Soon!!", 90)
     return
