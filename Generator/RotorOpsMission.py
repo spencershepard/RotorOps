@@ -349,7 +349,9 @@ class RotorOpsMission:
         self.addFlights(options, red_forces, blue_forces)
 
         # Add source statics
-        self.addSourceStatics(options)
+        if options["perks"]:
+            # fat cow farps require source objects to work (can't be dynamically inserted)
+            self.addSourceStatics(options)
 
         # Set the Editor Map View
         self.m.map.position = self.conflict_zones["ALPHA"].position
@@ -1243,30 +1245,43 @@ class RotorOpsMission:
         insert_point = None
         if self.m.terrain.name == "Caucasus":
             insert_point = dcs.mapping.Point(-500000, 200000, dcs.terrain.Caucasus)
-        #if options["fat_cow_farp"]
+        elif self.m.terrain.name == "Falklands":
+            insert_point = dcs.mapping.Point(216000, -990000, dcs.terrain.Falklands)
+        elif self.m.terrain.name == "MarianaIslands":
+            insert_point = dcs.mapping.Point(686200, 71200, dcs.terrain.MarianaIslands)
+        elif self.m.terrain.name == "PersianGulf":
+            insert_point = dcs.mapping.Point(-350000, -800000, dcs.terrain.PersianGulf)
+        elif self.m.terrain.name == "Nevada":
+            insert_point = dcs.mapping.Point(-140000, -300000, dcs.terrain.Nevada)
+        elif self.m.terrain.name == "Syria":
+            insert_point = dcs.mapping.Point(235000, -440000, dcs.terrain.Syria)
+
         if insert_point:
 
-            for i in range(1, 5):
-                self.m.static_group(name="FAT COW FUEL " + str(i),
+            for i in range(1, 4):
+                fuel = self.m.static_group(name="FAT COW FUEL " + str(i),
                                     _type=dcs.statics.Fortification.FARP_Fuel_Depot,
                                     country=self.m.country(jtf_blue),
                                     position=insert_point.random_point_within(1000, 1000),
                                     heading=0,
                                     hidden=True,)
+                fuel.units[0].name = "FAT COW FUEL " + str(i)
 
-                self.m.static_group(name="FAT COW AMMO " + str(i),
+                ammo = self.m.static_group(name="FAT COW AMMO " + str(i),
                                     _type=dcs.statics.Fortification.FARP_Ammo_Dump_Coating,
                                     country=self.m.country(jtf_blue),
                                     position=insert_point.random_point_within(1000, 1000),
                                     heading=0,
                                     hidden=True, )
+                ammo.units[0].name = "FAT COW AMMO " + str(i)
 
-                self.m.static_group(name="FAT COW TENT " + str(i),
+                tent = self.m.static_group(name="FAT COW TENT " + str(i),
                                     _type=dcs.statics.Fortification.FARP_Tent,
                                     country=self.m.country(jtf_blue),
                                     position=insert_point.random_point_within(1000, 1000),
                                     heading=0,
                                     hidden=True, )
+                tent.units[0].name = "FAT COW TENT " + str(i)
 
                 self.m.farp(self.m.country(jtf_blue), "FAT COW FARP " + str(i),
                             insert_point.random_point_within(1000, 1000), hidden=True, dead=False, farp_type=dcs.unit.InvisibleFARP)
