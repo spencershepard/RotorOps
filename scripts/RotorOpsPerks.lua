@@ -1,16 +1,26 @@
---need to remove dead/left players from players table (else functions utilizing playersByGroupName will be bugged such as scorePoints)
---mark.initiator.id_ == player_unit.id_  we find marks and position based on the first player in a group...maybe this is not what we want to do
---perks objects should have a reference to the function to call and pass args
+--ROTOROPS PERKS by GRIMM  
+--Points and rewards system
+--Check out RotorOps at dcs-helicopters.com
+--Full documentation on Github (see the Wiki: RotorOps PERKS)
+
+--How to use: load the script in do script trigger after the mission begins. Requires MIST, but CTLD is optional.  Load scripts in this order: 1) MIST 2) CTLD 3) RotorOpsPerks
+--This script will add a new menu to the F10 menu called "RotorOps Perks".  This menu will allow you to select a perk to use.
+--You can define the points earner per action, and the perk options below.
+ 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.0"
-trigger.action.outText('RotorOpsPerks started: '..RotorOpsPerks.version, 5)
-
+RotorOpsPerks.version = "1.1"
+trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
+RotorOpsPerks.perks = {}
 RotorOpsPerks.players = {} --by group name
 RotorOpsPerks.troops_blue = {} --by group name
 
+---- OPTIONS ----
+
+RotorOpsPerks.silent_points = false --set to true to disable text on points scoring
+
 RotorOpsPerks.points = {
-    player_default=4000,
+    player_default=200, --how many points each player will start with
     kill=10,
     kill_inf=5,
     kill_heli=20,
@@ -26,9 +36,15 @@ RotorOpsPerks.points = {
 }
 
 
-RotorOpsPerks.perks = {}
-
+---- FATCOW PERK ----
 --Fat Cow FARP requires static farp objects to work (they are teleported to the landing zone), and a late activated helicopter called 'FAT COW'.  See a generated RotorOps mission for reference
+
+function requestFatCowPerk(args)
+    local index = RotorOpsPerks.perks.fatcow.used + 1
+    RotorOpsPerks.spawnFatCow(args.target_point, index)
+end
+
+
 RotorOpsPerks.perks["fatcow"] = {
     perk_name='fatcow',
     display_name='FatCow FARP',
@@ -36,19 +52,36 @@ RotorOpsPerks.perks["fatcow"] = {
     cooldown=0,
     max_per_player=1,
     max_per_mission=4,
+    at_mark=true,
+    at_position=true,
+    enabled=true,
     last_used=0,
     used=0,
+    action_function=requestFatCowPerk
 }
+
+---- INSTANT STRIKE PERK ----
+
+function requestStrikePerk(args)
+    --explosion at dest_point after 10 seconds
+    timer.scheduleFunction(function()
+        trigger.action.explosion(args.target_point, 1000)
+    end, nil, timer.getTime() + 10)
+end
 
 RotorOpsPerks.perks["strike"] = {
     perk_name='strike',
     display_name='Instant Strike',
-    cost=50,
+    cost=100,
     cooldown=0,
-    max_per_player=5,
+    max_per_player=1,
     max_per_mission=3,
+    at_mark=true,
+    at_position=false,
+    enabled=true,
     last_used=0,
     used=0,
+    action_function=requestStrikePerk
 }
 
 
@@ -72,21 +105,6 @@ function RotorOpsPerks.getPlayerGroupSum(player_group_name, player_attribute, ta
 
 end
 
--- function RotorOpsPerks.getGroupPoints(player_group_name)
---     --loop through RotorOpsPerks.playersByGroupName
---     local players = RotorOpsPerks.playersByGroupName(player_group_name)
---     if not players then
---         return false
---     end
-    
-
---     local total_points = 0
---     for _, player in pairs(players) do
---         total_points = total_points + player.points
---     end
---     return total_points
-
--- end
 
 function RotorOpsPerks.spendPoints(player_group_name, points)
     local players = RotorOpsPerks.playersByGroupName(player_group_name)
@@ -122,7 +140,7 @@ function RotorOpsPerks.scorePoints(player_group_name, points, message)
         for _, player in pairs(players) do
             player.points = player.points + points
         end
-        if message then
+        if message and not RotorOpsPerks.silent_points then
             local total = RotorOpsPerks.getPlayerGroupSum(player_group_name, "points")
             if #players > 1 then
                 message = message.." +"..points.." points (" .. total .. " group total)"
@@ -201,23 +219,25 @@ end
 function RotorOpsPerks.addRadioMenuForGroup(groupName)
     local groupId = Group.getByName(groupName):getID()
 
-    local function addPerkCommand(groupId, groupName, perk_name, path, vars)
-        local perk = RotorOpsPerks.perks[perk_name]
-        missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at ' .. vars.target, path , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk_name, target=vars.target})
-    end
+    -- local function addPerkCommand(groupId, groupName, perk, path, vars)
+    --     missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at ' .. vars.target, path , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk_name, target=vars.target})
+    -- end
 
-    -- local menu = RotorOpsPerks.players[identifier]['menu']
-    -- menu["root"] = missionCommands.addSubMenuForGroup(groupId, 'ROTOROPS PERKS')
-    -- env.info(mist.utils.tableShow(menu.root, 'menu root'))
     local menu_root = missionCommands.addSubMenuForGroup(groupId, 'ROTOROPS PERKS')
-    -- missionCommands.addCommandForGroup(groupId, 'Check points balance', menu["root"] , RotorOpsPerks.checkPoints, groupName)
     missionCommands.addCommandForGroup(groupId, 'Check points balance', menu_root, RotorOpsPerks.checkPoints, groupName)
-    addPerkCommand(groupId, groupName, 'fatcow', menu_root, {target='position'})
-    addPerkCommand(groupId, groupName, 'fatcow', menu_root, {target='mark'})
-    addPerkCommand(groupId, groupName, 'strike', menu_root, {target='mark'})
-    -- addPerkCommand(groupId, groupName, 'fatcow', menu["root"], {target='position'})
-    -- addPerkCommand(groupId, groupName, 'fatcow', menu["root"], {target='mark'})
-    -- addPerkCommand(groupId, groupName, 'strike', menu["root"], {target='mark'})
+
+    for perk_name, perk in pairs(RotorOpsPerks.perks) do
+        if perk.enabled then 
+            if perk.at_mark then
+                --addPerkCommand(groupId, groupName, perk, menu_root, {target='mark'})
+                missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
+            end
+            if perk.at_position then
+                --addPerkCommand(groupId, groupName, perk, menu_root, {target='position'})
+                missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at current position', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='position'})
+            end
+        end
+    end
 
 end
 
@@ -261,7 +281,7 @@ function teleportStatic(source_name, dest_point)
     end
 end
 
-function spawnFatCowFarpObjects(pt_x, pt_y, index)
+function RotorOpsPerks.spawnFatCowFarpObjects(pt_x, pt_y, index)
     env.info('spawnFatCowFarpObjects called. Looking for static group names ending in ' .. index)
     local dest_point = mist.utils.makeVec3GL({x = pt_x, y = pt_y})
     trigger.action.smoke(dest_point, 2)
@@ -279,7 +299,7 @@ function spawnFatCowFarpObjects(pt_x, pt_y, index)
 end
 
 
-function spawnFatCow(dest_point, index)
+function RotorOpsPerks.spawnFatCow(dest_point, index)
     local fatcow_name = 'FAT COW'
     local source_farp_name = 'FAT COW FARP ' .. index
     
@@ -308,7 +328,7 @@ function spawnFatCow(dest_point, index)
 
 
     local script =  [[
-        spawnFatCowFarpObjects(]] .. dest_point.x ..[[,]] .. dest_point.y .. [[,]] .. index .. [[)
+        RotorOpsPerks.spawnFatCowFarpObjects(]] .. dest_point.x ..[[,]] .. dest_point.y .. [[,]] .. index .. [[)
         env.info('FatCow FARP deployment scheduled')
     ]]   
 
@@ -374,20 +394,6 @@ function spawnFatCow(dest_point, index)
 
     gp.clone = true
     local new_group_data = mist.dynAdd(gp)
-end
-
-function RotorOpsPerks.requestStrike(args, dest_point)
-    --explosion at dest_point after 10 seconds
-    timer.scheduleFunction(function()
-        trigger.action.explosion(dest_point, 1000)
-    end, nil, timer.getTime() + 10)
-end
-    
-
-function RotorOpsPerks.requestFatCow(args, dest_point)
-    local player_group = Group.getByName(args.player_group_name)
-    local index = RotorOpsPerks.perks.fatcow.used + 1
-    spawnFatCow(dest_point, index)
 end
 
 function RotorOpsPerks.requestPerk(args)
@@ -529,12 +535,14 @@ function RotorOpsPerks.requestPerk(args)
             return
     end
 
-    --perform the action
-    if args.perk_name == RotorOpsPerks.perks.fatcow.perk_name then
-        RotorOpsPerks.requestFatCow(args, target_point)
-    elseif args.perk_name == RotorOpsPerks.perks.strike.perk_name then
-        RotorOpsPerks.requestStrike(args, target_point)
-    end
+
+    --add some useful data to pass to perk action
+    args.target_point = target_point
+    args.player_group = player_group
+    args.player_unit = player_unit
+
+    --call perk action
+    perk.action_function(args)
 
     --update last_used
     perk.last_used = timer.getTime()
@@ -555,17 +563,22 @@ function RotorOpsPerks.requestPerk(args)
 
     --message players with humansByName DB
     for _player_name, _player in pairs(mist.DBs.humansByName) do
-        local position_string = ' at ' .. RotorOpsPerks.BRString(target_point, _player.point)
-        if _player.groupName == args.player_group_name then --if the player is the one who requested the perk
-            if args.target == 'position' then
-                position_string = ' at your position'
+        --get unit object from id
+        local _player_unit = Unit.getByName(_player_name)
+        if _player_unit and _player_unit:isExist() then
+            local player_position = _player_unit:getPosition().p
+            local position_string = ' at ' .. RotorOpsPerks.BRString(target_point, player_position)
+            if _player.groupName == args.player_group_name then --if the player is the one who requested the perk
+                if args.target == 'position' then
+                    position_string = ' at your position'
+                end
+                -- send affirmative message to the the requesting player
+                trigger.action.outTextForGroup(_player.groupId, 'AFFIRM. ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
+            else
+                -- send messages to all other players
+                env.info(player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string)
+                trigger.action.outTextForGroup(_player.groupId, player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
             end
-            -- send affirmative message to the the requesting player
-            trigger.action.outTextForGroup(_player.groupId, 'AFFIRM. ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
-        else
-            -- send messages to all other players
-            env.info(player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string)
-            trigger.action.outTextForGroup(_player.groupId, player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
         end
     end
     
@@ -733,7 +746,7 @@ function RotorOpsPerks.registerCtldCallbacks()
         return
     end
 
-    --if ctld.callbacks does not exist yet, loop for 2 seconds until it does
+    --if ctld.callbacks does not exist yet, loop until it does
     if not ctld.callbacks then
         timer.scheduleFunction(RotorOpsPerks.registerCtldCallbacks, nil, timer.getTime() + 1)
         env.warning('CTLD callbacks not loaded yet, trying again in 1 second')
