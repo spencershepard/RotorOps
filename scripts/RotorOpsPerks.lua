@@ -9,7 +9,7 @@
  
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.1"
+RotorOpsPerks.version = "1.2"
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
 RotorOpsPerks.players = {} --by group name
@@ -20,7 +20,7 @@ RotorOpsPerks.troops_blue = {} --by group name
 RotorOpsPerks.silent_points = false --set to true to disable text on points scoring
 
 RotorOpsPerks.points = {
-    player_default=200, --how many points each player will start with
+    player_default=0, --how many points each player will start with
     kill=10,
     kill_inf=5,
     kill_heli=20,
@@ -29,7 +29,7 @@ RotorOpsPerks.points = {
     kill_ship=15,
     cas_bonus=5, --you were in proximity of your troops killing something
     dropped_troops_kill_inf=5, --your troops killed infantry
-    dropped_troops_kill=10, --your troops killed something
+    dropped_troops_kill=10, --your troops killed a vehicle
     dropped_troops_kill_armor=15, --your troops killed armor
     rearm=10, --ctld rearm/repair of ground units
     unpack=10, --ctld unpack of ground units
@@ -37,7 +37,7 @@ RotorOpsPerks.points = {
 
 
 ---- FATCOW PERK ----
---Fat Cow FARP requires static farp objects to work (they are teleported to the landing zone), and a late activated helicopter called 'FAT COW'.  See a generated RotorOps mission for reference
+--Fat Cow FARP requires static farp objects to work (they are teleported to the landing zone), and a late activated helicopter called 'FAT COW'.  See the wiki for more details.
 
 function requestFatCowPerk(args)
     local index = RotorOpsPerks.perks.fatcow.used + 1
@@ -49,7 +49,7 @@ RotorOpsPerks.perks["fatcow"] = {
     perk_name='fatcow',
     display_name='FatCow FARP',
     cost=100,
-    cooldown=0,
+    cooldown=60,
     max_per_player=1,
     max_per_mission=4,
     at_mark=true,
@@ -73,7 +73,7 @@ RotorOpsPerks.perks["strike"] = {
     perk_name='strike',
     display_name='Instant Strike',
     cost=100,
-    cooldown=0,
+    cooldown=60,
     max_per_player=1,
     max_per_mission=3,
     at_mark=true,
@@ -711,29 +711,6 @@ function handle:onEvent(e)
 
                 --end if the initiator is a player
 
-
-                -- -- if the initiator is ground unit/infantry, we'll look for nearby players for a CAS bonus
-                -- if e.initiator:getDesc().category == Unit.Category.GROUND_UNIT then
-                --     local units_in_proximity = RotorOpsPerks.findUnitsInVolume({
-                --         volume_type = world.VolumeType.SPHERE,
-                --         point = e.initiator:getPoint(),
-                --         radius = 1852
-                --     })
-                --     for _, unit in pairs(units_in_proximity) do
-                --         --env.info('unit in proximity'.. mist.utils.tableShow(unit, 'unit'))
-                --         local unit_group = unit:getGroup()
-                --         if unit_group then
-                --             --env.info('unit group'.. mist.utils.tableShow(unit_group, 'Unit_group'))
-                --             local unit_group_name = unit_group:getName()
-                --             local player_group = RotorOpsPerks.players[unit_group_name]
-                --             --if the player found in proximity is the same coalition as the attacker                         
-                --             if player_group and Group.getByName(unit_group_name):getCoalition() == e.initiator:getCoalition() then
-                --                 RotorOpsPerks.scorePoints(unit_group_name, RotorOpsPerks.points.cas_bonus, '[Proximity Bonus]')
-                --             end
-                --         end
-                --     end
-                -- end
-
             end
         end
     end
@@ -805,8 +782,4 @@ function RotorOpsPerks.monitorPlayers()
 end
 
 RotorOpsPerks.monitorPlayers()
-
-
-
 RotorOpsPerks.registerCtldCallbacks()
-
