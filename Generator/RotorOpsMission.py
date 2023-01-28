@@ -348,6 +348,11 @@ class RotorOpsMission:
         # Add AI Flights
         self.addFlights(options, red_forces, blue_forces)
 
+        # Add source statics
+        if options["perks"]:
+            # fat cow farps require source objects to work (can't be dynamically inserted)
+            self.addSourceStatics(options)
+
         # Set the Editor Map View
         self.m.map.position = self.conflict_zones["ALPHA"].position
         self.m.map.zoom = 100000
@@ -364,6 +369,11 @@ class RotorOpsMission:
         self.m.set_description_text(briefing)
 
         # set the weather and time
+
+        #pydcs bug fix
+        if self.m.weather.halo.preset == {}:
+            self.m.weather.halo.preset = dcs.weather.Halo.Preset.Auto
+            self.m.weather.halo.crystals = None
 
         if options["random_weather"]:
             # self.m.random_weather = True
@@ -813,6 +823,36 @@ class RotorOpsMission:
                 f_cap_spawn_point = primary_f_airport.position.point_from_heading(e_airport_heading + 180, 100000)
                 self.m.triggers.add_triggerzone(f_cap_spawn_point, 30000, hidden=True, name="BLUE_CAP_SPAWN")
 
+        # Fat Cow
+        if True:
+            helo_type = dcs.helicopters.CH_47D
+            name = "FAT COW"
+
+            airport = self.getParking(primary_f_airport, helo_type, friendly_airports, 1)
+
+            if carrier:
+                afg = self.m.flight_group_from_unit(
+                    combinedJointTaskForcesBlue,
+                    name,
+                    helo_type,
+                    carrier,
+                    start_type=dcs.mission.StartType.Cold,
+                    group_size=1)
+                afg.set_skill(dcs.unit.Skill.Excellent)
+                afg.late_activation = True
+
+            elif airport:
+                afg = self.m.flight_group_from_airport(
+                    combinedJointTaskForcesBlue,
+                    name,
+                    helo_type,
+                    airport=airport,
+                    start_type=dcs.mission.StartType.Cold,
+                    group_size=1)
+                afg.set_skill(dcs.unit.Skill.Excellent)
+                afg.late_activation = True
+
+
         if options["f_awacs"]:
             awacs_name = "AWACS"
             awacs_freq = 266
@@ -966,8 +1006,6 @@ class RotorOpsMission:
                     group_size=group_size)
                 zone_attack(afg, airport)
 
-            else:
-                return
 
             if source_helo and afg:
                 for unit in afg.units:
@@ -1202,3 +1240,48 @@ class RotorOpsMission:
     def addMods(self):
         dcs.helicopters.helicopter_map["UH-60L"] = aircraftMods.UH_60L
         self.m.country(jtf_blue).helicopters.append(aircraftMods.UH_60L)
+
+    def addSourceStatics(self, options):
+        insert_point = None
+        if self.m.terrain.name == "Caucasus":
+            insert_point = dcs.mapping.Point(-500000, 200000, dcs.terrain.Caucasus)
+        elif self.m.terrain.name == "Falklands":
+            insert_point = dcs.mapping.Point(216000, -990000, dcs.terrain.Falklands)
+        elif self.m.terrain.name == "MarianaIslands":
+            insert_point = dcs.mapping.Point(686200, 71200, dcs.terrain.MarianaIslands)
+        elif self.m.terrain.name == "PersianGulf":
+            insert_point = dcs.mapping.Point(-350000, -800000, dcs.terrain.PersianGulf)
+        elif self.m.terrain.name == "Nevada":
+            insert_point = dcs.mapping.Point(-140000, -300000, dcs.terrain.Nevada)
+        elif self.m.terrain.name == "Syria":
+            insert_point = dcs.mapping.Point(235000, -440000, dcs.terrain.Syria)
+
+        if insert_point:
+
+            for i in range(1, 4):
+                fuel = self.m.static_group(name="FAT COW FUEL " + str(i),
+                                    _type=dcs.statics.Fortification.FARP_Fuel_Depot,
+                                    country=self.m.country(jtf_blue),
+                                    position=insert_point.random_point_within(1000, 1000),
+                                    heading=0,
+                                    hidden=True,)
+                fuel.units[0].name = "FAT COW FUEL " + str(i)
+
+                ammo = self.m.static_group(name="FAT COW AMMO " + str(i),
+                                    _type=dcs.statics.Fortification.FARP_Ammo_Dump_Coating,
+                                    country=self.m.country(jtf_blue),
+                                    position=insert_point.random_point_within(1000, 1000),
+                                    heading=0,
+                                    hidden=True, )
+                ammo.units[0].name = "FAT COW AMMO " + str(i)
+
+                tent = self.m.static_group(name="FAT COW TENT " + str(i),
+                                    _type=dcs.statics.Fortification.FARP_Tent,
+                                    country=self.m.country(jtf_blue),
+                                    position=insert_point.random_point_within(1000, 1000),
+                                    heading=0,
+                                    hidden=True, )
+                tent.units[0].name = "FAT COW TENT " + str(i)
+
+                self.m.farp(self.m.country(jtf_blue), "FAT COW FARP " + str(i),
+                            insert_point.random_point_within(1000, 1000), hidden=True, dead=False, farp_type=dcs.unit.InvisibleFARP)

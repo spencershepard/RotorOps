@@ -549,6 +549,7 @@ class Window(QMainWindow, Ui_MainWindow):
             "imports": self.imports_list,
         }
 
+        # holds our generator options.  We'll pull from the UI or the scenario config file
         data = {
                 "objects": objects,
                 "credits": credits,
@@ -591,6 +592,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "red_cap": self.scenario.getConfigValue("red_cap", default=True),
                 "blue_cap": self.scenario.getConfigValue("blue_cap", default=True),
                 "rotorops_server": self.scenario.getConfigValue("rotorops_server", default=False),
+                "perks": self.perks_checkBox.isChecked(),
                 }
 
         logger.info("Generating mission with options:")

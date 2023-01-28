@@ -619,7 +619,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="scenario_label_9">
     <property name="geometry">
      <rect>
-      <x>480</x>
+      <x>500</x>
       <y>401</y>
       <width>251</width>
       <height>23</height>
@@ -688,7 +688,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>500</x>
-      <y>594</y>
+      <y>584</y>
       <width>171</width>
       <height>31</height>
      </rect>
@@ -712,7 +712,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>500</x>
-      <y>541</y>
+      <y>530</y>
       <width>231</width>
       <height>20</height>
      </rect>
@@ -736,7 +736,7 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>500</x>
-      <y>570</y>
+      <y>560</y>
       <width>221</width>
       <height>21</height>
      </rect>
@@ -946,7 +946,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_always">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>520</x>
       <y>431</y>
       <width>261</width>
       <height>24</height>
@@ -970,7 +970,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_never">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>520</x>
       <y>491</y>
       <width>271</width>
       <height>24</height>
@@ -994,7 +994,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QRadioButton" name="farp_gunits">
     <property name="geometry">
      <rect>
-      <x>500</x>
+      <x>520</x>
       <y>460</y>
       <width>261</width>
       <height>24</height>
@@ -1315,6 +1315,30 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="tristate">
      <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="perks_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>500</x>
+      <y>610</y>
+      <width>171</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Adds a rewards system with points for kills, troop drops, etc.  See the F10 menu to use Perks.</string>
+    </property>
+    <property name="text">
+     <string>Perks</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>

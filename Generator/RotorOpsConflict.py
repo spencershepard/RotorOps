@@ -20,7 +20,8 @@ def triggerSetup(rops, options):
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["Splash_Damage_2_0.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["CTLD.lua"]))
     trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOps.lua"]))
-    script = ""
+    if options["perks"]:
+        trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOpsPerks.lua"]))
     script = ("--OPTIONS HERE!\n\n" +
               "RotorOps.CTLD_crates = " + lb("crates") + "\n\n" +
               "RotorOps.CTLD_sound_effects = true\n\n" +
