@@ -6,18 +6,24 @@
 --How to use: load the script in do script trigger after the mission begins. Requires MIST, but CTLD is optional.  Load scripts in this order: 1) MIST 2) CTLD 3) RotorOpsPerks
 --This script will add a new menu to the F10 menu called "RotorOps Perks".  This menu will allow you to select a perk to use.
 --You can define the points earner per action, and the perk options below.
+
+-- Issues:
+-- - You will not get points for your troops' kills if you leave your group (ie switch aircraft)
  
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.2"
+RotorOpsPerks.version = "1.3"
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
-RotorOpsPerks.players = {} --by group name
-RotorOpsPerks.troops_blue = {} --by group name
+RotorOpsPerks.players = {} 
+RotorOpsPerks.players_temp = {} 
+RotorOpsPerks.troops = {} --by group name
 
 ---- OPTIONS ----
 
 RotorOpsPerks.silent_points = false --set to true to disable text on points scoring
+RotorOpsPerks.player_update_messages = true --set to false to disable messages when players are added/updated to score keeping
+RotorOpsPerks.debug = true
 
 RotorOpsPerks.points = {
     player_default=0, --how many points each player will start with
@@ -35,6 +41,15 @@ RotorOpsPerks.points = {
     unpack=10, --ctld unpack of ground units
 }
 
+---- END OPTIONS ----
+
+local function debugMsg(msg)
+    if RotorOpsPerks.debug then
+        env.info("ROTOROPS PERKS:")
+        env.info(msg)
+    end
+end
+
 
 ---- FATCOW PERK ----
 --Fat Cow FARP requires static farp objects to work (they are teleported to the landing zone), and a late activated helicopter called 'FAT COW'.  See the wiki for more details.
@@ -51,10 +66,11 @@ RotorOpsPerks.perks["fatcow"] = {
     cost=100,
     cooldown=60,
     max_per_player=1,
-    max_per_mission=4,
+    max_per_mission=4, --for fatcow, you will want to ensure that you have this many sets of FARP statics
     at_mark=true,
     at_position=true,
     enabled=true,
+    sides={0,1,2},
     last_used=0,
     used=0,
     action_function=requestFatCowPerk
@@ -74,11 +90,12 @@ RotorOpsPerks.perks["strike"] = {
     display_name='Instant Strike',
     cost=100,
     cooldown=60,
-    max_per_player=1,
+    max_per_player=2,
     max_per_mission=3,
     at_mark=true,
     at_position=false,
     enabled=true,
+    sides={0,1,2},
     last_used=0,
     used=0,
     action_function=requestStrikePerk
@@ -172,30 +189,86 @@ function RotorOpsPerks.checkPoints(player_group_name)
     end
 end
 
+function RotorOpsPerks.buildPlayer(identifier, groupName, name, slot, temp_id)
+    -- if we're missing any of the required attributes, add to temp table until we collect all attributes
+    if not groupName or not name or not slot then
+        --create the temp player object if doesn't exist yet
+        if not RotorOpsPerks.players_temp[temp_id] then
+            RotorOpsPerks.players_temp[temp_id] = {
+                identifier=identifier,
+                name=name,
+                slot=slot,
+                groupName = groupName,
+            }
+        end
+        --store individual attributes if available
+        RotorOpsPerks.players_temp[temp_id].identifier = identifier or RotorOpsPerks.players_temp[temp_id].identifier
+        RotorOpsPerks.players_temp[temp_id].name = name or RotorOpsPerks.players_temp[temp_id].name
+        RotorOpsPerks.players_temp[temp_id].slot = slot or RotorOpsPerks.players_temp[temp_id].slot
+        RotorOpsPerks.players_temp[temp_id].groupName = groupName or RotorOpsPerks.players_temp[temp_id].groupName
+        --reassign the function args
+        identifier = RotorOpsPerks.players_temp[temp_id].identifier
+        name = RotorOpsPerks.players_temp[temp_id].name
+        slot = RotorOpsPerks.players_temp[temp_id].slot
+        groupName = RotorOpsPerks.players_temp[temp_id].groupName
+        --if we're still missing attributes, return
+        if not groupName or not name or not slot or not identifier then
+            env.warning('MISSING ATTRIBUTES FOR ' .. temp_id)
+            debugMsg(mist.utils.tableShow(RotorOpsPerks.players_temp[temp_id]))
+            return
+        end
 
-function RotorOpsPerks.updatePlayer(identifier, groupName)
+        --we have all we need, so add to the players table
+        debugMsg('BUILDPLAYER: Now adding ' .. temp_id .. ' to players table as ' .. identifier)
+        RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
+
+    end
+end
+
+
+function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
+    if not Group.getByName(groupName) then
+        env.warning('GROUP ' .. groupName .. ' DOES NOT EXIST')
+        return
+    end
+
     local groupId = Group.getByName(groupName):getID()
+    local side = Group.getByName(groupName):getCoalition()
 
     
     --add a new player
     if not RotorOpsPerks.players[identifier] then
         RotorOpsPerks.players[identifier] = {
+            name=name,
+            slot=slot,
             points = RotorOpsPerks.points.player_default,
             groupId = groupId,
             groupName = groupName,
+            side = side,
             menu = {},
             perks_used = {},
         }
         env.warning('ADDED ' .. identifier .. ' TO PLAYERS TABLE')
         missionCommands.removeItemForGroup(groupId, {[1] = 'ROTOROPS PERKS'})
         RotorOpsPerks.addRadioMenuForGroup(groupName)
+        if RotorOpsPerks.player_update_messages then
+            trigger.action.outText('PERKS: Added ' .. name .. ' to '.. groupName, 10)
+        end
     
     --update an existing player
     elseif RotorOpsPerks.players[identifier].groupId ~= groupId then
         env.warning('UPDATING ' .. identifier .. ' TO GROUP NAME: ' .. groupName)
+        if RotorOpsPerks.player_update_messages then
+            trigger.action.outText('PERKS: ' .. name .. ' moved to '.. groupName, 10)
+        end
         
+        --update player
         RotorOpsPerks.players[identifier].groupId = groupId
         RotorOpsPerks.players[identifier].groupName = groupName
+        RotorOpsPerks.players[identifier].side = side
+        RotorOpsPerks.players[identifier].slot = slot
+        RotorOpsPerks.players[identifier].name = name
+
 
         --REMOVE RADIO ITEMS FOR GROUP (since another player may have been in the group previously)
         -- missionCommands.removeItemForGroup(groupId, RotorOpsPerks.players[identifier].menu.root)
@@ -218,6 +291,7 @@ end
 
 function RotorOpsPerks.addRadioMenuForGroup(groupName)
     local groupId = Group.getByName(groupName):getID()
+    local group_side = Group.getByName(groupName):getCoalition()
 
     -- local function addPerkCommand(groupId, groupName, perk, path, vars)
     --     missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at ' .. vars.target, path , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk_name, target=vars.target})
@@ -227,7 +301,16 @@ function RotorOpsPerks.addRadioMenuForGroup(groupName)
     missionCommands.addCommandForGroup(groupId, 'Check points balance', menu_root, RotorOpsPerks.checkPoints, groupName)
 
     for perk_name, perk in pairs(RotorOpsPerks.perks) do
-        if perk.enabled then 
+
+        local avail_for_side = false
+        for _, side in pairs(perk.sides) do
+            if group_side == side then
+                avail_for_side = true
+            end
+        end
+
+
+        if perk.enabled and avail_for_side then 
             if perk.at_mark then
                 --addPerkCommand(groupId, groupName, perk, menu_root, {target='mark'})
                 missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
@@ -242,28 +325,9 @@ function RotorOpsPerks.addRadioMenuForGroup(groupName)
 end
 
 
--- onplayerchangeslot, add player to RotorOpsPerks.players
-function RotorOpsPerks.onPlayerChangeSlot(id)
-    local msg = {}
-    msg.command = 'onPlayerChangeSlot'
-    msg.id = id
-    msg.ucid = net.get_player_info(id, 'ucid')
-    msg.name = net.get_player_info(id, 'name')
-    msg.side = net.get_player_info(id, 'side')
-    msg.unit_type, msg.slot, msg.sub_slot = utils.getMulticrewAllParameters(id)
-    msg.unit_name = DCS.getUnitProperty(msg.slot, DCS.UNIT_NAME)
-    msg.group_name = DCS.getUnitProperty(msg.slot, DCS.UNIT_GROUPNAME)
-    msg.group_id = DCS.getUnitProperty(msg.slot, DCS.UNIT_GROUP_MISSION_ID)
-    msg.unit_callsign = DCS.getUnitProperty(msg.slot, DCS.UNIT_CALLSIGN)
-    msg.active = true
-    env.info(mist.utils.tableShow(msg, 'onPlayerChangeSlot'))
-end
-
-
-
 
 function teleportStatic(source_name, dest_point)
-    env.info('teleportStatic: ' .. source_name)
+    debugMsg('teleportStatic: ' .. source_name)
     local source = StaticObject.getByName(source_name)
     if not source then
         env.info('teleportStatic: source not found: ' .. source_name)
@@ -420,7 +484,7 @@ function RotorOpsPerks.requestPerk(args)
         local temp_mark = nil
 
         for _, mark in pairs(mist.DBs.markList) do
-            --env.info('mark: ' .. mist.utils.tableShow(mark, 'mark'))
+            debugMsg('mark: ' .. mist.utils.tableShow(mark, 'mark'))
             --env.info('player group' .. mist.utils.tableShow(player_group, 'player_group'))
             --env.info('player' .. mist.utils.tableShow(player_unit, 'player_unit'))
             local perk_name_matches = false
@@ -463,19 +527,13 @@ function RotorOpsPerks.requestPerk(args)
 
             end
         end
-        --env.info(mist.utils.tableShow(mist.DBs.markList, 'markList'))
+        debugMsg(mist.utils.tableShow(mist.DBs.markList, 'markList'))
         if temp_mark then
             target_point = temp_mark.pos
         end
 
     end
 
-    -- check if max_per_player is reached
-    -- if RotorOpsPerks.players[args.identifier].perks_used[args.perk_name] and RotorOpsPerks.players[args.identifier].perks_used[args.perk_name] >= perk.max_per_player then
-    --     trigger.action.outTextForGroup(player_group:getID(), 'UNABLE. You already used this perk ' .. perk.max_per_player .. ' times.', 10)
-    --     env.info('max_per_player reached for ' .. args.perk_name)
-    --     return
-    -- end
 
     local perk_used_count = RotorOpsPerks.getPlayerGroupSum(args.player_group_name, args.perk_name, "perks_used")
     if perk_used_count >= (perk.max_per_player*#players) then --multiply by number of players in group
@@ -484,14 +542,14 @@ function RotorOpsPerks.requestPerk(args)
         else
             trigger.action.outTextForGroup(player_group:getID(), 'UNABLE. Your group already used this perk ' .. perk_used_count .. ' times.', 10)
         end
-        env.info('max_per_group reached for ' .. args.perk_name)
+        debugMsg('max_per_group reached for ' .. args.perk_name)
         return
     end
 
     -- check if the max per mission has been reached
     if perk.max_per_mission ~= nil then
         if perk.used >= perk.max_per_mission then
-            env.info(args.player_group_name.. ' requested ' .. args.perk_name .. ' but max per mission reached')
+            debugMsg(args.player_group_name.. ' requested ' .. args.perk_name .. ' but max per mission reached')
             trigger.action.outTextForGroup(player_group:getID(), 'UNABLE. Used too many times in the mission.', 10)
             return
         end
@@ -500,7 +558,7 @@ function RotorOpsPerks.requestPerk(args)
     --check if position requirements for action are met    
     if args.target == "mark" then
         if not target_point then
-            env.info(args.player_group_name.. ' requested ' .. args.perk_name .. ' but no target was found')
+            debugMsg(args.player_group_name.. ' requested ' .. args.perk_name .. ' but no target was found')
             trigger.action.outTextForGroup(player_group:getID(), 'UNABLE. Add a mark called "' .. args.perk_name .. '" to the F10 map first', 10)
             return
         end
@@ -513,7 +571,7 @@ function RotorOpsPerks.requestPerk(args)
             local time_remaining = perk.last_used + perk.cooldown - timer.getTime()
             --round time_remaining
             time_remaining = math.floor(time_remaining + 0.5)
-            env.info(args.player_group_name.. ' tried to use ' .. args.perk_name .. ' but cooldown was not over')
+            debugMsg(args.player_group_name.. ' tried to use ' .. args.perk_name .. ' but cooldown was not over')
             trigger.action.outTextForGroup(player_group:getID(), 'UNABLE. Wait for '.. time_remaining .. ' seconds.', 10)
             return
         end
@@ -622,20 +680,17 @@ end
 
 local handle = {}
 function handle:onEvent(e)
-    --env.info('event id: ' .. e.id)
-    -- env.info(mist.utils.tableShow(e, 'all events'))
-
    
     --if enemy unit destroyed
     if e.id == world.event.S_EVENT_KILL then
         if e.initiator and e.target then
             if e.initiator:getCoalition() ~= e.target:getCoalition() then
-                env.info('KILL: initiator groupname: ' .. e.initiator:getGroup():getName())
+                debugMsg('KILL: initiator groupname: ' .. e.initiator:getGroup():getName())
 
                 local initiator_group_name = e.initiator:getGroup():getName()
 
                 -- if initiator is a player's dropped troops
-                local dropped_troops = RotorOpsPerks.troops_blue[e.initiator:getGroup():getName()]
+                local dropped_troops = RotorOpsPerks.troops[e.initiator:getGroup():getName()]
                 if dropped_troops then
                     if e.target:getDesc().category == Unit.Category.GROUND_UNIT == true then
                         if e.target:hasAttribute("Infantry") then
@@ -740,8 +795,7 @@ function RotorOpsPerks.registerCtldCallbacks()
         if dropped_troops then
             --env.info('dropped troops: ' .. mist.utils.tableShow(dropped_troops))
             --env.info('dropped troops group name: ' .. dropped_troops:getName())
-            -- add dropped troops group to RotorOpsPerks.blue_troops
-            RotorOpsPerks.troops_blue[dropped_troops:getName()] = {dropped_troops=dropped_troops:getName(), player_group=unit:getGroup():getName(), player_name=unit:getPlayerName(), player_unit=unit:getName(), qty=#dropped_troops:getUnits()}
+            RotorOpsPerks.troops[dropped_troops:getName()] = {dropped_troops=dropped_troops:getName(), player_group=unit:getGroup():getName(), player_name=unit:getPlayerName(), player_unit=unit:getName(), side=unit:getGroup():getCoalition() , qty=#dropped_troops:getUnits()}
 
         end
 
@@ -762,24 +816,75 @@ function RotorOpsPerks.registerCtldCallbacks()
 end
 
 function RotorOpsPerks.monitorPlayers()
-    local player_names_str = ''
-    for _unit_name, _player in pairs(mist.DBs.humansByName) do
+    --This function, along with buildPlayer and updatePlayer, have been crafted through much trial and error in order to work with the 'nuances' of the DCS APIs in single player and multiplayer environments.
+    --If it's not broke, don't fix it.  If it's broke... ED probably changed the behaviour of coalition.getPlayers, net.get_player_list, or net.get_player_info
+
+    timer.scheduleFunction(RotorOpsPerks.monitorPlayers, nil, timer.getTime() + 2)
+
+    -- GET PILOTS
+    local pilots = coalition.getPlayers(coalition.side.BLUE)
+    local red_pilots = coalition.getPlayers(coalition.side.RED)
+    -- add red pilots to pilots
+    for _, red_pilot in pairs(red_pilots) do
+        table.insert(pilots, red_pilot)
+    end
+
+    env.warning('PILOTS: '.. mist.utils.tableShow(pilots))
+
+    for _, player in pairs(pilots) do
+
+        local player_group_name = player:getGroup():getName()
+        debugMsg('GET PILOTS Player group: ' .. player:getGroup():getName())
+        debugMsg('GET PILOTS PLAYER: ' .. mist.utils.tableShow(player))
+
+        --player info works in single player
+        local player_info = net.get_player_info(player)
+        if player_info then
+            debugMsg('GET PILOTS player info: '.. mist.utils.tableShow(player_info))
+            RotorOpsPerks.updatePlayer(player_info.ucid, player_group_name, player_info.name, player_info.slot)
+
+        else --player_info is nil in multiplayer, so we'll have to compile the data we need in multiple steps
+            env.warning('GET PILOTS player_info for coalition.getPlayers is nil.  Setting attributes to nil to be picked up by GET CREW METHODs')
+            RotorOpsPerks.buildPlayer(nil, player_group_name, nil, nil, player:getPlayerName())  --we don't have all the data we need to add to players yet
+        end
+
+    end
+
+
+    
+    --GET CREW
+
+    local players = net.get_player_list()  --empty in single player
+    env.warning('GET CREW ALL PLAYERS: '.. mist.utils.tableShow(players))
+
+    for _, player in pairs(players) do
+        local player_info = net.get_player_info(player)  --works with multicrew, but we need to find the group name
+        debugMsg('GET CREW player info:')
+        debugMsg(mist.utils.tableShow(player_info))
+
+        --find the group from slot relationship to pilots with the base slot
         
-        --env.info(mist.utils.tableShow(_player, 'player_unit: '.._unit_name))
-        local player_unit = Unit.getByName(_player.unitName)
-        if player_unit then
-            local player_name = player_unit:getPlayerName() 
-            --in multiplayer, humansByName includes all client aircraft, so we'll check if the unit has a playername 
-            if player_name then
-                RotorOpsPerks.updatePlayer(player_name, _player.groupName)
-                player_names_str = player_names_str .. player_name .. ', '
+        --client slot patterns are like 6_1, 6_2, etc where 6 is the host slot
+        --if the player slot is like 6_1, 6_2, etc then find the player with slot 6 and use that player's group name
+        if string.find(player_info.slot, '_') then  --found a multicrew slot
+            local base_slot = string.sub(player_info.slot, 1, string.find(player_info.slot, '_')-1)
+            debugMsg('GET CREW found multicrew with base slot: '.. base_slot)
+            for _i, pilot in pairs(RotorOpsPerks.players) do
+                if pilot.slot == base_slot then
+                    local player_group_name = pilot.groupName
+                    debugMsg('GET CREW player group name: '.. player_group_name)
+                    RotorOpsPerks.updatePlayer(player_info.ucid, player_group_name, player_info.name, player_info.slot)
+                end
             end
+        else --we can't get the group name from here, so we'll have to compile the data we need in multiple steps
+            RotorOpsPerks.buildPlayer(player_info.ucid, nil, player_info.name, player_info.slot, player_info.name)  --we don't have all the data we need to add to players yet
         end
         
     end
-    --env.info('players: '..player_names_str)
-    timer.scheduleFunction(RotorOpsPerks.monitorPlayers, nil, timer.getTime() + 2)
+
+
 end
+
 
 RotorOpsPerks.monitorPlayers()
 RotorOpsPerks.registerCtldCallbacks()
