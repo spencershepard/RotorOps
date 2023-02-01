@@ -12,7 +12,8 @@
  
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.3"
+RotorOpsPerks.version = "1.4"
+env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
 RotorOpsPerks.players = {} 
@@ -23,7 +24,7 @@ RotorOpsPerks.troops = {} --by group name
 
 RotorOpsPerks.silent_points = false --set to true to disable text on points scoring
 RotorOpsPerks.player_update_messages = true --set to false to disable messages when players are added/updated to score keeping
-RotorOpsPerks.debug = true
+RotorOpsPerks.debug = false
 
 RotorOpsPerks.points = {
     player_default=0, --how many points each player will start with
@@ -63,7 +64,7 @@ end
 RotorOpsPerks.perks["fatcow"] = {
     perk_name='fatcow',
     display_name='FatCow FARP',
-    cost=100,
+    cost=150,
     cooldown=60,
     max_per_player=1,
     max_per_mission=4, --for fatcow, you will want to ensure that you have this many sets of FARP statics
@@ -76,7 +77,10 @@ RotorOpsPerks.perks["fatcow"] = {
     action_function=requestFatCowPerk
 }
 
+---- End of FATCOW PERK ----
+
 ---- INSTANT STRIKE PERK ----
+-- Here's a very simple example of how to create a Perk!
 
 function requestStrikePerk(args)
     --explosion at dest_point after 10 seconds
@@ -88,7 +92,7 @@ end
 RotorOpsPerks.perks["strike"] = {
     perk_name='strike',
     display_name='Instant Strike',
-    cost=100,
+    cost=200,
     cooldown=60,
     max_per_player=2,
     max_per_mission=3,
@@ -101,6 +105,108 @@ RotorOpsPerks.perks["strike"] = {
     action_function=requestStrikePerk
 }
 
+---- End of INSTANT STRIKE PERK ----
+
+
+---- JTAC DRONE PERK ----
+
+function RotorOpsPerks.spawnJtacDrone(dest_point, country, laser_code)
+    
+    local drone = {
+        x = dest_point.x+1500,
+        y = dest_point.z,
+        type = "RQ-1A Predator",
+        speed = 70,
+        heading = 0,
+        altitude = 5000,
+        country = player_country,
+        skill = "High",
+        category = "plane",
+        livery_id = "USAF Standard",
+        payload = {
+            ["pylons"] = {},
+            ["fuel"] = 200,
+            ["flare"] = 0,
+            ["chaff"] = 0,
+            ["gun"] = 0,
+        },
+    }
+
+    local drone_route = {
+        [1] = {
+            ["alt"] = 5000,
+            ["x"] = dest_point.x,
+            ["action"] = "Turning Point",
+            ["alt_type"] = "BARO",
+            ["speed"] = 70,
+            ["form"] = "Turning Point",
+            ["type"] = "Turning Point",
+            ["y"] = dest_point.z+1000,
+        },
+    }
+
+    local drone_group = {
+        units = {drone,},
+        country = country,
+        category = "airplane",
+        route = drone_route,
+    }
+
+    local orbit = {
+        id = 'Orbit', 
+          params = { 
+            pattern = 'Circle',
+            point = {x = dest_point.x, y = dest_point.z},
+            speed = 70,
+            altitude = 5000,
+        } 
+    }
+
+
+    local new_group = mist.dynAdd(drone_group)
+    if new_group == nil then
+        return
+    end
+    trigger.action.outText('JTAC DRONE IS ON STATION!', 10)
+
+    --set a timer for one minute
+    timer.scheduleFunction(function()
+        Group.getByName(new_group.name):getController():setTask(orbit)
+        Group.getByName(new_group.name):getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT, AI.Option.Air.val.REACTION_ON_THREAT.NO_REACTION)
+        ctld.JTACAutoLase(new_group.name, table.remove(ctld.jtacGeneratedLaserCodes, 1), true, "vehicle")
+    end, nil, timer.getTime() + 60)
+
+end
+
+
+function requestJtacDrone(args)
+
+    local player_country = Unit.getByName(args.player_unit_name):getCountry()
+
+    --set a timer for one minute
+    timer.scheduleFunction(function()
+        RotorOpsPerks.spawnJtacDrone(args.target_point, player_country, table.remove(ctld.jtacGeneratedLaserCodes, 1))
+    end, nil, timer.getTime() + 60)
+
+end
+
+RotorOpsPerks.perks["drone"] = {
+    perk_name='drone',
+    display_name='JTAC Drone',
+    cost=50,
+    cooldown=60,
+    max_per_player=3,
+    max_per_mission=6,
+    at_mark=true,
+    at_position=false,
+    enabled=true, 
+    sides={0,1,2},
+    last_used=0,
+    used=0,
+    action_function=requestJtacDrone
+}
+
+---- End of JTAC DRONE PERK ----
 
 
 function RotorOpsPerks.getPlayerGroupSum(player_group_name, player_attribute, table_name)
@@ -293,10 +399,6 @@ function RotorOpsPerks.addRadioMenuForGroup(groupName)
     local groupId = Group.getByName(groupName):getID()
     local group_side = Group.getByName(groupName):getCoalition()
 
-    -- local function addPerkCommand(groupId, groupName, perk, path, vars)
-    --     missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at ' .. vars.target, path , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk_name, target=vars.target})
-    -- end
-
     local menu_root = missionCommands.addSubMenuForGroup(groupId, 'ROTOROPS PERKS')
     missionCommands.addCommandForGroup(groupId, 'Check points balance', menu_root, RotorOpsPerks.checkPoints, groupName)
 
@@ -465,6 +567,7 @@ function RotorOpsPerks.requestPerk(args)
     --env.info(mist.utils.tableShow(args, 'args'))
     local player_group = Group.getByName(args.player_group_name)
     local player_unit = player_group:getUnits()[1]
+    local player_unit_name = player_unit:getName()
     local player_pos = player_unit:getPoint()
     local players = RotorOpsPerks.playersByGroupName(args.player_group_name)
     if not players then
@@ -485,17 +588,16 @@ function RotorOpsPerks.requestPerk(args)
 
         for _, mark in pairs(mist.DBs.markList) do
             debugMsg('mark: ' .. mist.utils.tableShow(mark, 'mark'))
-            --env.info('player group' .. mist.utils.tableShow(player_group, 'player_group'))
-            --env.info('player' .. mist.utils.tableShow(player_unit, 'player_unit'))
             local perk_name_matches = false
 
             --determine if mark name matches the perk name
             local mark_name = mark.text
-            --remove whitespace and new line from mark name
-            mark_name = mark_name:gsub("%s+", "")
-            mark_name = mark_name:gsub("%n+", "")
+            --remove new line from mark name
+            mark_name = mark_name:gsub("\n", "")
+            env.info("mark name stripped: " .. mark_name)
             if mark_name == args.perk_name then
                 perk_name_matches = true
+                env.info("mark name matches perk name")
             end
             
             if perk_name_matches then
@@ -527,7 +629,9 @@ function RotorOpsPerks.requestPerk(args)
 
             end
         end
-        debugMsg(mist.utils.tableShow(mist.DBs.markList, 'markList'))
+        -- env.info(mist.utils.tableShow(mist.DBs.markList, 'markList'))
+        -- env.info('player group' .. mist.utils.tableShow(player_group, 'player_group'))
+        -- env.info('player' .. mist.utils.tableShow(player_unit, 'player_unit'))
         if temp_mark then
             target_point = temp_mark.pos
         end
@@ -598,6 +702,7 @@ function RotorOpsPerks.requestPerk(args)
     args.target_point = target_point
     args.player_group = player_group
     args.player_unit = player_unit
+    args.player_unit_name = player_unit_name
 
     --call perk action
     perk.action_function(args)
@@ -785,6 +890,7 @@ function RotorOpsPerks.registerCtldCallbacks()
         return
     end
 
+
 	ctld.addCallback(function(_args)
 		local action = _args.action
 		local unit = _args.unit
@@ -829,7 +935,7 @@ function RotorOpsPerks.monitorPlayers()
         table.insert(pilots, red_pilot)
     end
 
-    env.warning('PILOTS: '.. mist.utils.tableShow(pilots))
+    debugMsg('PILOTS: '.. mist.utils.tableShow(pilots))
 
     for _, player in pairs(pilots) do
 
@@ -855,7 +961,7 @@ function RotorOpsPerks.monitorPlayers()
     --GET CREW
 
     local players = net.get_player_list()  --empty in single player
-    env.warning('GET CREW ALL PLAYERS: '.. mist.utils.tableShow(players))
+    debugMsg('GET CREW ALL PLAYERS: '.. mist.utils.tableShow(players))
 
     for _, player in pairs(players) do
         local player_info = net.get_player_info(player)  --works with multicrew, but we need to find the group name
@@ -885,6 +991,7 @@ function RotorOpsPerks.monitorPlayers()
 
 end
 
-
-RotorOpsPerks.monitorPlayers()
 RotorOpsPerks.registerCtldCallbacks()
+-- start a 5 second timer to monitor players, to allow other scripts to load
+timer.scheduleFunction(RotorOpsPerks.monitorPlayers, nil, timer.getTime() + 5)
+
