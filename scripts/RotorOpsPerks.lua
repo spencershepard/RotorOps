@@ -326,6 +326,28 @@ end
 
 ---- End of PLAYER FAT COW ----
 
+---- FLARE PERK ----
+
+RotorOpsPerks.perks["flare"] = {
+    perk_name='flare',
+    display_name='Illumination Flare',
+    cost=50,
+    cooldown=0,
+    max_per_player=nil,
+    max_per_mission=nil,
+    at_mark=true,
+    at_position=false,
+    enabled=true,
+    sides={0,1,2},
+}
+
+RotorOpsPerks.perks.flare["action_function"] = function(args)
+    args.target_point.y = args.target_point.y + 600
+    trigger.action.illuminationBomb(args.target_point, 1000000)
+end
+
+---- End of FLARE PERK ----
+
 
 function RotorOpsPerks.getPlayerGroupSum(player_group_name, player_attribute, table_name)
     --loop through RotorOpsPerks.playersByGroupName
@@ -537,11 +559,11 @@ function RotorOpsPerks.addRadioMenuForGroup(groupName)
         if perk.enabled and avail_for_side and avail_for_group then 
             if perk.at_mark then
                 --addPerkCommand(groupId, groupName, perk, menu_root, {target='mark'})
-                missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
+                missionCommands.addCommandForGroup(groupId, perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
             end
             if perk.at_position then
                 --addPerkCommand(groupId, groupName, perk, menu_root, {target='position'})
-                missionCommands.addCommandForGroup(groupId, 'Request '.. perk.display_name .. ' at current position', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='position'})
+                missionCommands.addCommandForGroup(groupId, perk.display_name .. ' on me', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='position'})
             end
         end
     end
