@@ -66,7 +66,7 @@ end
 RotorOpsPerks.perks["fatcow"] = {
     perk_name='fatcow',
     display_name='FatCow FARP',
-    cost=150,
+    cost=200,
     cooldown=60,
     max_per_player=1,
     max_per_mission=4, --for fatcow, you will want to ensure that you have this many sets of FARP statics
@@ -137,7 +137,7 @@ end
 RotorOpsPerks.perks["drone"] = {
     perk_name='drone',
     display_name='JTAC Drone',
-    cost=50,
+    cost=100,
     cooldown=60,
     max_per_player=3,
     max_per_mission=6,
@@ -331,7 +331,7 @@ end
 RotorOpsPerks.perks["flare"] = {
     perk_name='flare',
     display_name='Illumination Flare',
-    cost=50,
+    cost=20,
     cooldown=0,
     max_per_player=nil,
     max_per_mission=nil,
@@ -1014,6 +1014,10 @@ function handle:onEvent(e)
     --if enemy unit destroyed
     if e.id == world.event.S_EVENT_KILL then
         if e.initiator and e.target then
+            if not Unit.getGroup(e.initiator) then
+                env.warning('KILL: initiator is not a unit')
+                return
+            end
             if e.initiator:getCoalition() ~= e.target:getCoalition() then
                 debugMsg('KILL: initiator groupname: ' .. e.initiator:getGroup():getName())
 
