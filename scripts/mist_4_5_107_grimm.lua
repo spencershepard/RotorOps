@@ -32,6 +32,8 @@ Official Releases <https://github.com/mrSkortch/MissionScriptingTools/tree/maste
 ]]
 mist = {}
 
+mist.grimm_version = true
+
 -- don't change these
 mist.majorVersion = 4
 mist.minorVersion = 5

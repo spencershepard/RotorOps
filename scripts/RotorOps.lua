@@ -1184,12 +1184,19 @@ function RotorOps.assessUnitsInZone(var)
      for zone, zoneobj in pairs(mist.DBs.zonesByName) do 
        if string.find(zone, RotorOps.active_zone) and string.find(zone:lower(), "spawn") then --if we find a zone that has the active zone name and the word spawn
          inf_spawn_zones[#inf_spawn_zones + 1] = zone 
-         env.info("ROTOR OPS: spawn zone found:"..zone)
+         env.info("ROTOR OPS: active spawn zone found:"..zone)
        end
-	   if string.find(zone:lower(), "spawn") then
-	     total_spawn_zones = total_spawn_zones + 1
-	   end
+	   
      end
+
+    for index, rops_zone in pairs(RotorOps.zones) do
+      for zone, zoneobj in pairs(mist.DBs.zonesByName) do
+        if string.find(zone:lower(), rops_zone.name:lower()) and string.find(zone:lower(), "spawn") then
+          total_spawn_zones = total_spawn_zones + 1
+          env.info("ROTOR OPS: spawn zone found:"..zone..", total spawn zones:"..total_spawn_zones)
+        end
+      end
+    end
      --RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * RotorOps.inf_spawn_multiplier[RotorOps.active_zone_index]
 	 if total_spawn_zones > 0 then
 	   RotorOps.inf_spawns_avail = (RotorOps.inf_spawns_total / total_spawn_zones) * #inf_spawn_zones
@@ -1324,12 +1331,8 @@ function RotorOps.assessUnitsInZone(var)
       local rand_index = math.random(1, #inf_spawn_zones)
       local zone = inf_spawn_zones[rand_index]
 
-      if RotorOps.defending then
-        ctld.spawnGroupAtTrigger("blue", RotorOps.inf_spawn_blue, zone, 1000)
-      else
-        ctld.spawnGroupAtTrigger("red", RotorOps.inf_spawn_red, zone, 1000)
-        RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
-      end
+      ctld.spawnGroupAtTrigger("red", RotorOps.inf_spawn_red, zone, 1000)
+      RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
       
       RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
       env.info("ROTOR OPS: Attempting to spawn infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
