@@ -9,13 +9,13 @@
 
 -- Issues:
 -- - You will not get points for your troops' kills if you leave your group (ie switch aircraft)
+-- - Currently requires a modified version of MIST (see rotorops repo /scripts)
 
 --Todo:
--- - more testing needed in RotorOpsPerks.monitorFarps() to check for destroyed farp objects.
  
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.5.1"
+RotorOpsPerks.version = "1.5.2"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -52,11 +52,17 @@ RotorOpsPerks.player_fatcow_types = {
 }
 
 ---- END OPTIONS ----
+local function log(msg)
+    env.info("ROTOROPS PERKS: " .. msg)
+end
+
 
 local function debugMsg(msg)
     if RotorOpsPerks.debug then
-        env.info("ROTOROPS PERKS:")
-        env.info(msg)
+        log("ROTOROPS PERKS:")
+        if msg then
+            log(msg)
+        end
     end
 end
 
@@ -91,7 +97,28 @@ end
 RotorOpsPerks.perks.fatcow["action_condition"] = function(args)
     if #RotorOpsPerks.fat_cow_farps < 1 then
         return {msg="No FARP resources available!", valid=false}
-    end 
+    end
+
+    --rearming/refueling doesn't work if enemies are nearby (within 1.1nm)
+    --this is a DCS feature/limitation so we won't deploy the farp to avoid confusing the players
+    local units_in_proximity = RotorOpsPerks.findUnitsInVolume({
+        volume_type = world.VolumeType.SPHERE,
+        point = args.target_point,
+        radius = 2050
+    })
+
+    log("units_in_proximity: "..#units_in_proximity)
+
+    local enemy_coal = 1
+    if args.player_coalition == 1 then
+        enemy_coal = 2
+    end
+
+    for _, unit in pairs(units_in_proximity) do
+        if unit:getCoalition() == enemy_coal then
+            return {msg="Too close to enemy!", valid=false}
+        end
+    end
 
     return {valid=true}
 end
@@ -267,17 +294,42 @@ end
 RotorOpsPerks.perks.player_fatcow["action_condition"] = function(args)
     local player_unit = Group.getByName(args.player_group_name):getUnit(1)
     local agl_altitude = player_unit:getPosition().p.y - land.getHeight(player_unit:getPosition().p)
+
     if RotorOpsPerks.perks.player_fatcow.active[args.player_group_name] then
         return {msg="FARP already deployed at your position!", valid=false}
     end
+
     if #RotorOpsPerks.fat_cow_farps < 1 then
         return {msg="No FARP resources available!", valid=false}
     end
+
     if agl_altitude > 100 then
         return {msg="You must be on the ground! "..agl_altitude.." AGL", valid=false}
-    else 
-        return {msg="Stay on the ground.", valid=true}
     end
+
+    --rearming/refueling doesn't work if enemies are nearby (within 1.1nm)
+    --this is a DCS feature/limitation so we won't deploy the farp to avoid confusing the players
+    local units_in_proximity = RotorOpsPerks.findUnitsInVolume({
+        volume_type = world.VolumeType.SPHERE,
+        point = args.target_point,
+        radius = 2050
+    })
+
+    log("units_in_proximity: "..#units_in_proximity)
+
+    local enemy_coal = 1
+    if args.player_coalition == 1 then
+        enemy_coal = 2
+    end
+
+    for _, unit in pairs(units_in_proximity) do
+        if unit:getCoalition() == enemy_coal then
+            return {msg="Too close to enemy!", valid=false}
+        end
+    end
+        
+    
+    return {msg="Stay on the ground.", valid=true}
 end
 
 RotorOpsPerks.perks.player_fatcow["action_function"] = function(args)
@@ -302,10 +354,10 @@ RotorOpsPerks.perks.player_fatcow["monitor_player"] = function(args)
         local agl_altitude = player_unit:getPosition().p.y - land.getHeight(player_unit:getPosition().p)
         if agl_altitude > 100 or not player_unit:isExist() then
             despawn_farp = true
-            env.info("Player is no longer on the ground, despawning FARP!")
+            log("Player is no longer on the ground, despawning FARP!")
         end
         if math.abs(player_unit:getPosition().p.x - args.target_point.x) > 50 or math.abs(player_unit:getPosition().p.z - args.target_point.z) > 50 then
-            env.info("Player has moved from target position, despawning FARP!")
+            log("Player has moved from target position, despawning FARP!")
             despawn_farp = true
         end
     else
@@ -435,8 +487,8 @@ function RotorOpsPerks.checkPoints(player_group_name)
         return false
     end
 
-    env.info("Checking points for "..player_group_name.."...")
-    env.info(mist.utils.tableShow(players, "players"))
+    log("Checking points for "..player_group_name.."...")
+    log(mist.utils.tableShow(players, "players"))
 
     --get combined points from all Players
     local total_points = 0
@@ -510,7 +562,7 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
             perks_used = {},
         }
         env.warning('ADDED ' .. identifier .. ' TO PLAYERS TABLE')
-        env.info(mist.utils.tableShow(RotorOpsPerks.players[identifier]))
+        log(mist.utils.tableShow(RotorOpsPerks.players[identifier]))
         missionCommands.removeItemForGroup(groupId, {[1] = 'ROTOROPS PERKS'})
         RotorOpsPerks.addRadioMenuForGroup(groupName)
         if RotorOpsPerks.player_update_messages then
@@ -520,7 +572,7 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
     --update an existing player
     elseif RotorOpsPerks.players[identifier].groupId ~= groupId then
         env.warning('UPDATING ' .. identifier .. ' TO GROUP NAME: ' .. groupName)
-        env.info(mist.utils.tableShow(RotorOpsPerks.players[identifier]))
+        log(mist.utils.tableShow(RotorOpsPerks.players[identifier]))
         if RotorOpsPerks.player_update_messages then
             trigger.action.outText('PERKS: ' .. name .. ' moved to '.. groupName, 10)
         end
@@ -590,7 +642,7 @@ end
 ---- FATCOW FARP SUPPORTING FUNCTIONS ----
 
 function RotorOpsPerks.monitorFarps()
-    env.info(mist.utils.tableShow(RotorOpsPerks.fat_cow_farps))
+    --log(mist.utils.tableShow(RotorOpsPerks.fat_cow_farps))
 
     local function farpExists(i)
         local farp = StaticObject.getByName('FAT COW FARP ' .. i)
@@ -627,7 +679,7 @@ function RotorOpsPerks.buildFatCowFarpTable()
         local ammo = StaticObject.getByName('FAT COW AMMO ' .. i)
         local fuel = StaticObject.getByName('FAT COW FUEL ' .. i)
         if farp and tent and ammo and fuel then
-            env.info("FAT COW FARP " .. i .. " FOUND")
+            log("FAT COW FARP " .. i .. " FOUND")
             RotorOpsPerks.fat_cow_farps[i] = {
                 index = i,
                 farp = farp,
@@ -655,7 +707,7 @@ function RotorOpsPerks.teleportStatic(source_name, dest_point)
     debugMsg('RotorOpsPerks.teleportStatic: ' .. source_name)
     local source = StaticObject.getByName(source_name)
     if not source then
-        env.info('RotorOpsPerks.teleportStatic: source not found: ' .. source_name)
+        log('RotorOpsPerks.teleportStatic: source not found: ' .. source_name)
         return
     end
     local vars = {} 
@@ -664,14 +716,14 @@ function RotorOpsPerks.teleportStatic(source_name, dest_point)
     vars.point = mist.utils.makeVec3(dest_point)
     local res = mist.teleportToPoint(vars)
     if res then
-        env.info('RotorOpsPerks.teleportStatic: ' .. source_name .. ' success')
+        log('RotorOpsPerks.teleportStatic: ' .. source_name .. ' success')
     else
-        env.info('RotorOpsPerks.teleportStatic: ' .. source_name .. ' failed')
+        log('RotorOpsPerks.teleportStatic: ' .. source_name .. ' failed')
     end
 end
 
 function RotorOpsPerks.spawnFatCowFarpObjects(pt_x, pt_y, index, delay)
-    env.info('spawnFatCowFarpObjects called. Looking for static group names ending in ' .. index)
+    log('spawnFatCowFarpObjects called. Looking for static group names ending in ' .. index)
     local dest_point = mist.utils.makeVec3GL({x = pt_x, y = pt_y})
     trigger.action.smoke(dest_point, 2)
 
@@ -693,12 +745,12 @@ function RotorOpsPerks.spawnFatCow(dest_point, farp)
     local fatcow_name = 'FAT COW'
     local source_farp_name = 'FAT COW FARP ' .. index
     
-    env.info('spawnFatCow called with ' .. source_farp_name)
+    log('spawnFatCow called with ' .. source_farp_name)
 
     --set a timer to return the farp static resources to be reused
     timer.scheduleFunction(function()
         table.insert(RotorOpsPerks.fat_cow_farps, farp) --put it back at the end of the list
-        env.info('FatCow FARP timer expired, making the farp available to be used again.')
+        log('FatCow FARP timer expired, making the farp available to be used again.')
     end, nil, timer.getTime() + 1800)
 
     dest_point = mist.utils.makeVec2(dest_point)
@@ -793,8 +845,8 @@ function RotorOpsPerks.spawnFatCow(dest_point, farp)
 end
 
 function RotorOpsPerks.requestPerk(args)
-    env.info('requestPerk called for ' .. args.perk_name)
-    --env.info(mist.utils.tableShow(args, 'args'))
+    log('requestPerk called for ' .. args.perk_name)
+    --log(mist.utils.tableShow(args, 'args'))
     local player_group = Group.getByName(args.player_group_name)
     local player_unit = player_group:getUnits()[1]
     local player_unit_name = player_unit:getName()
@@ -834,7 +886,7 @@ function RotorOpsPerks.requestPerk(args)
             mark_name = mark_name:gsub("\n", "")
             if mark_name == args.perk_name then
                 perk_name_matches = true
-                env.info("mark name matches perk name")
+                log("mark name matches perk name")
             end
             
             if perk_name_matches then
@@ -866,9 +918,9 @@ function RotorOpsPerks.requestPerk(args)
 
             end
         end
-        -- env.info(mist.utils.tableShow(mist.DBs.markList, 'markList'))
-        -- env.info('player group' .. mist.utils.tableShow(player_group, 'player_group'))
-        -- env.info('player' .. mist.utils.tableShow(player_unit, 'player_unit'))
+        -- log(mist.utils.tableShow(mist.DBs.markList, 'markList'))
+        -- log('player group' .. mist.utils.tableShow(player_group, 'player_group'))
+        -- log('player' .. mist.utils.tableShow(player_unit, 'player_unit'))
         if temp_mark then
             target_point = temp_mark.pos
         end
@@ -923,9 +975,10 @@ function RotorOpsPerks.requestPerk(args)
     args.player_group = player_group
     args.player_unit = player_unit
     args.player_unit_name = player_unit_name
+    args.player_coalition = player_group:getCoalition()
 
     --show all variables available to perk actions and conditions
-    --env.info('args: ' .. mist.utils.tableShow(args, 'args'))
+    --log('args: ' .. mist.utils.tableShow(args, 'args'))
 
 
     --check the perk's unique prerequisite conditions
@@ -947,9 +1000,9 @@ function RotorOpsPerks.requestPerk(args)
 
     --check points
     if RotorOpsPerks.spendPoints(args.player_group_name, perk.cost, false) then
-            env.info(args.player_group_name.. ' has sufficient (' .. perk.cost .. ') points for ' .. args.perk_name)
+            log(args.player_group_name.. ' has sufficient (' .. perk.cost .. ') points for ' .. args.perk_name)
     else
-        env.info(args.player_group_name.. ' tried to spend ' .. perk.cost .. ' points for ' .. args.perk_name .. ' but did not have enough points')
+        log(args.player_group_name.. ' tried to spend ' .. perk.cost .. ' points for ' .. args.perk_name .. ' but did not have enough points')
         if #players == 1 then
             trigger.action.outTextForGroup(player_group:getID(), 'NEGATIVE. You have ' .. RotorOpsPerks.getPlayerGroupSum(args.player_group_name, "points") .. ' points. (cost '.. perk.cost .. ')', 10)
         else
@@ -996,7 +1049,7 @@ function RotorOpsPerks.requestPerk(args)
                 trigger.action.outTextForGroup(_player.groupId, 'AFFIRM. ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
             else
                 -- send messages to all other players
-                env.info(player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string)
+                log(player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string)
                 trigger.action.outTextForGroup(_player.groupId, player_unit:getPlayerName() .. ' requested ' .. RotorOpsPerks.perks[args.perk_name].display_name .. position_string, 10)
             end
         end
@@ -1157,11 +1210,11 @@ function RotorOpsPerks.registerCtldCallbacks()
 		local unit = _args.unit
 		local picked_troops = _args.onboard
 		local dropped_troops = _args.unloaded
-		--env.info("ctld callback: ".. mist.utils.tableShow(_args)) 
+		--log("ctld callback: ".. mist.utils.tableShow(_args)) 
         
         if dropped_troops then
-            --env.info('dropped troops: ' .. mist.utils.tableShow(dropped_troops))
-            --env.info('dropped troops group name: ' .. dropped_troops:getName())
+            --log('dropped troops: ' .. mist.utils.tableShow(dropped_troops))
+            --log('dropped troops group name: ' .. dropped_troops:getName())
             RotorOpsPerks.troops[dropped_troops:getName()] = {dropped_troops=dropped_troops:getName(), player_group=unit:getGroup():getName(), player_name=unit:getPlayerName(), player_unit=unit:getName(), side=unit:getGroup():getCoalition() , qty=#dropped_troops:getUnits()}
 
         end
@@ -1253,16 +1306,23 @@ function RotorOpsPerks.monitorPlayers()
 end
 
 if mist.grimm_version then
-    env.info("GRIMM's version of MIST is loaded")
+    log("GRIMM's version of MIST is loaded")
 else
-    env.warning("ROTOROPS PERKS REQUIRES A MODIFIED VERSION OF MIST TO WORK PROPERLY. PLEASE SEE THE SCRIPTS FOLDER IN THE ROTOROPS GITHUB REPO")
+    env.warning("ERROR: ROTOROPS PERKS REQUIRES A MODIFIED VERSION OF MIST TO WORK PROPERLY. PLEASE SEE THE SCRIPTS FOLDER IN THE ROTOROPS GITHUB REPO")
     trigger.action.outText("ERROR: ROTOROPS PERKS REQUIRES A MODIFIED VERSION OF MIST TO WORK PROPERLY.", 30)
 end
 
 RotorOpsPerks.buildFatCowFarpTable()
-env.info("Found " .. #RotorOpsPerks.fat_cow_farps .. " Fat Cow FARPs")
+log("Found " .. #RotorOpsPerks.fat_cow_farps .. " Fat Cow FARPs")
 if #RotorOpsPerks.fat_cow_farps > 0 then
     RotorOpsPerks.monitorFarps()
+else 
+    env.warning("NO FAT COW FARPS FOUND.  PLEASE SEE THE ROTOROPS WIKI FOR INSTRUCTIONS ON HOW TO SET UP FAT COW FARPS")
+    trigger.action.outText("WARNING: NO FAT COW FARPS FOUND.", 30)
+end
+if not Group.getByName('FAT COW') then
+    env.warning("NO AI FAT COW HELICOPTER FOUND.  PLEASE SEE THE ROTOROPS WIKI FOR INSTRUCTIONS ON HOW TO SET UP FAT COW FARPS")
+    trigger.action.outText("WARNING: NO AI FAT COW HELICOPTER FOUND.", 30)
 end
 RotorOpsPerks.registerCtldCallbacks()
 -- start a 5 second timer to monitor players, to allow other scripts to load
