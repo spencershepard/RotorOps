@@ -401,6 +401,12 @@ class RotorOpsMission:
             self.m.random_daytime(options["time"].lower())
             print("Time set to " + options["time"])
 
+        # set the mission options
+        if options["easy_comms"]:
+            # to simplify rearm/refuel at FARPs
+            self.m.options.difficulty.easyCommunication = True
+
+
         # Save the mission file
         window.statusBar().showMessage("Saving mission...", 10000)
         if window.user_output_dir:
@@ -824,7 +830,7 @@ class RotorOpsMission:
                 self.m.triggers.add_triggerzone(f_cap_spawn_point, 30000, hidden=True, name="BLUE_CAP_SPAWN")
 
         # Fat Cow
-        if True:
+        if options["perks"]:
             helo_type = dcs.helicopters.CH_47D
             name = "FAT COW"
 
@@ -851,6 +857,24 @@ class RotorOpsMission:
                     group_size=1)
                 afg.set_skill(dcs.unit.Skill.Excellent)
                 afg.late_activation = True
+
+            else:
+                afg = self.m.flight_group_inflight(
+                    combinedJointTaskForcesBlue,
+                    name,
+                    helo_type,
+                    position=primary_f_airport.position,
+                    altitude=500,
+                    speed=50,
+                    group_size=1
+                )
+
+            if afg:
+                afg.set_skill(dcs.unit.Skill.Excellent)
+                afg.late_activation = True
+
+            else:
+                raise Exception("Unable to insert Fat Cow CH-47")
 
 
         if options["f_awacs"]:

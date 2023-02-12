@@ -1,6 +1,6 @@
 RotorOps = {}
 RotorOps.version = "1.3.4"
-local debug = true
+local debug = false
 
 
 
@@ -65,7 +65,7 @@ RotorOps.game_state = 0
 RotorOps.zones = {}
 RotorOps.active_zone = "" --name of the active zone
 RotorOps.active_zone_index = 0
-RotorOps.game_state_flag = 1  --user flag to store the game state
+RotorOps.game_state_flag = 100  --user flag to store the game state
 RotorOps.staging_zones = {}
 RotorOps.ai_defending_infantry_groups = {} 
 RotorOps.ai_attacking_infantry_groups = {} 
@@ -1200,6 +1200,7 @@ function RotorOps.assessUnitsInZone(var)
      --RotorOps.inf_spawns_avail = RotorOps.inf_spawns_per_zone * RotorOps.inf_spawn_multiplier[RotorOps.active_zone_index]
 	 if total_spawn_zones > 0 then
 	   RotorOps.inf_spawns_avail = (RotorOps.inf_spawns_total / total_spawn_zones) * #inf_spawn_zones
+     RotorOps.inf_spawns_avail = math.ceil(RotorOps.inf_spawns_avail)
 	 end
 
      env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
@@ -1285,7 +1286,8 @@ function RotorOps.assessUnitsInZone(var)
     
     for index, vehicle in pairs(units_table) do
       local should_deploy = false
-      if vehicle:hasAttribute("Infantry carriers") and RotorOps.isUnitInZone(vehicle, RotorOps.active_zone) then --if a vehicle is an APC and in zone
+      if vehicle:hasAttribute("Infantry carriers") or vehicle:hasAttribute("Trucks") then --if a vehicle is an APC
+        if RotorOps.isUnitInZone(vehicle, RotorOps.active_zone) then --if a vehicle is an APC and in zone
           local apc_name = vehicle:getName()
           
           if tableHasKey(apcs, apc_name) == true then  --if we have this apc in our table already 
@@ -1303,6 +1305,7 @@ function RotorOps.assessUnitsInZone(var)
             should_deploy = true
             apcs[apc_name] = {['deployed_zones'] = {RotorOps.active_zone,}}
           end
+        end
           
       end
       
@@ -1314,7 +1317,7 @@ function RotorOps.assessUnitsInZone(var)
          end
        end
         
-       local id = timer.scheduleFunction(timedDeploy, nil, timer.getTime() + math.random(90, 180))
+       local id = timer.scheduleFunction(timedDeploy, nil, timer.getTime() + math.random(90, 300))
       end
     
     end
@@ -1332,7 +1335,9 @@ function RotorOps.assessUnitsInZone(var)
       local zone = inf_spawn_zones[rand_index]
 
       ctld.spawnGroupAtTrigger("red", RotorOps.inf_spawn_red, zone, 1000)
-      RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
+      if RotorOps.inf_spawn_messages then
+        RotorOps.gameMsg(RotorOps.gameMsgs.infantry_spawned, math.random(1, #RotorOps.gameMsgs.infantry_spawned))
+      end
       
       RotorOps.inf_spawns_avail = RotorOps.inf_spawns_avail - 1
       env.info("ROTOR OPS: Attempting to spawn infantry. "..RotorOps.inf_spawns_avail.." spawns remaining in "..zone)
@@ -2225,4 +2230,5 @@ end
 function RotorOps.predSpawnRedCap()
   return true
 end
+
 

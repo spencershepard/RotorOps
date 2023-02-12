@@ -26,7 +26,7 @@ ctld = {} -- DONT REMOVE!
 ctld.Id = "CTLD - "
 
 --- Version.
-ctld.Version = "20211113.01"
+ctld.Version = "20211113.01 GRIMM01"
 
 -- debug level, specific to this module
 ctld.Debug = true
@@ -1976,9 +1976,9 @@ function ctld.generateTroopTypes(_side, _countOrTemplate, _country)
         if _countOrTemplate.inf then
             ctld.logTrace(string.format("_countOrTemplate.inf=%s", ctld.p(_countOrTemplate.inf)))
             if _side == 2 then
-                _troops = ctld.insertIntoTroopsArray("Soldier M4",_countOrTemplate.inf,_troops)
+                _troops = ctld.insertIntoTroopsArray("Soldier M4 GRG",_countOrTemplate.inf,_troops)
             else
-                _troops = ctld.insertIntoTroopsArray("Soldier AK",_countOrTemplate.inf,_troops)
+                _troops = ctld.insertIntoTroopsArray("Infantry AK",_countOrTemplate.inf,_troops)
             end
             _weight = _weight + getSoldiersWeight(_countOrTemplate.inf, ctld.RIFLE_WEIGHT)
             ctld.logTrace(string.format("_weight=%s", ctld.p(_weight)))
@@ -2012,9 +2012,9 @@ function ctld.generateTroopTypes(_side, _countOrTemplate, _country)
         if _countOrTemplate.jtac then
             ctld.logTrace(string.format("_countOrTemplate.jtac=%s", ctld.p(_countOrTemplate.jtac)))
             if _side == 2 then
-                _troops = ctld.insertIntoTroopsArray("Soldier M4",_countOrTemplate.jtac,_troops, "JTAC")
+                _troops = ctld.insertIntoTroopsArray("Soldier M4 GRG",_countOrTemplate.jtac,_troops, "JTAC")
             else
-                _troops = ctld.insertIntoTroopsArray("Soldier AK",_countOrTemplate.jtac,_troops, "JTAC")
+                _troops = ctld.insertIntoTroopsArray("Infantry AK",_countOrTemplate.jtac,_troops, "JTAC")
             end
             _hasJTAC = true
             _weight = _weight + getSoldiersWeight(_countOrTemplate.jtac, ctld.JTAC_WEIGHT + ctld.RIFLE_WEIGHT)
@@ -2024,7 +2024,7 @@ function ctld.generateTroopTypes(_side, _countOrTemplate, _country)
     else
         for _i = 1, _countOrTemplate do
 
-            local _unitType = "Soldier AK"
+            local _unitType = "Infantry AK"
 
             if _side == 2 then
                 if _i <=2 then
@@ -2040,7 +2040,7 @@ function ctld.generateTroopTypes(_side, _countOrTemplate, _country)
                     _weight = _weight + getSoldiersWeight(1, ctld.MANPAD_WEIGHT)
                     ctld.logTrace(string.format("_unitType=%s, _weight=%s", ctld.p(_unitType), ctld.p(_weight)))
                 else
-                    _unitType = "Soldier M4"
+                    _unitType = "Soldier M4 GRG"
                     _weight = _weight + getSoldiersWeight(1, ctld.RIFLE_WEIGHT)
                     ctld.logTrace(string.format("_unitType=%s, _weight=%s", ctld.p(_unitType), ctld.p(_weight)))
                 end

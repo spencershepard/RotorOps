@@ -593,6 +593,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "blue_cap": self.scenario.getConfigValue("blue_cap", default=True),
                 "rotorops_server": self.scenario.getConfigValue("rotorops_server", default=False),
                 "perks": self.perks_checkBox.isChecked(),
+                "easy_comms": self.scenario.getConfigValue("easy_comms", default=True)
                 }
 
         logger.info("Generating mission with options:")
