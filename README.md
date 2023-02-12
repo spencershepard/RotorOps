@@ -24,15 +24,24 @@ At the core of the RotorOps script are AI enhancements that provide a dynamic gr
 - Single-player and multiplayer slot creation.
 
 ## Demo Missions
-RotorOps: Aleppo Under Siege  https://www.digitalcombatsimulator.com/en/files/3320079/
+
+Newest to oldest:
+
+Black Hawk Down Pt 1 (UH-1H UH-60L) https://www.digitalcombatsimulator.com/en/files/3328428/
+
+NightHawks (AH-64D) https://www.digitalcombatsimulator.com/en/files/3322036/
+
+RotorOps: Aleppo Under Siege  https://www.digitalcombatsimulator.com/en/files/3320079/ 
 
 Rota Landing (Mr. Nobody) https://www.digitalcombatsimulator.com/en/files/3320186/
+
+
 
 
 # RotorOps: Conflict
 Conflict is a game type in which attacking forces must clear Conflict Zones of defending ground forces. Once a zone is cleared, the next zone is activated and attacking ground vehicles will move to the next Conflict Zone automatically.
 
-![alt text](https://raw.githubusercontent.com/spencershepard/RotorOps/develop/documentation/images/rotorops%20conflict%20zones.png?raw=true)
+![alt text](https://raw.githubusercontent.com/spencershepard/RotorOps/main/documentation/images/rotorops%20conflict%20zones.png?raw=true)
 
 ## Dynamic Roles
 A RotorOps Conflict mission has opportunities for a variety of roles and tasks. There's no need to artificially select these roles, as the mission is fully dynamic.  
