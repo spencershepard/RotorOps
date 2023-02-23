@@ -76,6 +76,29 @@ Create your own scenarios for the RotorOps mission generator,  using the DCS mis
 ### Developers
 We welcome contributors to this new project!  Please get in touch on Discord with new ideas or pickup/create an issue in this repo.  
 
+#### Install python 
+
+If using VSCode, you can install the Python extension to get started: [VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+
+If not, you may need to install python 3.8.5.  If you are using Windows, you can download it here: https://www.python.org/downloads/release/python-385/
+
+#### Create a python virtual environment
+
+To create a virtual environment, run the following command in the root of the project:
+
+`python -m venv .venv`
+
+If using VSCode, you can use the ">Python: create environment" command.
+
+#### Install python dependencies
+
+In a terminal, type `pip install -r .\Generator\requirements.txt`
+
+#### Build the mission generator
+
+In a terminal, type `build.bat`
+
+The mission generator will be built to the `dist` folder.	
 
 ### RotorOps Mission Creator Guide:
 For more detailed information on how the script works, see this wiki:
