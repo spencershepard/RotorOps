@@ -100,6 +100,10 @@ In a terminal, type `build.bat`
 
 The mission generator will be built to the `dist` folder.	
 
+#### Run the mission generator
+
+Using VS Code, you can use the provided launch configuration to run the mission generator.  Otherwise, you can run the following command in a terminal: `python .\Generator\MissionGenerator.py`	
+
 ### RotorOps Mission Creator Guide:
 For more detailed information on how the script works, see this wiki:
 https://github.com/spencershepard/RotorOps/wiki/RotorOps:-Mission-Creator-Guide
