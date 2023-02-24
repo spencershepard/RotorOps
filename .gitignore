@@ -26,8 +26,3 @@ MissionOutput/
 .idea
 *.env
 RotorOps_setup.exe
-MissionGenerator.exe
-Generator/MissionGeneratorUI.py
-Generator/rc_resources.py
-Generator/resources.py
-Generator/ui_MissionGeneratorUI.py
