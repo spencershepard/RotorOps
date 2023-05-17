@@ -106,6 +106,10 @@ local zone_defenders_flags = {
   'ROPS_B_DEFENDERS',
   'ROPS_C_DEFENDERS',
   'ROPS_D_DEFENDERS',
+  'ROPS_E_DEFENDERS',
+  'ROPS_F_DEFENDERS',
+  'ROPS_G_DEFENDERS',
+  'ROPS_H_DEFENDERS',
 }
 RotorOps.farp_names = {}
 
@@ -117,6 +121,10 @@ RotorOps.gameMsgs = {
     {'ALL GROUND UNITS, PUSH TO BRAVO!', 'push_bravo.ogg'},
     {'ALL GROUND UNITS, PUSH TO CHARLIE!', 'push_charlie.ogg'},
     {'ALL GROUND UNITS, PUSH TO DELTA!', 'push_delta.ogg'},
+    {'ALL GROUND UNITS, PUSH TO ECHO!', 'push_next_zone.ogg'},
+    {'ALL GROUND UNITS, PUSH TO FOXTROT!', 'push_next_zone.ogg'},
+    {'ALL GROUND UNITS, PUSH TO GOLF!', 'push_next_zone.ogg'},
+    {'ALL GROUND UNITS, PUSH TO HOTEL!', 'push_next_zone.ogg'},
   },
   cleared = {
     {'ZONE CLEARED!', 'cleared_active.ogg'},
@@ -124,6 +132,10 @@ RotorOps.gameMsgs = {
     {'BRAVO CLEARED!', 'cleared_bravo.ogg'},
     {'CHARLIE CLEARED!', 'cleared_charlie.ogg'},
     {'DELTA CLEARED!', 'cleared_delta.ogg'},
+    {'ECHO CLEARED!', 'cleared_active.ogg'},
+    {'FOXTROT CLEARED!', 'cleared_active.ogg'},
+    {'GOLF CLEARED!', 'cleared_active.ogg'},
+    {'HOTEL CLEARED!', 'cleared_active.ogg'},
   },
   success = {
     {'GROUND MISSION SUCCESS!', 'mission_success.ogg'},
@@ -137,6 +149,10 @@ RotorOps.gameMsgs = {
     {'TROOPS DROPPED INTO BRAVO!', 'troops_dropped_bravo.ogg'},
     {'TROOPS DROPPED INTO CHARLIE!', 'troops_dropped_charlie.ogg'},
     {'TROOPS DROPPED INTO DELTA!', 'troops_dropped_delta.ogg'},
+    {'TROOPS DROPPED INTO ECHO!', 'troops_dropped_active.ogg'},
+    {'TROOPS DROPPED INTO FOXTROT!', 'troops_dropped_active.ogg'},
+    {'TROOPS DROPPED INTO GOLF!', 'troops_dropped_active.ogg'},
+    {'TROOPS DROPPED INTO HOTEL!', 'troops_dropped_active.ogg'},
   },
   get_troops_to_zone = {
     {'GET OUR TROOPS TO THE NEXT ZONE!', 'get_troops_next_zone.ogg'},
@@ -144,6 +160,10 @@ RotorOps.gameMsgs = {
     {'GET OUR TROOPS TO BRAVO!', 'get_troops_bravo.ogg'},
     {'GET OUR TROOPS TO CHARLIE!', 'get_troops_charlie.ogg'},
     {'GET OUR TROOPS TO DELTA!', 'get_troops_delta.ogg'},
+    {'GET OUR TROOPS TO ECHO!', 'get_troops_next_zone.ogg'},
+    {'GET OUR TROOPS TO FOXTROT!', 'get_troops_next_zone.ogg'},
+    {'GET OUR TROOPS TO GOLF!', 'get_troops_next_zone.ogg'},
+    {'GET OUR TROOPS TO HOTEL!', 'get_troops_next_zone.ogg'},
   },
   jtac = {
     {'JTAC DROPPED!', 'jtac_dropped.ogg'},
@@ -164,6 +184,10 @@ RotorOps.gameMsgs = {
     {'ENEMY PUSHING TO BRAVO!', 'enemy_pushing_bravo.ogg'},
     {'ENEMY PUSHING TO CHARLIE!', 'enemy_pushing_charlie.ogg'},
     {'ENEMY PUSHING TO DELTA!', 'enemy_pushing_delta.ogg'},
+    {'ENEMY PUSHING TO ECHO!', 'enemy_pushing_zone.ogg'},
+    {'ENEMY PUSHING TO FOXTROT!', 'enemy_pushing_zone.ogg'},
+    {'ENEMY PUSHING TO GOLF!', 'enemy_pushing_zone.ogg'},
+    {'ENEMY PUSHING TO HOTEL!', 'enemy_pushing_zone.ogg'},
   },
   start_defense = {
     {'SUPPORT THE WAR ON THE GROUND!  PUSH BACK AGAINST THE ENEMY!', 'push_back.ogg'},
@@ -183,6 +207,10 @@ RotorOps.gameMsgs = {
     {'ENEMY TOOK BRAVO!', 'enemy_destroying_us.ogg'},
     {'ENEMY TOOK CHARLIE!', 'enemy_destroying_us.ogg'},
     {'ENEMY TOOK DELTA!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK ECHO!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK FOXTROT!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK GOLF!', 'enemy_destroying_us.ogg'},
+    {'ENEMY TOOK HOTEL!', 'enemy_destroying_us.ogg'},
   },
   attack_helos = {
     {'ENEMY ATTACK HELICOPTERS INBOUND!', 'enemy_attack_choppers.ogg'},
@@ -210,6 +238,10 @@ RotorOps.gameMsgs = {
     {'NEW FARP AT BRAVO!', 'forward_base_established.ogg'},
     {'NEW FARP AT CHARLIE!', 'forward_base_established.ogg'},
     {'NEW FARP AT DELTA!', 'forward_base_established.ogg'},
+    {'NEW FARP AT ECHO!', 'forward_base_established.ogg'},
+    {'NEW FARP AT FOXTROT!', 'forward_base_established.ogg'},
+    {'NEW FARP AT GOLF!', 'forward_base_established.ogg'},
+    {'NEW FARP AT HOTEL!', 'forward_base_established.ogg'},
   },
   transp_helos_toff = {
     {'ENEMY TRANSPORT HELICOPTERS INBOUND!', 'enemy_chopper_inbound.ogg'},
@@ -1227,7 +1259,7 @@ function RotorOps.assessUnitsInZone(var)
        
    else 
      trigger.action.setUserFlag(defenders_status_flag, defenders_remaining_percent)  --set the zones flag to indicate the status of remaining defenders
-	 trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], defenders_remaining_percent)
+	   trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], defenders_remaining_percent)
    end
      
    --are all zones clear?
@@ -1579,6 +1611,10 @@ function RotorOps.setupCTLD()
    ctld.pickupZones[#ctld.pickupZones + 1] = { "BRAVO_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "CHARLIE_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "DELTA_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "ECHO_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "FOXTROT_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "GOLF_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
+   ctld.pickupZones[#ctld.pickupZones + 1] = { "HOTEL_FARP", RotorOps.pickup_zone_smoke, -1, "no", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER", "none", -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "HELO_CARRIER_1", "none", -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops1", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
@@ -1617,6 +1653,11 @@ function RotorOps.addZone(_name, _zone_defenders_flag)
   trigger.action.setUserFlag(zone_defenders_flags[2], 101)
   trigger.action.setUserFlag(zone_defenders_flags[3], 101)
   trigger.action.setUserFlag(zone_defenders_flags[4], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[5], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[6], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[7], 101)
+  trigger.action.setUserFlag(zone_defenders_flags[8], 101)
+  
   RotorOps.drawZones()
   local farp_name = _name .. "_FARP"
   RotorOps.farp_names[#RotorOps.farp_names + 1] = farp_name

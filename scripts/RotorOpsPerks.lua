@@ -1103,7 +1103,7 @@ function handle:onEvent(e)
                 env.warning('KILL: initiator is not a unit')
                 return
             end
-            if e.initiator:getCoalition() ~= e.target:getCoalition() then
+            if e.initiator:getCoalition() and e.initiator:getCoalition() ~= e.target:getCoalition() then
                 debugMsg('KILL: initiator groupname: ' .. e.initiator:getGroup():getName())
 
                 local initiator_group_name = e.initiator:getGroup():getName()
