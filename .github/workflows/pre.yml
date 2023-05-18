@@ -10,7 +10,7 @@ jobs:
         uses: lunarmodules/luacheck@v1
 #        with:
 #          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
-        run: |
+        args: |
           luacheck . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
           if [ $? -eq 1 ]; then
             echo "Luacheck found warnings. Allowing to fail."
