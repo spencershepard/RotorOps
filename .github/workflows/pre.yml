@@ -6,19 +6,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Luacheck linter
+      - name: luacheck-linter
+        id: luacheck-linter
         uses: lunarmodules/luacheck@v1
         continue-on-error: true
         with:
-          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
-      - name: Let warnings pass
+          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614; echo "lua-lint-result=$?" >> $GITHUB_OUTPUT
+      - name: Check lua errors
         run: |
-            echo "Luacheck exit code was $?"
-            if [ $? -eq 1 ]; then
-              echo "Luacheck found warnings but no errors. Allowed to continue."
-              exit 0
-            fi
-            exit $?
+            echo "luacheck exit code was ${{ steps.luacheck-linter.outputs.lua-lint-result }}"
+            if [ ${{ steps.luacheck-linter.outputs.lua-lint-result }} -eq 1 ]; then echo "Luacheck found warnings but no errors. Allowed to continue."; exit 0; fi; exit 1
   py-linter:
     runs-on: ubuntu-latest
     strategy:
