@@ -13,10 +13,12 @@ jobs:
           args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
       - name: Let warnings pass
         run: |
+            echo "Luacheck exit code was $?"
             if [ $? -eq 1 ]; then
               echo "Luacheck found warnings but no errors. Allowed to continue."
               exit 0
             fi
+            exit $?
   py-linter:
     runs-on: ubuntu-latest
     strategy:
