@@ -8,13 +8,12 @@ jobs:
         uses: actions/checkout@v3
       - name: Luacheck linter
         uses: lunarmodules/luacheck@v1
-#        with:
-#          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
         with:
-          args: |
-            luacheck . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
+          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614
+      - name: Let warnings pass
+        run: |
             if [ $? -eq 1 ]; then
-              echo "Luacheck found warnings. Allowing to fail."
+              echo "Luacheck found warnings but no errors. Allowed to continue."
               exit 0
             fi
   py-linter:
