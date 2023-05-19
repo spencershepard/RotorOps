@@ -1,3 +1,40 @@
+# Install a development environment
+
+## Install VSCode
+
+Download and install VSCode: https://code.visualstudio.com/
+
+VS Code is a free, open source, cross-platform code editor.  It is a great tool for editing and debugging python code.  It also has a built-in terminal that can be used to run commands.
+## Install python 
+
+If using VSCode, you can install the Python extension to get started: [VS Marketplace Link](https://marketplace.visualstudio.com/items?itemName=ms-python.python)
+
+If not, you may need to install python 3.8.5.  If you are using Windows, you can download it here: https://www.python.org/downloads/release/python-385/
+
+## Create a python virtual environment
+
+If using VSCode, you can use the ">Python: create environment" command.
+
+If not, run the following command in the root of the project: `python -m venv .\Generator\venv`
+
+## Install python dependencies
+
+If using VSCode, you can use the ">Run task: " command and choose the "Install the Python requirements" task.
+
+If not, type `install-requirements.bat` in a terminal.
+
+## Build the mission generator
+
+If using VSCode, you can use the ">Run task: " command and choose the "Build the Mission Generator" task.
+
+If not, type `build.bat` in a terminal.
+
+## Run the mission generator
+
+Using VS Code, you can use the provided launch configuration to run the mission generator.  
+
+Otherwise, you can run the following command in a terminal: `python .\Generator\MissionGenerator.py`	
+
 # Building the exe with build.bat
 
 **Use build.bat to compile the UI files and build the exe.**
