@@ -1,5 +1,4 @@
 name: CI
-
 on:
   pull_request:
     types:
@@ -16,6 +15,7 @@ jobs:
         echo The PR was merged
         
   deploy:
+    needs: [pre-build]
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Deploy to updater if files changed
     steps:

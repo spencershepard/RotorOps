@@ -1,4 +1,4 @@
-name: Pre-build
+name: pre-build
 on: [push, pull_request]
 jobs:
   lua-linter:
