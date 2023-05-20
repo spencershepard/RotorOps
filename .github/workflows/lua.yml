@@ -1,4 +1,4 @@
-name: Lua Checks
+name: Lua-checks
 on: [push, pull_request]
 jobs:
   lua-linter:
