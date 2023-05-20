@@ -15,7 +15,7 @@ jobs:
         echo The PR was merged
         
   deploy:
-    needs: [pre-build]
+    needs: [Lua Checks, Python Checks]
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Deploy to updater if files changed
     steps:

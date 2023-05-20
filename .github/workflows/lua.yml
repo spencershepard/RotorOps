@@ -1,0 +1,21 @@
+name: Lua Checks
+on: [push, pull_request]
+jobs:
+  lua-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: luacheck-linter
+        id: luacheck-linter
+        uses: lunarmodules/luacheck@v1
+        continue-on-error: true
+        with:
+          args: . --no-global --no-unused --no-redefined --no-unused-args --no-max-line-length --ignore 611 612 613 614; echo "lua-lint-result=$?" >> $GITHUB_OUTPUT
+      # luacheck returns exit 1 with warnings, so we continue on error and check the output in the next step
+      - name: Check lua errors
+        run: |
+            echo "luacheck exit code was ${{ steps.luacheck-linter.outputs.lua-lint-result }}"
+            if [ ${{ steps.luacheck-linter.outputs.lua-lint-result }} -eq 1 ]; then echo "Luacheck found warnings but no errors. Allowed to continue."; exit 0; fi;
+            if [ ${{ steps.luacheck-linter.outputs.lua-lint-result }} -eq 2 ]; then echo "Luacheck found errors. Check the luacheck-linter task above for details."; exit 2; fi;
+            exit 3
