@@ -1,4 +1,4 @@
-name: CI
+name: Deploy-to-updater
 on:
   pull_request:
     types:
@@ -15,7 +15,7 @@ jobs:
         echo The PR was merged
         
   deploy:
-    needs: [Lua Checks, Python Checks]
+    needs: [Lua-checks,Python-checks]
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Deploy to updater if files changed
     steps:

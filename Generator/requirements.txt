@@ -1,4 +1,4 @@
-﻿-e git+https://github.com/spencershepard/dcs@aba313f9465181be3de782cdf90ccf366d883d8e#egg=pydcs
+﻿-e git+https://github.com/spencershepard/dcs@cd0e21cc0b4e370cafab975b3965ccdeb55c1d11#egg=pydcs
 packaging==21.3
 PyQt5==5.15.9
 PyYAML==6.0
