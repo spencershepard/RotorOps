@@ -29,10 +29,10 @@ class Scenario:
         if 'name' in config:
             self.name = config["name"]
         if 'map' in config:
-            self.map_name = config["map"]
+            self.map_name = config["map"].lower()
         if 'tags' in config:
             for tag in config['tags']:
-                self.tags.append(tag)
+                self.tags.append(tag.lower())
         if 'author' in config:
             self.author = config["author"]
 

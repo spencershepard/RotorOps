@@ -194,22 +194,22 @@ class Window(QMainWindow, Ui_MainWindow):
         tags = []
         maps = []
         if self.actionCaucasus.isChecked():
-            maps.append('Caucasus')
+            maps.append('caucasus')
         if self.actionPersian_Gulf.isChecked():
-            maps.append('PersianGulf')
+            maps.append('persiangulf')
         if self.actionMarianas.isChecked():
-            maps.append('Marianas')
+            maps.append('marianas')
         if self.actionNevada.isChecked():
-            maps.append('Nevada')
+            maps.append('nevada')
         if self.actionSyria.isChecked():
-            maps.append('Syria')
+            maps.append('syria')
 
         if self.actionMultiplayer.isChecked():
-            tags.append('MultiPlayer')
+            tags.append('multiplayer')
         if self.actionSingle_Player.isChecked():
-            tags.append('SinglePlayer')
+            tags.append('singleplayer')
         if self.actionCo_Op.isChecked():
-            tags.append('CoOp')
+            tags.append('coop')
 
         return maps, tags
 
