@@ -816,6 +816,7 @@ class RotorOpsMission:
             for zone in self.m.triggers.zones():
                 if zone.name == "RED_CAP_SPAWN":
                     scenario_red_cap_spawn_zone = True
+                    e_cap_spawn_point = zone.point
             if not scenario_red_cap_spawn_zone:
                 e_cap_spawn_point = primary_e_airport.position.point_from_heading(e_airport_heading, 100000)
                 self.m.triggers.add_triggerzone(e_cap_spawn_point, 30000, hidden=True, name="RED_CAP_SPAWN")

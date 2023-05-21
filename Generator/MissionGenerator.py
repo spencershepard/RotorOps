@@ -194,22 +194,22 @@ class Window(QMainWindow, Ui_MainWindow):
         tags = []
         maps = []
         if self.actionCaucasus.isChecked():
-            maps.append('Caucasus')
+            maps.append('caucasus')
         if self.actionPersian_Gulf.isChecked():
-            maps.append('PersianGulf')
+            maps.append('persiangulf')
         if self.actionMarianas.isChecked():
-            maps.append('Marianas')
+            maps.append('marianas')
         if self.actionNevada.isChecked():
-            maps.append('Nevada')
+            maps.append('nevada')
         if self.actionSyria.isChecked():
-            maps.append('Syria')
+            maps.append('syria')
 
         if self.actionMultiplayer.isChecked():
-            tags.append('MultiPlayer')
+            tags.append('multiplayer')
         if self.actionSingle_Player.isChecked():
-            tags.append('SinglePlayer')
+            tags.append('singleplayer')
         if self.actionCo_Op.isChecked():
-            tags.append('CoOp')
+            tags.append('coop')
 
         return maps, tags
 
@@ -259,24 +259,20 @@ class Window(QMainWindow, Ui_MainWindow):
         #remove scenarios if they don't match filter criteria
         filter_maps, filter_tags = self.tagsFromMenuOptions()
 
-        # remove scenarios if map not selected in menu
+        filtered_scenarios = []
+
         for s in scenarios:
-            if s.map_name and not s.map_name in filter_maps:
-                scenarios.remove(s)
+            if s.map_name and s.map_name not in filter_maps:
+                continue
+            if s.tags:
+                for tag in s.tags:
+                    if tag in filter_tags:
+                        filtered_scenarios.append(s)
+                        break
+            else:
+                filtered_scenarios.append(s)
 
-        # add scenarios if tags match
-        if len(filter_tags) > 0:
-            t_scenarios = []
-            for s in scenarios:
-                if s.tags: #if the config file has tags set
-                    for tag in filter_tags:
-                        if tag in s.tags:
-                            t_scenarios.append(s)
-                else: #add if no tags set
-                    t_scenarios.append(s)
-            scenarios = t_scenarios.copy()
-
-        self.scenarios_list = sorted(scenarios, key=lambda x: x.name, reverse=False)
+        self.scenarios_list = filtered_scenarios
 
         for s in self.scenarios_list:
             self.scenario_comboBox.addItem(s.name)
