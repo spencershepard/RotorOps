@@ -1,4 +1,6 @@
 import json
+
+import dcs.installation
 import yaml
 import sys
 import os
@@ -102,6 +104,8 @@ attackers_text = "Attacking Forces:"
 ratings_json = None
 
 logger.info("RotorOps v" + version.version_string)
+logger.info("pydcs DCS installation directory: " + dcs.installation.get_dcs_install_directory())
+logger.info("pydcs DCS saved games directory: " + dcs.installation.get_dcs_saved_games_directory())
 
 # Try to set windows app ID to display taskbar icon properly
 try:
