@@ -7,15 +7,9 @@ on:
       - main
 
 jobs:
-  if_merged:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
-    - run: |
-        echo The PR was merged
-        
+
   deploy:
-    needs: [Lua-checks,Python-checks]
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest  # windows-latest | macos-latest
     name: Deploy to updater if files changed
     steps:
