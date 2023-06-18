@@ -1280,6 +1280,8 @@ class RotorOpsMission:
             insert_point = dcs.mapping.Point(-140000, -300000, dcs.terrain.Nevada)
         elif self.m.terrain.name == "Syria":
             insert_point = dcs.mapping.Point(235000, -440000, dcs.terrain.Syria)
+        elif self.m.terrain.name == "Sinai":
+            insert_point = dcs.mapping.Point(10000, 200000, dcs.terrain.Sinai)
 
         if insert_point:
 
