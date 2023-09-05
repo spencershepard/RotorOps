@@ -190,6 +190,7 @@ class ImportObjects:
                     ng.units[0].fuel = group.units[0].fuel
                     ng.units[0].gun = group.units[0].gun
                     ng.units[0].hardpoint_racks = group.units[0].hardpoint_racks
+                    ng.frequency = group.frequency
                     new_groups.append(ng)
             else:
                 logger.warn("No pad unit (ie FARP, carrier) found, so can't add helicopters.")

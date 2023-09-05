@@ -779,9 +779,7 @@ def checkVersion(splashscreen):
         avail_build = v["version"]
         avail_version = ver.parse(avail_build)
         current_version = ver.parse(version.version_string)
-        current_maj_min = ver.parse(str(current_version.major) + "." + str(current_version.minor))
-        avail_maj_min = ver.parse(str(avail_version.major) + "." + str(avail_version.minor))
-        if avail_maj_min > current_maj_min:
+        if avail_version > current_version:
             logger.warning("New version available. Please update to available version " + v["version"])
             msg = QMessageBox()
             msg.setWindowTitle(v["title"])
@@ -789,7 +787,7 @@ def checkVersion(splashscreen):
             msg.setIcon(QMessageBox.Icon.Information)
             x = msg.exec_()
         else:
-            logger.info("Version check complete: running the latest version. (micro version ignored)")
+            logger.info("Version check complete: running the latest version.")
    except:
         logger.error("Online version check failed.")
 
