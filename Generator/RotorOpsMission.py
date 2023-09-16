@@ -642,6 +642,7 @@ class RotorOpsMission:
             default_loadouts[helicopter_group.units[0].unit_type.id]["pylons"] = helicopter_group.units[0].pylons
             default_loadouts[helicopter_group.units[0].unit_type.id]["livery_id"] = helicopter_group.units[0].livery_id
             default_loadouts[helicopter_group.units[0].unit_type.id]["fuel"] = helicopter_group.units[0].fuel
+            default_loadouts[helicopter_group.units[0].unit_type.id]["frequency"] = helicopter_group.frequency
 
         # find friendly carriers and farps
         carrier = self.m.country(jtf_blue).find_ship_group(name="HELO_CARRIER")
@@ -746,6 +747,7 @@ class RotorOpsMission:
                     fg.units[0].pylons = default_loadouts[helotype.id]["pylons"]
                     fg.units[0].livery_id = default_loadouts[helotype.id]["livery_id"]
                     fg.units[0].fuel = default_loadouts[helotype.id]["fuel"]
+                    fg.frequency = default_loadouts[helotype.id]["frequency"]
 
                 # setup wingman for single player
                 if len(fg.units) == 2:
