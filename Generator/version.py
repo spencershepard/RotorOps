@@ -1,7 +1,7 @@
 # ROTOROPS VERSION
 maj_version = 1
 minor_version = 7
-patch_version = 1
+patch_version = 2
 
 version_url = 'https://dcs-helicopters.com/app-updates/versioncheck.yaml'
 
