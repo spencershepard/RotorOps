@@ -31,7 +31,7 @@ RotorOpsPerks.player_update_messages = true --set to false to disable messages w
 RotorOpsPerks.debug = false
 
 RotorOpsPerks.points = {
-    player_default=0, --how many points each player will start with
+    player_default=1000, --how many points each player will start with
     kill=10,
     kill_inf=5,
     kill_heli=20,
@@ -252,8 +252,16 @@ function RotorOpsPerks.spawnJtacDrone(dest_point, country, laser_code)
     end
     trigger.action.outText('JTAC DRONE IS ON STATION!', 10)
 
+    SetInvisible = { 
+        id = 'SetInvisible', 
+        params = { 
+          value = true 
+        } 
+      }
+
     --set a timer for one minute
     timer.scheduleFunction(function()
+        Group.getByName(new_group.name):getController():setTask(SetInvisible)
         Group.getByName(new_group.name):getController():setTask(orbit)
         Group.getByName(new_group.name):getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT, AI.Option.Air.val.REACTION_ON_THREAT.NO_REACTION)
         local _code = table.remove(ctld.jtacGeneratedLaserCodes, 1)
@@ -478,6 +486,19 @@ function RotorOpsPerks.scorePoints(player_group_name, points, message)
         end
     end
     
+end
+
+function RotorOpsPerks.getPointsBalance(player_group_name)
+    local players = RotorOpsPerks.playersByGroupName(player_group_name)
+    if not players then
+        return false
+    end
+
+    local total_points = 0
+    for _, player in pairs(players) do
+        total_points = total_points + player.points
+    end
+    return total_points
 end
 
 function RotorOpsPerks.checkPoints(player_group_name)

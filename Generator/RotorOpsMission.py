@@ -414,7 +414,10 @@ class RotorOpsMission:
         else:
             output_dir = directories.output  # default dir
         os.chdir(output_dir)
-        output_filename = options["scenario_name"] + " " + time.strftime('%a%H%M%S') + '.miz'
+        prefix = ""
+        if options["rotorops_server"]:
+            prefix = "DS_"  # prefix for dedicated server missions
+        output_filename = prefix + options["scenario_name"] + " " + time.strftime('%a%H%M%S') + '.miz'
 
         # dcs.mission.save will use the bypassed trig, trigrules, and triggers.  Our goal is to leave the trigrules and
         # trig from the source mission untouched. See comments in self.m.load_file above
