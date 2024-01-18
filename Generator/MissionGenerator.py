@@ -591,7 +591,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "advanced_defenses": self.advanced_defenses_checkBox.isChecked(),
                 "red_cap": self.scenario.getConfigValue("red_cap", default=True),
                 "blue_cap": self.scenario.getConfigValue("blue_cap", default=True),
-                "rotorops_server": self.scenario.getConfigValue("rotorops_server", default=False),
+                "rotorops_server": self.rotorops_server_checkBox.isChecked(),
                 "perks": self.perks_checkBox.isChecked(),
                 "easy_comms": self.scenario.getConfigValue("easy_comms", default=True)
                 }

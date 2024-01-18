@@ -1,18 +1,10 @@
 RotorOpsServer = {}
-RotorOpsServer.version = "0.3"
+RotorOpsServer.version = "0.4"
 trigger.action.outText("ROTOROPS SERVER SCRIPT: "..RotorOpsServer.version, 5)
 env.info("ROTOROPS SERVER SCRIPT STARTED: "..RotorOpsServer.version)
 
---For SpecialK's DCSServerBot
-RotorOpsServer.dcsbot = {}
-RotorOpsServer.dcsbot.enabled = true
-RotorOpsServer.dcsbot.points = {}
-RotorOpsServer.dcsbot.points.troop_drop = 6
-RotorOpsServer.dcsbot.points.unpack = 5
-RotorOpsServer.dcsbot.points.rearm_repair = 3
-
 --Mission Ending
-RotorOpsServer.time_to_end = 600
+RotorOpsServer.time_to_end = 900
 
 function RotorOpsServer.endMission(secs)
 	if secs then
@@ -36,33 +28,48 @@ function RotorOpsServer.endMission(secs)
 	countdown()
 end
 
-function RotorOpsServer.registerCtldCallbacks()
-	ctld.addCallback(function(_args)
-		local action = _args.action
-		local unit = _args.unit
-		local picked_troops = _args.onboard
-		local dropped_troops = _args.unloaded
-		--env.info("ctld callback: ".. mist.utils.tableShow(_args)) 
-		  
-		local playername = unit:getPlayerName()
-		if RotorOpsServer.dcsbot.enabled and dcsbot and playername then
-			if action == "unload_troops_zone" or action == "dropped_troops" then
-				if RotorOps.isUnitInZone(unit, RotorOps.active_zone) then
-				  env.info('RotorOpsServer: adding points (unload troops in active zone) for ' ..playername)
-				  net.send_chat(playername .. " dropped troops into the active zone. [" .. RotorOpsServer.dcsbot.points.troop_drop .. " points]")
-				  dcsbot.addUserPoints(playername, RotorOpsServer.dcsbot.points.troop_drop)
-				end
-			elseif action == "rearm" or action == "repair" then
-				env.info('RotorOpsServer: adding points (rearm/repair) for ' ..playername)
-				net.send_chat(playername .. " repaired/rearmed our defenses. [" .. RotorOpsServer.dcsbot.points.rearm_repair .. " points]")
-				dcsbot.addUserPoints(playername, RotorOpsServer.dcsbot.points.rearm_repair)
-			elseif action == "unpack" then
-				env.info('RotorOpsServer: adding points (unpack) for ' ..playername)
-				net.send_chat(playername .. " unpacked ground units. [" .. RotorOpsServer.dcsbot.points.unpack .. " points]")
-				dcsbot.addUserPoints(playername, RotorOpsServer.dcsbot.points.unpack)
-			end
-		end
-	end)
+function RotorOpsServer.convertPointsToSpawnCredits(playerName, points)
+	if dcsbot then
+	    env.info("RotorOpsServer: Converting "..points.." points to spawn credits for "..playerName)
+		dcsbot.addUserPoints(playerName, points)
+		return true
+	end
+	return false
 end
 
-RotorOpsServer.registerCtldCallbacks()
+function RotorOpsServer.addPerks()
+  env.info("RotorOpsServer: Adding perks to RotorOpsPerks.")
+  ---- PERKS: Convert points to spawn credits ----
+
+  RotorOpsPerks.perks["spawnCredits"] = {
+      perk_name='spawnCredits',
+      display_name='Buy 10 Spawn Credits',
+      cost=50,
+      cooldown=0,
+      max_per_player=1000,
+      max_per_mission=1000,
+      at_mark=false,
+      at_position=true,
+      enabled=true,
+      sides={0,1,2},
+  }
+
+  RotorOpsPerks.perks.spawnCredits["action_function"] = function(args)
+    local playerName = Unit.getByName(args.player_unit_name):getPlayerName()
+      return RotorOpsServer.convertPointsToSpawnCredits(playerName, 10)
+  end
+
+  ---- End of Spawn Credits Perk ----
+
+end
+
+if dcsbot then
+  RotorOpsServer.addPerks()
+else
+  env.warning("RotorOpsServer: DCSBot not found.  Perks not added.")
+end
+
+
+
+
+
