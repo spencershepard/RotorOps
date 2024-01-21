@@ -15,7 +15,7 @@
  
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.5.2"
+RotorOpsPerks.version = "1.5.3"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -31,7 +31,7 @@ RotorOpsPerks.player_update_messages = true --set to false to disable messages w
 RotorOpsPerks.debug = false
 
 RotorOpsPerks.points = {
-    player_default=1000, --how many points each player will start with
+    player_default=0, --how many points each player will start with
     kill=10,
     kill_inf=5,
     kill_heli=20,
