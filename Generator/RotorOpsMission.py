@@ -406,6 +406,11 @@ class RotorOpsMission:
             # to simplify rearm/refuel at FARPs
             self.m.options.difficulty.easyCommunication = True
 
+        if options["rotorops_server"]:
+            self.m.forced_options.civil_traffic = dcs.forcedoptions.ForcedOptions.CivilTraffic.Off
+            self.m.forced_options.options_view = dcs.forcedoptions.ForcedOptions.Views.Allies
+
+
 
         # Save the mission file
         window.statusBar().showMessage("Saving mission...", 10000)
