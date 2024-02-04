@@ -172,6 +172,8 @@ class RotorOpsMission:
         blue_forces = self.getUnitsFromMiz(options["blue_forces_path"], "both")
 
         # add images to briefing
+        if options["rotorops_server"]:
+            self.m.add_picture_blue(directories.assets + '/rotorops mp brief.png')
         self.m.add_picture_blue(directories.assets + '/briefing1.png')
         self.m.add_picture_blue(directories.assets + '/briefing2.png')
 
@@ -195,6 +197,8 @@ class RotorOpsMission:
                 logistics_base = i.path
             if i.filename == ("ZONE_ACTIVATED_DEFENSE.miz"):
                 zone_protect = i.path
+            if i.filename == ("DS_FARP_ACTIVATED_ZONE.miz"):
+                ds_activated_farp = i.path
 
             # it's possible to have import templates with the same filename, but we will let the latest override others
         # todo: verify we have the required templates
@@ -246,8 +250,12 @@ class RotorOpsMission:
 
                 # Add red zone FARPS
 
+                activated_farp_file = activated_farp
+                if options["rotorops_server"]:
+                    activated_farp_file = ds_activated_farp
+
                 vehicle_group = self.addZoneBase(options, zone_name, jtf_blue,
-                                                 file=activated_farp,
+                                                 file=activated_farp_file,
                                                  config_name="zone_farp_file",
                                                  copy_helicopters=helicopters,
                                                  helicopters_name="ZONE " + zone_name,
@@ -409,6 +417,9 @@ class RotorOpsMission:
         if options["rotorops_server"]:
             self.m.forced_options.civil_traffic = dcs.forcedoptions.ForcedOptions.CivilTraffic.Off
             self.m.forced_options.options_view = dcs.forcedoptions.ForcedOptions.Views.Allies
+
+            self.m.groundControl.blue_tactical_commander = 1
+            self.m.groundControl.blue_jtac = 1
 
 
 
