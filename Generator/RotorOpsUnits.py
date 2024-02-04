@@ -7,6 +7,7 @@ client_helos = [
     dcs.helicopters.AH_64D_BLK_II,
     dcs.helicopters.Mi_24P,
     dcs.helicopters.Ka_50,
+    dcs.helicopters.Ka_50_3
 ]
 
 player_helos = [
@@ -22,6 +23,8 @@ player_helos = [
     dcs.helicopters.UH_1H,
     aircraftMods.UH_60L,
     dcs.planes.AV8BNA,
+    dcs.planes.L_39ZA,
+    dcs.planes.MB_339A
 ]
 
 e_attack_helos = [
