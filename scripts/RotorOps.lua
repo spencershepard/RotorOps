@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.3.5"
+RotorOps.version = "1.4.0"
 local debug = false
 
 
@@ -50,6 +50,7 @@ RotorOps.defending_vehicles_behavior = "shift"  --available options: 'none', 'pa
 RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
 RotorOps.enable_staging_pickzones = true
 RotorOps.persistent_tasking = false --prevent the script from restasking in a loop --might help with odd movement patterns between zones
+RotorOps.halt_convoy_without_airsupport = true --if true, attacking convoys not proceed in zone without player helicopters nearby. Does not affect defensive missions
 
 --RotorOps settings that are safe to change only in the script config option in the scenario config file
 RotorOps.draw_conflict_zones = true
@@ -111,6 +112,7 @@ local zone_defenders_flags = {
   'ROPS_G_DEFENDERS',
   'ROPS_H_DEFENDERS',
 }
+local clear_text_index = 0
 RotorOps.farp_names = {}
 
 
@@ -745,71 +747,6 @@ function RotorOps.chargeEnemy(vars)
 end
 
 
---function RotorOps.chargeEnemy(vars)
--- --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5) 
--- local grp = vars.grp
--- local search_radius = vars.radius or 5000
--- ----
--- local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
--- 
--- if first_valid_unit == nil then return end
--- local start_point = first_valid_unit:getPoint()
--- if not vars.spawn_point then vars.spawn_point = start_point end
---
--- local enemy_coal
--- if grp:getCoalition() == 1 then enemy_coal = 2 end
--- if grp:getCoalition() == 2 then enemy_coal = 1 end
--- 
--- local volS
---   if vars.zone then 
---     --debugMsg("CHARGE ENEMY at zone: "..vars.zone)
---     local sphere = trigger.misc.getZone(vars.zone)
---     volS = {
---       id = world.VolumeType.SPHERE,
---       params = {
---         point = sphere.point, 
---         radius = sphere.radius
---       }
---     }
---   else 
---       --debugMsg("CHARGE ENEMY in radius: "..search_radius)
---       volS = {
---       id = world.VolumeType.SPHERE,
---       params = {
---         point = first_valid_unit:getPoint(), 
---         radius = search_radius
---       }
---     }
---   end
--- 
--- 
--- local enemy_unit
--- local path = {} 
--- local ifFound = function(foundItem, val)
---  --trigger.action.outText("found item: "..foundItem:getTypeName(), 5)  
--- -- if foundItem:hasAttribute("Infantry") == true and foundItem:getCoalition() == enemy_coal then
---  if foundItem:getCoalition() == enemy_coal and foundItem:isActive() then
---    enemy_unit = foundItem
---    --debugMsg("found enemy! "..foundItem:getTypeName()) 
---    
---    path[1] = mist.ground.buildWP(start_point, '', 5) 
---    path[2] = mist.ground.buildWP(enemy_unit:getPoint(), '', 5) 
---    --path[3] = mist.ground.buildWP(vars.spawn_point, '', 5) 
---    mist.goRoute(grp, path)
---  else 
---
---    --trigger.action.outText("object found is not enemy inf in "..search_radius, 5)  
---  end
---  
--- return true
--- end
---
--- world.searchObjects(Object.Category.UNIT, volS, ifFound)
--- 
---
---end
-
-
 function RotorOps.patrolRadius(vars)
  --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))  
  local grp = vars.grp
@@ -1101,14 +1038,14 @@ function RotorOps.aiExecute(vars)
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 250
-	vars.point = point
+	  vars.point = point
     RotorOps.shiftPosition(vars) --takes a group object, not name
     update_interval = math.random(60,360)
   elseif task == "guard" then
     local vars = {}
     vars.grp = Group.getByName(group_name)
     vars.radius = 100
-	vars.point = point
+	  vars.point = point
     RotorOps.guardPosition(vars) --takes a group object, not name
     update_interval = math.random(60,120)
 
@@ -1139,7 +1076,12 @@ function RotorOps.assessUnitsInZone(var)
    local attacking_ground_units
    local attacking_infantry
    local attacking_vehicles
-   
+
+   local halt_convoy = false
+   local convoy_status = "enroute"
+   if not RotorOps.defending and RotorOps.halt_convoy_without_airsupport then
+    halt_convoy = not RotorOps.predAirSupportNearActive()
+   end
 
 
     --find and sort units found in the active zone  
@@ -1176,13 +1118,25 @@ function RotorOps.assessUnitsInZone(var)
   
   for index, group in pairs(RotorOps.ai_attacking_infantry_groups) do 
     if group and not isStaticGroup(group) then
-      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
+      if halt_convoy then
+        RotorOps.aiTask(group, "guard")
+        convoy_status = "halted"
+      else
+        RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
+        convoy_status = "clearing_zone"
+      end
     end
   end
   
   for index, group in pairs(RotorOps.ai_attacking_vehicle_groups) do 
     if group and not isStaticGroup(group) then
-      RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)  
+      if halt_convoy then
+        RotorOps.aiTask(group, "guard")
+        convoy_status = "halted"
+      else
+        RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
+        convoy_status = "clearing_zone"
+      end 
     end
   end
   
@@ -1399,13 +1353,6 @@ function RotorOps.assessUnitsInZone(var)
    local message = ""
    local header = ""
    local body = ""
-   -- if RotorOps.defending == true then
-     -- header = "[DEFEND "..RotorOps.active_zone .. "]   " 
-     -- body = "RED: " ..#attacking_infantry.. " infantry, " .. #attacking_vehicles .. " vehicles.  BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"
-   -- else 
-     -- header = "[ATTACK "..RotorOps.active_zone .. "]   " 
-     -- body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE: "..#attacking_infantry.. " infantry, " .. #attacking_vehicles.." vehicles. ["..defenders_remaining_percent.."%]"   
-   -- end
    if RotorOps.defending == true then
      header = "[DEFEND "..RotorOps.active_zone .. "]   " 
      body = "BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
@@ -1414,10 +1361,27 @@ function RotorOps.assessUnitsInZone(var)
      body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"   
    end
 
+    if clear_text_index == 1 and not RotorOps.defending then  
+      if convoy_status == "halted" then
+        body = "CONVOY HALTED: Awaiting air support near "..RotorOps.active_zone
+      elseif convoy_status == "clearing_zone" then
+        body = "Convoy is clearing " .. RotorOps.active_zone
+      elseif convoy_status == "enroute" then
+        body = "Convoy enroute to " .. RotorOps.active_zone
+      end
+      if #staged_units_remaining == 0 then
+        body = "Convoy has been destroyed."
+      end
+    end
+
    message = header .. body
    if RotorOps.zone_status_display then 
      game_message_buffer[#game_message_buffer + 1] = {message, ""} --don't load the buffer faster than it's cleared.
    end
+   clear_text_index = clear_text_index + 1
+    if clear_text_index > 1 then
+      clear_text_index = 0
+    end
    local id = timer.scheduleFunction(RotorOps.assessUnitsInZone, 1, timer.getTime() + 10)
 end
 
@@ -2272,4 +2236,25 @@ function RotorOps.predSpawnRedCap()
   return true
 end
 
-
+--determine if attacking side aircraft are present near active zone
+function RotorOps.predAirSupportNearActive()
+  --loop through player aircraft and determine if any are within zone radius plus 5km
+  local players_near_active = 0
+  for uName, uData in pairs(mist.DBs.humansByName) do
+    local player_unit = Unit.getByName(uData.unitName)
+    if player_unit then
+      local player_pos = player_unit:getPosition().p
+      local active_zone = trigger.misc.getZone(RotorOps.active_zone)
+      local zone_pos = active_zone.point
+      local player_distance = mist.utils.get2DDist(player_pos, zone_pos)
+      if player_distance < (active_zone.radius + 8000) then
+        players_near_active = players_near_active + 1
+      end
+    end
+  end
+  if players_near_active > 0 then
+    return true
+  else
+    return false
+  end
+end
