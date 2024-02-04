@@ -188,6 +188,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.action_rateButton3.triggered.connect(self.rateButtonActionThree)
         self.action_rateButton4.triggered.connect(self.rateButtonActionFour)
         self.action_rateButton5.triggered.connect(self.rateButtonActionFive)
+        self.actionSave_Mission_Config.triggered.connect(self.saveScenarioConfig)
 
     # Find the selected dropdown menu options and make a list of tags to filter for
     def tagsFromMenuOptions(self):
@@ -248,6 +249,7 @@ class Window(QMainWindow, Ui_MainWindow):
                                         s.rating_qty = module["rating_count"]
 
                         config_file_path = os.path.join(path, folder, basename + '.yaml')
+                        s.config_file_path = config_file_path
                         if os.path.exists(config_file_path):
                             config = self.loadScenarioConfig(config_file_path)
                             if config:
@@ -444,6 +446,67 @@ class Window(QMainWindow, Ui_MainWindow):
         except Exception as e:
             logger.error("Error loading config file: " + str(e))
 
+    def saveScenarioConfig(self):
+
+        ## 'are you sure' popup
+        msg = QMessageBox()
+        msg.setWindowTitle("Save Mission Config")
+        msg.setText("This will overwrite the current mission config file.  Are you sure?")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        x = msg.exec_()
+        if x == QMessageBox.No:
+            return
+
+        config = {}
+
+        # get the author, version, map, tags, name, and description from the scenario
+        config['author'] = self.scenario.author
+        config['map'] = self.scenario.map_name
+        config['tags'] = self.scenario.tags
+        config['name'] = self.scenario.name
+        config['description'] = self.scenario.description
+
+
+        config['checkboxes'] = {}
+        config['spinboxes'] = {}
+        config['radiobuttons'] = {}
+        config['disable_checkboxes'] = []
+        config['disable_spinboxes'] = []
+
+        for box in QObject.findChildren(self, QCheckBox):
+            config['checkboxes'][box.objectName()] = box.isChecked()
+
+        for box in QObject.findChildren(self, QSpinBox):
+            config['spinboxes'][box.objectName()] = box.value()
+
+        for button in QObject.findChildren(self, QRadioButton):
+            if button.isChecked():
+                config['radiobuttons'][button.objectName()] = True
+
+        for box in QObject.findChildren(self, QCheckBox):
+            if not box.isEnabled():
+                config['disable_checkboxes'].append(box.objectName())
+
+        for box in QObject.findChildren(self, QSpinBox):
+            if not box.isEnabled():
+                config['disable_spinboxes'].append(box.objectName())
+
+
+        config['blue_forces'] = self.forces_list[self.blueforces_comboBox.currentIndex()].basename
+
+        config['red_forces'] = self.forces_list[self.redforces_comboBox.currentIndex()].basename
+
+        if self.slot_template_comboBox.currentIndex() > 0:
+            config['player_spawn'] = "fixed"
+
+        config_file_path = os.path.join(self.scenario.config_file_path)
+        with open(config_file_path, 'w') as outfile:
+            yaml.dump(config, outfile)
+
+
+
+
     def loadUserData(self):
         prefs = {}
         if os.path.exists(directories.user_datafile_path):
@@ -507,7 +570,7 @@ class Window(QMainWindow, Ui_MainWindow):
             self.missionImage.setPixmap(QtGui.QPixmap(directories.assets + "/briefing1.png"))
 
         self.scenario.evaluateMiz()
-        self.description_textBrowser.setText(self.scenario.description)
+        self.description_textBrowser.setText(self.scenario.display_description)
 
         QApplication.restoreOverrideCursor()
 

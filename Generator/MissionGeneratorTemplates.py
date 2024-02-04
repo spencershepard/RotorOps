@@ -20,6 +20,7 @@ class Scenario:
         self.packageID = None
         self.local_rating = None
         self.author = "unknown"
+        self.display_description = ""
 
 
     def applyConfig(self, config):
@@ -122,7 +123,7 @@ class Scenario:
              )
             if self.packageID:
                 description = description + "\n\nScenario module ID: " + self.packageID
-            self.description = description.replace("\n", "<br />")
+            self.display_description = description.replace("\n", "<br />")
 
 
 

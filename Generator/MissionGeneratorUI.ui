@@ -80,7 +80,7 @@
      <rect>
       <x>510</x>
       <y>350</y>
-      <width>241</width>
+      <width>341</width>
       <height>28</height>
      </rect>
     </property>
@@ -192,7 +192,7 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>980</x>
       <y>140</y>
-      <width>156</width>
+      <width>211</width>
       <height>28</height>
      </rect>
     </property>
@@ -921,9 +921,9 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="geometry">
      <rect>
-      <x>750</x>
+      <x>790</x>
       <y>600</y>
-      <width>231</width>
+      <width>191</width>
       <height>51</height>
      </rect>
     </property>
@@ -1349,7 +1349,7 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>1020</x>
       <y>650</y>
-      <width>121</width>
+      <width>131</width>
       <height>21</height>
      </rect>
     </property>
@@ -1367,6 +1367,38 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="checked">
      <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="saveConfigButton">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>600</y>
+      <width>121</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>8</pointsize>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>Save these mission options for next time.</string>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
+    <property name="text">
+     <string> Save Config</string>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>resources/floppy-disk.png</normaloff>resources/floppy-disk.png</iconset>
     </property>
    </widget>
   </widget>
@@ -1403,9 +1435,16 @@ p, li { white-space: pre-wrap; }
     </property>
     <addaction name="actionSave_Directory"/>
    </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionSave_Mission_Config"/>
+   </widget>
    <addaction name="menuMap"/>
    <addaction name="menuFilter"/>
    <addaction name="menuPreferences"/>
+   <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="font">
@@ -1633,6 +1672,14 @@ p, li { white-space: pre-wrap; }
     <string>_rateButton5</string>
    </property>
   </action>
+  <action name="actionSave_Mission_Config">
+   <property name="text">
+    <string>Save Mission Config</string>
+   </property>
+   <property name="toolTip">
+    <string>Save Mission Config</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections>
@@ -1805,6 +1852,22 @@ p, li { white-space: pre-wrap; }
     <hint type="sourcelabel">
      <x>295</x>
      <y>664</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>saveConfigButton</sender>
+   <signal>clicked()</signal>
+   <receiver>actionSave_Mission_Config</receiver>
+   <slot>trigger()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>795</x>
+     <y>569</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
