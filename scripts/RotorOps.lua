@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.4.0"
+RotorOps.version = "1.4.1"
 local debug = false
 
 
@@ -114,6 +114,8 @@ local zone_defenders_flags = {
 }
 local clear_text_index = 0
 RotorOps.farp_names = {}
+RotorOps.convoy_suppressor = nil
+RotorOps.convoy_status = "none"
 
 
 RotorOps.gameMsgs = {
@@ -326,6 +328,28 @@ function RotorOps.eventHandler:onEvent(event)
        env.info("Blue forces captured a base via place attribute")
      end
    end
+
+   ---UNIT DESTROYED EVENTS
+    if (world.event.S_EVENT_KILL == event.id) then
+      if event.initiator and event.target then
+        if not Unit.getGroup(event.initiator) then
+          return
+        end
+        if event.initiator:getCoalition() and event.target:getCoalition() and event.initiator:getCoalition() ~= event.target:getCoalition() then
+          local unit = mist.DBs.unitsByName[event.target:getName()]  --unit is already dead, so we'll need to use the database to get other attributes
+          if unit then
+            for index, group in pairs(RotorOps.ai_attacking_vehicle_groups) do
+              if group == unit.groupName then
+                if event.initiator:hasAttribute("Tanks") then
+                  env.info("ROTOROPS: convoy unit killed by armor. Should suppress convoy")
+                  RotorOps.convoy_suppressor = event.initiator
+                end
+              end
+            end
+          end
+        end
+      end
+    end
   
    
 end
@@ -1077,12 +1101,6 @@ function RotorOps.assessUnitsInZone(var)
    local attacking_infantry
    local attacking_vehicles
 
-   local halt_convoy = false
-   local convoy_status = "enroute"
-   if not RotorOps.defending and RotorOps.halt_convoy_without_airsupport then
-    halt_convoy = not RotorOps.predAirSupportNearActive()
-   end
-
 
     --find and sort units found in the active zone  
    if RotorOps.defending then 
@@ -1107,8 +1125,24 @@ function RotorOps.assessUnitsInZone(var)
      RotorOps.ai_defending_vehicle_groups = RotorOps.groupsFromUnits(defending_vehicles)
      RotorOps.ai_attacking_infantry_groups = RotorOps.groupsFromUnits(attacking_infantry)
      RotorOps.ai_attacking_vehicle_groups = RotorOps.groupsFromUnits(attacking_vehicles)
-	 
 
+     local halt_convoy = false
+     RotorOps.convoy_status = "enroute"
+	
+     if #attacking_ground_units > 0 and not RotorOps.defending and RotorOps.halt_convoy_without_airsupport then
+      if RotorOps.convoy_suppressor then
+        if RotorOps.convoy_suppressor:isExist() then
+          halt_convoy = true
+          RotorOps.convoy_status = "suppressed"
+        else
+          RotorOps.convoy_suppressor = nil
+        end
+
+      elseif not RotorOps.predAirSupportNearActive() then
+        RotorOps.convoy_status = "waiting_for_escort"
+        halt_convoy = true
+      end
+    end
    
   for index, group in pairs(RotorOps.ai_defending_infantry_groups) do 
     if group and not isStaticGroup(group) then
@@ -1120,10 +1154,9 @@ function RotorOps.assessUnitsInZone(var)
     if group and not isStaticGroup(group) then
       if halt_convoy then
         RotorOps.aiTask(group, "guard")
-        convoy_status = "halted"
       else
         RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
-        convoy_status = "clearing_zone"
+        RotorOps.convoy_status = "clearing_zone"
       end
     end
   end
@@ -1132,10 +1165,9 @@ function RotorOps.assessUnitsInZone(var)
     if group and not isStaticGroup(group) then
       if halt_convoy then
         RotorOps.aiTask(group, "guard")
-        convoy_status = "halted"
       else
         RotorOps.aiTask(group, "clear_zone", RotorOps.active_zone)
-        convoy_status = "clearing_zone"
+        RotorOps.convoy_status = "clearing_zone"
       end 
     end
   end
@@ -1362,12 +1394,15 @@ function RotorOps.assessUnitsInZone(var)
    end
 
     if clear_text_index == 1 and not RotorOps.defending then  
-      if convoy_status == "halted" then
+      if RotorOps.convoy_status == "waiting_for_escort" then
         body = "CONVOY HALTED: Awaiting air support near "..RotorOps.active_zone
-      elseif convoy_status == "clearing_zone" then
+      elseif RotorOps.convoy_status == "clearing_zone" then
         body = "Convoy is clearing " .. RotorOps.active_zone
-      elseif convoy_status == "enroute" then
+      elseif RotorOps.convoy_status == "enroute" then
         body = "Convoy enroute to " .. RotorOps.active_zone
+      elseif RotorOps.convoy_status == "suppressed" then
+        local supressor_type = RotorOps.convoy_suppressor:getTypeName() or "enemy units"
+        body = "Convoy pinned down by "..supressor_type.."!"
       end
       if #staged_units_remaining == 0 then
         body = "Convoy has been destroyed."
