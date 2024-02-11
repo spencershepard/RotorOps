@@ -30,10 +30,10 @@ class ImportObjects:
     def getHelicopters(self):
         return self.helicopters
 
-    def copyAll(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0):
+    def copyAll(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0, start_type=None):
         return self.copyStatics(mission, dest_country_name, dest_name, dest_point, dest_heading), \
                self.copyVehicles(mission, dest_country_name, dest_name, dest_point, dest_heading), \
-               self.copyHelicopters(mission, dest_country_name, dest_name, dest_point, dest_heading)
+               self.copyHelicopters(mission, dest_country_name, dest_name, dest_point, dest_heading, start_type)
 
     def anchorByGroupName(self, group_name):
         group = self.source_mission.find_group(group_name)

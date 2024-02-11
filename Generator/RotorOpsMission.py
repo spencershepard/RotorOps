@@ -259,7 +259,7 @@ class RotorOpsMission:
                                                  config_name="zone_farp_file",
                                                  copy_helicopters=helicopters,
                                                  helicopters_name="ZONE " + zone_name,
-                                                 heli_start_type=None,
+                                                 heli_start_type=start_type,
                                                  copy_vehicles=True,
                                                  vehicles_name=zone_name + " FARP Static",
                                                  copy_statics=False,
@@ -302,7 +302,7 @@ class RotorOpsMission:
                                      config_name="logistics_farp_file",
                                      copy_helicopters=helicopters,
                                      helicopters_name="ZONE " + zone_name + " LOGISTICS",
-                                     heli_start_type=None,
+                                     heli_start_type=start_type,
                                      copy_vehicles=True,
                                      vehicles_name=zone_name + " Logistics FARP",
                                      copy_statics=True,
@@ -318,7 +318,7 @@ class RotorOpsMission:
                                      config_name="defensive_farp_file",
                                      copy_helicopters=helicopters,
                                      helicopters_name="ZONE " + zone_name + " EMPTY",
-                                     heli_start_type=None,
+                                     heli_start_type=start_type,
                                      copy_vehicles=True,
                                      vehicles_name=zone_name + " Defensive FARP",
                                      copy_statics=True,
@@ -404,6 +404,10 @@ class RotorOpsMission:
 
             logger.info("Cloud preset = " + cloud_preset.ui_name + ", ground windspeed = " + str(
                 self.m.weather.wind_at_ground.speed))
+
+        if self.m.weather.wind_at_ground.speed == 0:
+            self.m.weather.wind_at_ground.speed = 2
+            self.m.weather.wind_at_ground.direction = 0
 
         if options["time"] != "Default Time":
             self.m.random_daytime(options["time"].lower())
@@ -1272,6 +1276,10 @@ class RotorOpsMission:
                             filename = filename[0:i]
                             print(filename)
 
+                        start_type = None
+                        if data["player_hotstart"]:
+                            start_type = dcs.mission.StartType.Warm
+
                         for imp in imports:
                             if imp.filename == (filename + ".miz"):
                                 i = ImportObjects(imp.path)
@@ -1279,7 +1287,8 @@ class RotorOpsMission:
                                 new_statics, new_vehicles, new_helicopters = i.copyAll(self.m, country_name,
                                                                                        group.units[0].name,
                                                                                        group.units[0].position,
-                                                                                       group.units[0].heading)
+                                                                                       group.units[0].heading,
+                                                                                       start_type=start_type)
 
                                 break
 
