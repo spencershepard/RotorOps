@@ -138,6 +138,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.user_data = None
         self.forces_list = []
         self.imports_list = []
+        self.current_config = None
 
         self.user_data = self.loadUserData()
 
@@ -385,6 +386,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
 
     def applyScenarioConfig(self, config):
+        self.current_config = config
 
         # reset some UI elements
         self.defense_checkBox.setEnabled(True)
@@ -457,16 +459,7 @@ class Window(QMainWindow, Ui_MainWindow):
         x = msg.exec_()
         if x == QMessageBox.No:
             return
-
-        config = {}
-
-        # get the author, version, map, tags, name, and description from the scenario
-        config['author'] = self.scenario.author
-        config['map'] = self.scenario.map_name
-        config['tags'] = self.scenario.tags
-        config['name'] = self.scenario.name
-        config['description'] = self.scenario.description
-
+        config = self.current_config
 
         config['checkboxes'] = {}
         config['spinboxes'] = {}
