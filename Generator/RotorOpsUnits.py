@@ -55,3 +55,17 @@ f_fighter_planes = [
 e_zone_sams = [
     dcs.vehicles.AirDefence.Strela_10M3,
 ]
+
+#flaming cliffs aircraft
+low_fidelity_aircraft_ids = [
+    dcs.planes.F_15C.id,
+    dcs.planes.Su_27.id,
+    dcs.planes.Su_33.id,
+    dcs.planes.MiG_29A.id,
+    dcs.planes.MiG_29S.id,
+    dcs.planes.Su_25T.id,
+    dcs.planes.Su_25TM.id
+    ]
+
+
+
