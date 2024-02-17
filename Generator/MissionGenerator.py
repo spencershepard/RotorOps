@@ -23,6 +23,7 @@ from PyQt5 import QtGui
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import QObject, QEvent, Qt, QUrl
 import resources # pyqt resource file
+from Generator import aircraftMods
 
 from MissionGeneratorUI import Ui_MainWindow
 
@@ -356,6 +357,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
         for type in RotorOpsUnits.player_helos:
             self.slot_template_comboBox.addItem(type.id)
+
         self.slot_template_comboBox.addItem("None")
 
     def slotChanged(self):
@@ -756,19 +758,26 @@ class Window(QMainWindow, Ui_MainWindow):
             new_slot = QComboBox()
             self.slot_boxes.append(new_slot)
             self.layout.addWidget(new_slot)
-            for helo_type in RotorOpsUnits.player_helos:
-                new_slot.addItem(helo_type.id)
+
+            for helicopter_id in sorted(dcs.helicopters.helicopter_map):
+                if dcs.helicopters.helicopter_map[helicopter_id].flyable:
+                    new_slot.addItem(helicopter_id)
+
+            new_slot.addItem(aircraftMods.UH_60L.id)
+
+            for plane_id in sorted(dcs.planes.plane_map):
+                if dcs.planes.plane_map[plane_id].flyable and plane_id not in RotorOpsUnits.low_fidelity_aircraft_ids:
+                    new_slot.addItem(plane_id)
+
+            new_slot.setCurrentIndex(0)
 
             # use the aircraft type if provided
-            if aircraft_type:
+            if aircraft_type and new_slot.findText(aircraft_type):
                 new_slot.setCurrentIndex(new_slot.findText(aircraft_type))
 
             # else duplicate the last slot type if it exists
             elif len(self.slot_boxes) > 1:
                 new_slot.setCurrentIndex(self.slot_boxes[-2].currentIndex())
-
-            else:
-                new_slot.setCurrentIndex(0)
 
 
         def removeSlotBox(self):
