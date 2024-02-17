@@ -134,6 +134,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.scenarios_list = []
         self.scenario = None
         self.player_slots = []
+        self.player_slots_from_file = None
         self.user_output_dir = None
         self.user_data = None
         self.forces_list = []
@@ -249,6 +250,7 @@ class Window(QMainWindow, Ui_MainWindow):
                                         s.rating = module["avg_rating"]
                                         s.rating_qty = module["rating_count"]
 
+
                         config_file_path = os.path.join(path, folder, basename + '.yaml')
                         s.config_file_path = config_file_path
                         if os.path.exists(config_file_path):
@@ -351,6 +353,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
     def populateSlotSelection(self):
         self.slot_template_comboBox.addItem("Multiple Slots")
+
         for type in RotorOpsUnits.player_helos:
             self.slot_template_comboBox.addItem(type.id)
         self.slot_template_comboBox.addItem("None")
@@ -359,10 +362,8 @@ class Window(QMainWindow, Ui_MainWindow):
         if self.slot_template_comboBox.currentIndex() == 0:
             sd = self.slotDialog(self)
             sd.exec_()
-            if sd.helicopter_types:
-                self.user_data["player_slots"] = sd.helicopter_types
-                self.player_slots = sd.helicopter_types
-                self.saveUserData()
+            if sd.selected_aircraft:
+                self.player_slots = sd.selected_aircraft
 
 
     def defensiveModeChanged(self):
@@ -449,11 +450,9 @@ class Window(QMainWindow, Ui_MainWindow):
             logger.error("Error loading config file: " + str(e))
 
     def saveScenarioConfig(self):
-
-        ## 'are you sure' popup
         msg = QMessageBox()
         msg.setWindowTitle("Save Mission Config")
-        msg.setText("This will overwrite the current mission config file.  Are you sure?")
+        msg.setText("This will overwrite the current mission config file and player slots.  Are you sure?")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msg.setDefaultButton(QMessageBox.No)
         x = msg.exec_()
@@ -497,7 +496,12 @@ class Window(QMainWindow, Ui_MainWindow):
         with open(config_file_path, 'w') as outfile:
             yaml.dump(config, outfile)
 
-
+        if self.slot_template_comboBox.currentText() == "Multiple Slots":
+            slots = {"blue_slots": self.player_slots}
+            path = os.path.dirname(self.scenario.config_file_path)
+            slot_file = os.path.join(path, 'player_slots.yaml')
+            with open(slot_file, 'w') as outfile:
+                yaml.dump(slots, outfile)
 
 
     def loadUserData(self):
@@ -508,9 +512,6 @@ class Window(QMainWindow, Ui_MainWindow):
                     prefs = yaml.safe_load(pfile)
                     if "save_directory" in prefs:
                         self.user_output_dir = prefs["save_directory"]
-
-                    if "player_slots" in prefs:
-                        self.player_slots = prefs["player_slots"]
 
                     if "ratings" in prefs:
                         self.user_ratings = prefs["ratings"]
@@ -582,11 +583,26 @@ class Window(QMainWindow, Ui_MainWindow):
         for button in rate_buttons:
             button.setStyleSheet(star_empty_ss)
 
-
         if self.user_data and 'local_ratings' in self.user_data and self.scenario.path in self.user_data["local_ratings"]:
             user_rating = self.user_data['local_ratings'][self.scenario.path]
             for i in range(user_rating):
                 rate_buttons[i].setStyleSheet(star_full_ss)
+
+        scenario_folder = os.path.dirname(self.scenario.path)
+
+        self.player_slots = []
+        # load the player slots for the selected scenario or from the player options
+
+        if os.path.exists(os.path.join(scenario_folder, "player_slots.yaml")):
+            with open(os.path.join(scenario_folder, "player_slots.yaml"), 'r') as pfile:
+                slots = yaml.safe_load(pfile)
+                self.player_slots = slots["blue_slots"]
+                self.player_slots_from_file = slots["blue_slots"]
+                print("player_slots.yaml found: loaded slots")
+        else:
+            self.player_slots = self.user_data["player_slots"]
+            self.player_slots_from_file = None
+
 
     def generateMissionAction(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -715,13 +731,10 @@ class Window(QMainWindow, Ui_MainWindow):
             self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint) # remove help button
             message = QLabel("Add your desired multiplayer slots here. \nIt is recommended to check placement in the \nMission Editor before flying your mission.\n")
             self.layout.addWidget(message)
-            self.helicopter_types = None
-
+            self.selected_aircraft = None
 
             self.slot_qty = len(window.player_slots)
             self.window = window
-
-            #self.populateBoxes()
 
             QBtn = QDialogButtonBox.Ok
             self.buttonBox = QDialogButtonBox(QBtn)
@@ -729,47 +742,34 @@ class Window(QMainWindow, Ui_MainWindow):
             self.removeBtn = self.buttonBox.addButton("-", QDialogButtonBox.ActionRole)
             self.layout.addWidget(self.buttonBox)
 
-
             self.buttonBox.accepted.connect(self.accepted)
             self.buttonBox.rejected.connect(self.close)
             self.addBtn.clicked.connect(self.addSlotBox)
             self.removeBtn.clicked.connect(self.removeSlotBox)
 
             self.slot_boxes = []
-
-            if "player_slots" in window.user_data:
-                for index in range(0, len(window.user_data["player_slots"])):
-                    self.addSlotBox()
+            self.clear_and_populate(window.player_slots)
 
             self.setLayout(self.layout)
 
-
-        def populateBoxes(self):
-
-            for index in range(0, self.slot_qty):
-                self.slot_boxes.append(QComboBox())
-                for type in RotorOpsUnits.player_helos:
-                    self.slot_boxes[index].addItem(type.id)
-
-            for index in range(0, self.slot_qty):
-                self.layout.addWidget(self.slot_boxes[index])
-                #self.slot_boxes[index].setCurrentIndex(self.slot_boxes[index].findText(self.window.user_data["player_slots"][index]))
-
-
-
-        def addSlotBox(self):
+        def addSlotBox(self, aircraft_type=None):
             new_slot = QComboBox()
             self.slot_boxes.append(new_slot)
             self.layout.addWidget(new_slot)
             for helo_type in RotorOpsUnits.player_helos:
                 new_slot.addItem(helo_type.id)
 
-            slot_index = len(self.slot_boxes) - 1
-            if "player_slots" not in self.window.user_data:
+            # use the aircraft type if provided
+            if aircraft_type:
+                new_slot.setCurrentIndex(new_slot.findText(aircraft_type))
+
+            # else duplicate the last slot type if it exists
+            elif len(self.slot_boxes) > 1:
+                new_slot.setCurrentIndex(self.slot_boxes[-2].currentIndex())
+
+            else:
                 new_slot.setCurrentIndex(0)
-            elif slot_index < len(self.window.user_data["player_slots"]):
-                new_slot.setCurrentIndex(new_slot.findText(self.window.user_data["player_slots"][slot_index]))
-            return new_slot
+
 
         def removeSlotBox(self):
             last_index = len(self.slot_boxes) - 1
@@ -777,11 +777,24 @@ class Window(QMainWindow, Ui_MainWindow):
             self.slot_boxes.pop(last_index)
 
         def accepted(self):
-            heli_types = []
+            self.selected_aircraft = []
             for box in self.slot_boxes:
-                heli_types.append(box.currentText())
-            self.helicopter_types = heli_types
+                self.selected_aircraft.append(box.currentText())
+
+            if not self.window.player_slots_from_file:
+                # save the player slots to the user data file if they are not loaded from a file
+                self.window.user_data["player_slots"] = self.selected_aircraft
+                self.window.saveUserData()
+
+            self.window.player_slots = self.selected_aircraft
             self.close()
+
+        def clear_and_populate(self, aircraft=None):
+            for box in self.slot_boxes:
+                self.layout.removeWidget(box)
+            self.slot_boxes = []
+            for aircraft_type in aircraft:
+                self.addSlotBox(aircraft_type)
 
     def rateScenario(self, rating):
         if "local_ratings" not in self.user_data:
