@@ -766,7 +766,7 @@ class Window(QMainWindow, Ui_MainWindow):
             new_slot.addItem(aircraftMods.UH_60L.id)
 
             for plane_id in sorted(dcs.planes.plane_map):
-                if dcs.planes.plane_map[plane_id].flyable and plane_id not in RotorOpsUnits.low_fidelity_aircraft_ids:
+                if dcs.planes.plane_map[plane_id].flyable and plane_id not in RotorOpsUnits.excluded_player_aircraft:
                     new_slot.addItem(plane_id)
 
             new_slot.setCurrentIndex(0)
