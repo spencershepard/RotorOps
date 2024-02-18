@@ -5,9 +5,7 @@ import dcs.cloud_presets
 import os
 import random
 
-import RotorOpsGroups
 import RotorOpsUnits
-import RotorOpsUtils
 import RotorOpsConflict
 import aircraftMods
 from RotorOpsImport import ImportObjects
@@ -411,7 +409,7 @@ class RotorOpsMission:
 
         if options["time"] != "Default Time":
             self.m.random_daytime(options["time"].lower())
-            print("Time set to " + options["time"])
+            print("Time set to '" + options["time"] + "'")
 
         # set the mission options
         if options["easy_comms"]:
@@ -529,7 +527,8 @@ class RotorOpsMission:
     def getCoalitionAirports(self, side: str):
         coalition_airports = []
         primary_airport = None
-        shortest_dist = 1000000
+        secondary_airport = None
+        airports_by_distance = {}
         for airport_name in self.m.terrain.airports:
             airportobj = self.m.terrain.airports[airport_name]
             if airportobj.coalition == str.upper(side):
@@ -540,17 +539,21 @@ class RotorOpsMission:
                 dist_from_start = dcs.mapping._distance(airportobj.position.x, airportobj.position.y, start.position.x,
                                                         start.position.y)
 
-                if dist_from_start < shortest_dist:
-                    primary_airport = airportobj
-                    shortest_dist = dist_from_start
+                airports_by_distance[dist_from_start] = airportobj
 
-        return coalition_airports, primary_airport
+        if len(airports_by_distance) > 0:
+            primary_airport = airports_by_distance[min(airports_by_distance)]
+            airports_by_distance.pop(min(airports_by_distance))
+            if len(airports_by_distance) > 0:
+                secondary_airport = airports_by_distance[min(airports_by_distance)]
+
+        return coalition_airports, primary_airport, secondary_airport
 
     def getParking(self, airport, aircraft, alt_airports=None, group_size=1):
 
         if len(airport.free_parking_slots(aircraft)) >= group_size:
             if not (aircraft.id in dcs.planes.plane_map and (
-                    len(airport.runways) == 0 or not hasattr(airport.runways[0], "ils"))):
+                    len(airport.runways) == 0)):
                 return airport
 
         if alt_airports:
@@ -562,16 +565,12 @@ class RotorOpsMission:
         logger.warn("No parking available for " + aircraft.id)
         return None
 
-    # Find parking spots on FARPs and carriers
-    def getUnitParking(self, aircraft):
-        return
-
     def swapSides(self, options):
 
         # Swap airports
 
-        blue_airports, primary_blue = self.getCoalitionAirports("blue")
-        red_airports, primary_red = self.getCoalitionAirports("red")
+        blue_airports, primary_blue, secondary_blue = self.getCoalitionAirports("blue")
+        red_airports, primary_red, secondary_red = self.getCoalitionAirports("red")
 
         for airport in blue_airports:
             self.m.terrain.airports[airport.name].set_red()
@@ -680,7 +679,7 @@ class RotorOpsMission:
             farp_heading = farp.units[0].heading
             heading = farp_heading
 
-        friendly_airports, primary_f_airport = self.getCoalitionAirports("blue")
+        friendly_airports, primary_f_airport, secondary_f_airport = self.getCoalitionAirports("blue")
 
 
         group_size = 1
@@ -706,21 +705,23 @@ class RotorOpsMission:
 
         farp_helicopter_count = 1
         for helicopter_id in player_helicopters:
+            plane = False
             fg = None
             helotype = None
             if helicopter_id in dcs.helicopters.helicopter_map:
                 helotype = dcs.helicopters.helicopter_map[helicopter_id]
             elif helicopter_id in dcs.planes.plane_map:
                 helotype = dcs.planes.plane_map[helicopter_id]
+                plane = True
             else:
                 continue
-            if carrier:
+            if carrier and not plane:
                 fg = self.m.flight_group_from_unit(self.m.country(jtf_blue),
                                                    "CARRIER " + start_type_string + helotype.id, helotype,
                                                    carrier,
                                                    dcs.task.CAS, group_size=group_size, start_type=start_type)
 
-            elif farp and farp_helicopter_count <= 4:
+            elif farp and farp_helicopter_count <= 4 and not plane:
 
 
                 #old ugly FARPs, or single player groups with wingman require fg from unit
@@ -753,11 +754,15 @@ class RotorOpsMission:
                 fg.points[0].action = start_type_action
                 fg.points[0].type = start_type_point_type
             else:
-                parking = self.getParking(primary_f_airport, helotype, friendly_airports,
+                if plane and secondary_f_airport:
+                    airport = secondary_f_airport
+                else:
+                    airport = primary_f_airport
+                parking = self.getParking(airport, helotype, friendly_airports,
                                           group_size=group_size)
                 if parking:
                     fg = self.m.flight_group_from_airport(self.m.country(jtf_blue),
-                                                          primary_f_airport.name + " " + start_type_string + helotype.id,
+                                                          airport.name + " " + start_type_string + helotype.id,
                                                           helotype,
                                                           parking, group_size=group_size, start_type=start_type)
 
@@ -810,8 +815,8 @@ class RotorOpsMission:
     def addFlights(self, options, red_forces, blue_forces):
         combinedJointTaskForcesBlue = self.m.country(dcs.countries.CombinedJointTaskForcesBlue.name)
         combinedJointTaskForcesRed = self.m.country(dcs.countries.CombinedJointTaskForcesRed.name)
-        friendly_airports, primary_f_airport = self.getCoalitionAirports("blue")
-        enemy_airports, primary_e_airport = self.getCoalitionAirports("red")
+        friendly_airports, primary_f_airport, secondary_f_airport = self.getCoalitionAirports("blue")
+        enemy_airports, primary_e_airport, secondary_e_airport = self.getCoalitionAirports("red")
 
 
         # find enemy carriers and farps
