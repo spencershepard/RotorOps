@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.4.2"
+RotorOps.version = "1.4.3"
 local debug = false
 
 
@@ -2224,7 +2224,7 @@ function RotorOps.deployFighters()
 				  local terrain_height = land.getHeight({x = target_pos.x, y = target_pos.z})
 				  local target_agl = target_pos.y - terrain_height
 
-				  env.info(uData.unitName .. "detected " .. detected_unitname .. " at " .. target_distance .. " agl:" .. target_agl)
+				  --env.info(uData.unitName .. "detected " .. detected_unitname .. " at " .. target_distance .. " agl:" .. target_agl)
 
 				  if target_distance <= max_distance and target_agl >= RotorOps.fighter_min_detection_alt then
 					env.info('RotorOps: ' .. uData.unitName .. " has detected "..detected_unitname .. "at agl=" .. target_agl .. " distance=" .. target_distance)
