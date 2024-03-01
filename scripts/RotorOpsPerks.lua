@@ -15,7 +15,7 @@
 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.5.4"
+RotorOpsPerks.version = "1.5.6"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -252,21 +252,16 @@ function RotorOpsPerks.spawnJtacDrone(dest_point, country, laser_code)
     end
     trigger.action.outText('JTAC DRONE IS ON STATION!', 10)
 
-    SetInvisible = {
-        id = 'SetInvisible',
-        params = {
-          value = true
-        }
-      }
 
     --set a timer for one minute
     timer.scheduleFunction(function()
-        Group.getByName(new_group.name):getController():setTask(SetInvisible)
+        local _code = table.remove(ctld.jtacGeneratedLaserCodes, 1)
+        log('Setting up JTAC DRONE ' .. new_group.name .. ' to lase targets on: '.._code)
         Group.getByName(new_group.name):getController():setTask(orbit)
         Group.getByName(new_group.name):getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT, AI.Option.Air.val.REACTION_ON_THREAT.NO_REACTION)
-        local _code = table.remove(ctld.jtacGeneratedLaserCodes, 1)
-        ctld.JTACAutoLase(new_group.name, table.remove(ctld.jtacGeneratedLaserCodes, 1), true, "vehicle")
+        ctld.JTACAutoLase(new_group.name, laser_code, true, "vehicle")
         table.insert(ctld.jtacGeneratedLaserCodes, _code)
+        
     end, nil, timer.getTime() + 60)
 
 end
@@ -301,7 +296,6 @@ end
 
 RotorOpsPerks.perks.player_fatcow["action_condition"] = function(args)
     local player_unit = Group.getByName(args.player_group_name):getUnit(1)
-    local agl_altitude = player_unit:getPosition().p.y - land.getHeight(player_unit:getPosition().p)
 
     if RotorOpsPerks.perks.player_fatcow.active[args.player_group_name] then
         return {msg="FARP already deployed at your position!", valid=false}
@@ -311,8 +305,8 @@ RotorOpsPerks.perks.player_fatcow["action_condition"] = function(args)
         return {msg="No FARP resources available!", valid=false}
     end
 
-    if agl_altitude > 100 then
-        return {msg="You must be on the ground! "..agl_altitude.." AGL", valid=false}
+    if player_unit:inAir() then
+        return {msg="You must be on the ground!", valid=false}
     end
 
     --rearming/refueling doesn't work if enemies are nearby (within 1.1nm)
@@ -359,8 +353,7 @@ RotorOpsPerks.perks.player_fatcow["monitor_player"] = function(args)
     if Group.getByName(args.player_group_name) then
 
         local player_unit = Group.getByName(args.player_group_name):getUnit(1)
-        local agl_altitude = player_unit:getPosition().p.y - land.getHeight(player_unit:getPosition().p)
-        if agl_altitude > 100 or not player_unit:isExist() then
+        if player_unit:inAir() or not player_unit:isExist() then
             despawn_farp = true
             log("Player is no longer on the ground, despawning FARP!")
         end
@@ -649,11 +642,11 @@ function RotorOpsPerks.addRadioMenuForGroup(groupName)
         if perk.enabled and avail_for_side and avail_for_group then
             if perk.at_mark then
                 --addPerkCommand(groupId, groupName, perk, menu_root, {target='mark'})
-                missionCommands.addCommandForGroup(groupId, perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
+                missionCommands.addCommandForGroup(groupId, perk.cost .. ':' .. perk.display_name .. ' at mark (' .. perk.perk_name ..')', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='mark'})
             end
             if perk.at_position then
                 --addPerkCommand(groupId, groupName, perk, menu_root, {target='position'})
-                missionCommands.addCommandForGroup(groupId, perk.display_name .. ' on me', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='position'})
+                missionCommands.addCommandForGroup(groupId, perk.cost .. ':' .. perk.display_name .. ' on me', menu_root , RotorOpsPerks.requestPerk, {player_group_name=groupName, perk_name=perk.perk_name, target='position'})
             end
         end
     end
@@ -1041,6 +1034,8 @@ function RotorOpsPerks.requestPerk(args)
     --update last_used
     perk.last_used = timer.getTime()
     perk.used = perk.used or 0 + 1
+
+    log('Player ' .. args.player_unit_name .. ' requested ' .. args.perk_name .. ' at ' .. args.target)
 
     --increment player used for perk type, and initialize if it doesn't exist.
     local perk_user_per_player = 1/(#players or 1)
