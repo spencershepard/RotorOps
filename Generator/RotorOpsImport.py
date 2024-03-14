@@ -1,6 +1,7 @@
 import math
 import dcs
 from MissionGenerator import logger
+import RotorOpsUnits
 import os
 
 
@@ -20,6 +21,7 @@ class ImportObjects:
         self.helicopters = []
 
         self.extractUnits()
+        self.default_loadouts = RotorOpsUnits.getDefaultLoadouts()
 
     def getStatics(self):
         return self.statics
@@ -140,6 +142,7 @@ class ImportObjects:
 
         return new_groups
 
+    # This method applies the default player loadouts to the helicopters
     def copyHelicopters(self, mission, dest_country_name, dest_name, dest_point, dest_heading=0,
                         start_type=None):
         logger.info("Copying " + str(len(self.helicopters)) + " helicopters as " + dest_name)
@@ -185,12 +188,8 @@ class ImportObjects:
                         ng.points[0].type = group.points[0].type
                     ng.units[0].heading = group.units[0].heading
                     ng.units[0].skill = group.units[0].skill
-                    ng.units[0].livery_id = group.units[0].livery_id
-                    ng.units[0].pylons = group.units[0].pylons
                     ng.units[0].fuel = group.units[0].fuel
-                    ng.units[0].gun = group.units[0].gun
-                    ng.units[0].hardpoint_racks = group.units[0].hardpoint_racks
-                    ng.frequency = group.frequency
+                    RotorOpsUnits.applyLoadoutsToGroup(ng, self.default_loadouts)
                     new_groups.append(ng)
             else:
                 logger.warn("No pad unit (ie FARP, carrier) found, so can't add helicopters.")

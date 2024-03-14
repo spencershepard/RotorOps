@@ -80,52 +80,7 @@ class RotorOpsMission:
                 logger.info("Adding script to mission: " + filename)
                 self.scripts[filename] = self.m.map_resource.add_resource_file(filename)
 
-    def getUnitsFromMiz(self, file, side='both'):
 
-        forces = {}
-        vehicles = []
-        attack_helos = []
-        transport_helos = []
-        attack_planes = []
-        fighter_planes = []
-        helicopters = []
-
-        source_mission = dcs.mission.Mission()
-
-        try:
-            source_mission.load_file(file)
-            if side == 'both':
-                sides = ['red', 'blue']
-            else:
-                sides = [side]
-            for side in sides:
-                for country_name in source_mission.coalition.get(side).countries:
-                    country_obj = source_mission.coalition.get(side).countries[country_name]
-                    for vehicle_group in country_obj.vehicle_group:
-                        vehicles.append(vehicle_group)
-                    for helicopter_group in country_obj.helicopter_group:
-                        helicopters.append(helicopter_group)
-                        if helicopter_group.task == 'CAS':
-                            attack_helos.append(helicopter_group)
-                        elif helicopter_group.task == 'Transport':
-                            transport_helos.append(helicopter_group)
-                    for plane_group in country_obj.plane_group:
-                        if plane_group.task == 'CAS':
-                            attack_planes.append(plane_group)
-                        elif plane_group.task == 'CAP':
-                            fighter_planes.append(plane_group)
-
-            forces["vehicles"] = vehicles
-            forces["attack_helos"] = attack_helos
-            forces["transport_helos"] = transport_helos
-            forces["attack_planes"] = attack_planes
-            forces["fighter_planes"] = fighter_planes
-            forces["helicopters"] = helicopters
-
-            return forces
-
-        except:
-            logger.error("Failed to load units from " + file)
 
     def generateMission(self, window, options):
 
@@ -166,8 +121,8 @@ class RotorOpsMission:
         self.addMods()
         self.importObjects(options)
 
-        red_forces = self.getUnitsFromMiz(options["red_forces_path"], "both")
-        blue_forces = self.getUnitsFromMiz(options["blue_forces_path"], "both")
+        red_forces = RotorOpsUnits.getUnitsFromMiz(options["red_forces_path"], "both")
+        blue_forces = RotorOpsUnits.getUnitsFromMiz(options["blue_forces_path"], "both")
 
         # add images to briefing
         if options["rotorops_server"]:
@@ -648,6 +603,7 @@ class RotorOpsMission:
 
     def addPlayerHelos(self, options):
         client_helos = RotorOpsUnits.client_helos
+        default_loadouts = RotorOpsUnits.getDefaultLoadouts()
         unslotted_count = 0
         slotted_count = 0
 
@@ -655,16 +611,6 @@ class RotorOpsMission:
             if helicopter == options["slots"]:
                 client_helos = [dcs.helicopters.helicopter_map[
                                     helicopter]]  # if our ui slot option matches a specific helicopter type name
-
-        # get loadouts from miz file and put into a simple dict
-        default_loadouts = {}
-        default_unit_groups = self.getUnitsFromMiz(directories.home_dir + "\\config\\blue_player_loadouts.miz", "blue")
-        for helicopter_group in default_unit_groups["helicopters"]:
-            default_loadouts[helicopter_group.units[0].unit_type.id] = {}
-            default_loadouts[helicopter_group.units[0].unit_type.id]["pylons"] = helicopter_group.units[0].pylons
-            default_loadouts[helicopter_group.units[0].unit_type.id]["livery_id"] = helicopter_group.units[0].livery_id
-            default_loadouts[helicopter_group.units[0].unit_type.id]["fuel"] = helicopter_group.units[0].fuel
-            default_loadouts[helicopter_group.units[0].unit_type.id]["frequency"] = helicopter_group.frequency
 
         # find friendly carriers and farps
         carrier = self.m.country(jtf_blue).find_ship_group(name="HELO_CARRIER")
@@ -770,19 +716,10 @@ class RotorOpsMission:
             if fg:
                 slotted_count = slotted_count + 1
                 fg.units[0].set_client()
-                # fg.load_task_default_loadout(dcs.task.CAS)
-                if helotype.id in default_loadouts:
-                    fg.units[0].pylons = default_loadouts[helotype.id]["pylons"]
-                    fg.units[0].livery_id = default_loadouts[helotype.id]["livery_id"]
-                    fg.units[0].fuel = default_loadouts[helotype.id]["fuel"]
-                    fg.frequency = default_loadouts[helotype.id]["frequency"]
-
+                RotorOpsUnits.applyLoadoutsToGroup(fg, default_loadouts)
                 # setup wingman for single player
                 if len(fg.units) == 2:
                     fg.units[1].skill = dcs.unit.Skill.High
-                    fg.units[1].pylons = fg.units[0].pylons
-                    fg.units[1].livery_id = fg.units[0].livery_id
-                    fg.units[1].fuel = fg.units[0].fuel
             else:
                 logger.warn("No parking available for " + helotype.id)
                 unslotted_count = unslotted_count + 1
@@ -1347,3 +1284,6 @@ class RotorOpsMission:
 
                 self.m.farp(self.m.country(jtf_blue), "FAT COW FARP " + str(i),
                             insert_point.random_point_within(1000, 1000), hidden=True, dead=False, farp_type=dcs.unit.InvisibleFARP)
+
+
+
