@@ -23,7 +23,7 @@ def triggerSetup(rops, options):
     if options["perks"]:
         trig.actions.append(dcs.action.DoScriptFile(rops.scripts["RotorOpsPerks.lua"]))
     script = ("--OPTIONS HERE!\n\n" +
-              "RotorOps.CTLD_crates = true" +
+              "RotorOps.CTLD_crates = true\n\n" +
               "RotorOps.CTLD_sound_effects = true\n\n" +
               "RotorOps.force_offroad = " + lb("force_offroad") + "\n\n" +
               "RotorOps.voice_overs = " + lb("voiceovers") + "\n\n" +
