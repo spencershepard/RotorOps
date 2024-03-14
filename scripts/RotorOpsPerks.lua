@@ -15,7 +15,7 @@
 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.5.6"
+RotorOpsPerks.version = "1.6.0"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -23,6 +23,7 @@ RotorOpsPerks.players = {}
 RotorOpsPerks.players_temp = {}
 RotorOpsPerks.troops = {} --by group name
 RotorOpsPerks.fat_cow_farps = {}
+RotorOpsPerks.callbacks = {}
 
 ---- OPTIONS ----
 
@@ -261,7 +262,7 @@ function RotorOpsPerks.spawnJtacDrone(dest_point, country, laser_code)
         Group.getByName(new_group.name):getController():setOption(AI.Option.Air.id.REACTION_ON_THREAT, AI.Option.Air.val.REACTION_ON_THREAT.NO_REACTION)
         ctld.JTACAutoLase(new_group.name, laser_code, true, "vehicle")
         table.insert(ctld.jtacGeneratedLaserCodes, _code)
-        
+
     end, nil, timer.getTime() + 60)
 
 end
@@ -450,12 +451,16 @@ function RotorOpsPerks.spendPoints(player_group_name, points, deduct_points)
             local points_to_subtract = points_per_player + remainder
             if player.points < points_to_subtract then
                 remainder = points_to_subtract - player.points
+                player.points_used = player.points_used + points_to_subtract - remainder
                 player.points = 0
             else
                 player.points = player.points - points_to_subtract
+                player.points_used = player.points_used + points_to_subtract
                 remainder = 0
             end
+            RotorOpsPerks.processCallbacks({action='onPointsSpent', player=player, points_spent=points_to_subtract})
         end
+        RotorOpsPerks.processCallbacks({action='onGroupPointsSpent', player_group_name=player_group_name, points_spent=points})
     end
     --there was sufficient points
     return true
@@ -467,6 +472,8 @@ function RotorOpsPerks.scorePoints(player_group_name, points, message)
     if players then
         for _, player in pairs(players) do
             player.points = player.points + points
+            player.points_earned = player.points_earned + points
+            RotorOpsPerks.processCallbacks({action='onPointsScored', player=player, points_scored=points})
         end
         if message and not RotorOpsPerks.silent_points then
             local total = RotorOpsPerks.getPlayerGroupSum(player_group_name, "points")
@@ -478,6 +485,7 @@ function RotorOpsPerks.scorePoints(player_group_name, points, message)
             trigger.action.outTextForGroup(Group.getByName(player_group_name):getID(), message, 10)
         end
     end
+    RotorOpsPerks.processCallbacks({action='onGroupPointsScored', player_group_name=player_group_name, points_scored=points})
 
 end
 
@@ -492,6 +500,14 @@ function RotorOpsPerks.getPointsBalance(player_group_name)
         total_points = total_points + player.points
     end
     return total_points
+end
+
+function RotorOpsPerks.getPlayerMissionPointsBalance(id)
+    local player = RotorOpsPerks.players[id]
+    if not player then
+        return false
+    end
+    return player.points_earned - player.points_used
 end
 
 function RotorOpsPerks.checkPoints(player_group_name)
@@ -566,6 +582,7 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
     --add a new player
     if not RotorOpsPerks.players[identifier] then
         RotorOpsPerks.players[identifier] = {
+            identifier=identifier,
             name=name,
             slot=slot,
             points = RotorOpsPerks.points.player_default,
@@ -574,6 +591,8 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
             side = side,
             menu = {},
             perks_used = {},
+            points_used = 0,
+            points_earned = 0,
         }
         env.warning('ADDED ' .. identifier .. ' TO PLAYERS TABLE')
         log(mist.utils.tableShow(RotorOpsPerks.players[identifier]))
@@ -582,6 +601,7 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
         if RotorOpsPerks.player_update_messages then
             trigger.action.outText('PERKS: Added ' .. name .. ' to '.. groupName, 10)
         end
+        RotorOpsPerks.processCallbacks({action='onPlayerAdded', player=RotorOpsPerks.players[identifier], perk=nil})
 
     --update an existing player
     elseif RotorOpsPerks.players[identifier].groupId ~= groupId then
@@ -603,6 +623,8 @@ function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
         -- missionCommands.removeItemForGroup(groupId, RotorOpsPerks.players[identifier].menu.root)
         missionCommands.removeItemForGroup(groupId, {[1] = 'ROTOROPS PERKS'})
         RotorOpsPerks.addRadioMenuForGroup(groupName)
+
+        RotorOpsPerks.processCallbacks({action='onPlayerUpdated', player=RotorOpsPerks.players[identifier], perk=nil})
     end
 end
 
@@ -1029,6 +1051,7 @@ function RotorOpsPerks.requestPerk(args)
     --call perk action and deduct points if successful
     if perk.action_function(args) then
         RotorOpsPerks.spendPoints(args.player_group_name, perk.cost, true)
+        RotorOpsPerks.processCallbacks({action='onPerkUsed', perk=perk, request=args })
     end
 
     --update last_used
@@ -1290,10 +1313,10 @@ function RotorOpsPerks.monitorPlayers()
 
     --GET CREW
 
-    local players = net.get_player_list()  --empty in single player
-    debugMsg('GET CREW ALL PLAYERS: '.. mist.utils.tableShow(players))
+    local server_players = net.get_player_list()  --empty in single player
+    debugMsg('GET CREW ALL PLAYERS: '.. mist.utils.tableShow(server_players))
 
-    for _, player in pairs(players) do
+    for _, player in pairs(server_players) do
         local player_info = net.get_player_info(player)  --works with multicrew, but we need to find the group name
         debugMsg('GET CREW player info:')
         debugMsg(mist.utils.tableShow(player_info))
@@ -1318,7 +1341,47 @@ function RotorOpsPerks.monitorPlayers()
 
     end
 
+    --IF PLAYER HAS DISCONNECTED FROM SERVER
+    if #server_players > 0 then
+        for identifier, player in pairs(RotorOpsPerks.players) do
+            --if the player is not in server_players, then they have disconnected
+            local player_still_connected = false
+            for _, server_player in pairs(server_players) do
+                if identifier == net.get_player_info(server_player).ucid then
+                    player_still_connected = true
+                    debugMsg(player.name .. ' is still connected')
+                end
+            end
+            if not player_still_connected then
+                log(player.name .. ' has disconnected')
+                RotorOpsPerks.processCallbacks({action='onPlayerDisconnected', player=player})
+            end
+        end
+    end
 
+
+
+
+end
+
+function RotorOpsPerks.processCallbacks(args)
+    log(mist.utils.tableShow(RotorOpsPerks.callbacks, 'RotorOpsPerks.callbacks'))
+    log('processCallbacks called with ' .. args.action)
+    log(mist.utils.tableShow(args, 'args'))
+    for _, callback in pairs(RotorOpsPerks.callbacks) do
+
+         local success, response = pcall(function()
+             callback(args)
+         end)
+
+         if (not success) then
+            log(string.format("Callback Error: %s", response))
+         end
+    end
+end
+
+function RotorOpsPerks.addCallback(callback)
+    table.insert(RotorOpsPerks.callbacks, callback)
 end
 
 if mist.grimm_version then
