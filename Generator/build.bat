@@ -21,6 +21,11 @@ echo compiled ui resource files.
 echo building exe with pyinstaller...
 pyinstaller MissionGenerator.spec --distpath ..\ --clean
 
+cd ../config
+del user-data.yaml
+echo removed user-data.yaml
+
 if not %1=="-nopause" (
   pause >nul
-) 
+)
+

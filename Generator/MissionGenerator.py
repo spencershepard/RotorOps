@@ -519,6 +519,12 @@ class Window(QMainWindow, Ui_MainWindow):
                         self.user_ratings = prefs["ratings"]
             except:
                 logger.error("Could not load prefs.yaml")
+
+        else:
+            logger.info("No user data file found.  Creating a new one.")
+            prefs = {"player_slots": ["AH-64D_BLK_II", "UH-1H", "Mi-24P", "Ka-50_3", "Mi-8MT"]}
+            with open(directories.user_datafile_path, 'w') as pfile:
+                yaml.dump(prefs, pfile)
         if not prefs:
             prefs = {}
 
