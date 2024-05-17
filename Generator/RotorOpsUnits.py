@@ -109,7 +109,8 @@ def getUnitsFromMiz(file, side='both'):
 
     source_mission = dcs.mission.Mission()
 
-    try:
+    #try:
+    if True:
         source_mission.load_file(file)
         if side == 'both':
             sides = ['red', 'blue']
@@ -143,8 +144,8 @@ def getUnitsFromMiz(file, side='both'):
 
         return forces
 
-    except:
-        logger.error("Failed to load units from " + file)
+    #except:
+    #    logger.error("Failed to load units from " + file)
 
 def getDefaultLoadouts():
     print("Getting default loadouts")

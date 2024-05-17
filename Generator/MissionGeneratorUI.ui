@@ -102,7 +102,7 @@
      <rect>
       <x>470</x>
       <y>80</y>
-      <width>171</width>
+      <width>81</width>
       <height>27</height>
      </rect>
     </property>
@@ -215,7 +215,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QSpinBox" name="redqty_spinBox">
     <property name="geometry">
      <rect>
-      <x>1070</x>
+      <x>1090</x>
       <y>80</y>
       <width>51</width>
       <height>31</height>
@@ -245,7 +245,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QComboBox" name="redforces_comboBox">
     <property name="geometry">
      <rect>
-      <x>660</x>
+      <x>560</x>
       <y>80</y>
       <width>391</width>
       <height>33</height>
@@ -334,7 +334,7 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>470</x>
       <y>30</y>
-      <width>161</width>
+      <width>81</width>
       <height>27</height>
      </rect>
     </property>
@@ -351,7 +351,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QSpinBox" name="blueqty_spinBox">
     <property name="geometry">
      <rect>
-      <x>1070</x>
+      <x>1090</x>
       <y>30</y>
       <width>51</width>
       <height>31</height>
@@ -381,7 +381,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QComboBox" name="blueforces_comboBox">
     <property name="geometry">
      <rect>
-      <x>660</x>
+      <x>560</x>
       <y>30</y>
       <width>391</width>
       <height>33</height>
@@ -1401,6 +1401,40 @@ p, li { white-space: pre-wrap; }
       <normaloff>resources/floppy-disk.png</normaloff>resources/floppy-disk.png</iconset>
     </property>
    </widget>
+   <widget class="QComboBox" name="blueforces_skill_comboBox">
+    <property name="geometry">
+     <rect>
+      <x>960</x>
+      <y>31</y>
+      <width>120</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+      <weight>50</weight>
+      <bold>false</bold>
+     </font>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="redforces_skill_comboBox">
+    <property name="geometry">
+     <rect>
+      <x>960</x>
+      <y>80</y>
+      <width>120</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>9</pointsize>
+      <weight>50</weight>
+      <bold>false</bold>
+     </font>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -1408,7 +1442,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>24</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMap">
