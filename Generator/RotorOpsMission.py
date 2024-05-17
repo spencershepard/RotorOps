@@ -194,7 +194,7 @@ class RotorOpsMission:
         for zone_name in self.red_zones:
             if red_forces["vehicles"]:
                 self.addGroundGroups(self.red_zones[zone_name], self.m.country(jtf_red), red_forces["vehicles"],
-                                     options["red_quantity"])
+                                     options["red_quantity"], options["red_forces_skill"])
 
             if options["zone_farps"] != "farp_never" and not options["defending"]:
                 helicopters = False
@@ -238,7 +238,7 @@ class RotorOpsMission:
         for i, zone_name in enumerate(self.blue_zones):
             if blue_forces["vehicles"]:
                 self.addGroundGroups(self.blue_zones[zone_name], self.m.country(jtf_blue), blue_forces["vehicles"],
-                                     options["blue_quantity"])
+                                     options["blue_quantity"], options["blue_forces_skill"])
 
             # Add blue zone FARPS (not late activated) for defensive mode
             if options["zone_farps"] != "farp_never" and options["defending"]:
@@ -447,10 +447,10 @@ class RotorOpsMission:
         if copy_vehicles:
             if vehicles_single_group:
                 vehicle_group = i.copyVehiclesAsGroup(self.m, country, vehicles_name, position,
-                                                      heading)
+                                                      heading, options["blue_forces_skill"] if country == jtf_blue else options["red_forces_skill"] )
             else:
                 i.copyVehicles(self.m, country, vehicles_name,
-                               position, heading)
+                               position, heading, options["blue_forces_skill"] if country == jtf_blue else options["red_forces_skill"] )
 
         # Add client helicopters and farp objects
         if copy_helicopters:
@@ -461,7 +461,7 @@ class RotorOpsMission:
 
         return vehicle_group  # for setting properties such as late activation
 
-    def addGroundGroups(self, zone, _country, groups, quantity):
+    def addGroundGroups(self, zone, _country, groups, quantity, skill):
         for a in range(0, quantity):
 
             group = random.choice(groups)
@@ -470,7 +470,7 @@ class RotorOpsMission:
                 if dcs.vehicles.vehicle_map[unit.type]:
                     unit_types.append(dcs.vehicles.vehicle_map[unit.type])
             country = self.m.country(_country.name)
-            self.m.vehicle_group_platoon(
+            ng = self.m.vehicle_group_platoon(
                 country,
                 zone.name + '-GND ' + str(a + 1),
                 unit_types,
@@ -478,6 +478,9 @@ class RotorOpsMission:
                 heading=random.randint(0, 359),
                 formation=dcs.unitgroup.VehicleGroup.Formation.Scattered,
             )
+            if skill:
+                for unit in ng.units:
+                    unit.skill = skill
 
     def getCoalitionAirports(self, side: str):
         coalition_airports = []

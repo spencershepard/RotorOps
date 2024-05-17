@@ -32,9 +32,9 @@ class ImportObjects:
     def getHelicopters(self):
         return self.helicopters
 
-    def copyAll(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0, start_type=None):
+    def copyAll(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0, start_type=None, skill=None):
         return self.copyStatics(mission, dest_country_name, dest_name, dest_point, dest_heading), \
-               self.copyVehicles(mission, dest_country_name, dest_name, dest_point, dest_heading), \
+               self.copyVehicles(mission, dest_country_name, dest_name, dest_point, dest_heading, skill), \
                self.copyHelicopters(mission, dest_country_name, dest_name, dest_point, dest_heading, start_type)
 
     def anchorByGroupName(self, group_name):
@@ -107,7 +107,7 @@ class ImportObjects:
 
         return new_groups
 
-    def copyVehicles(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0):
+    def copyVehicles(self, mission, dest_country_name, dest_name, dest_point=None, dest_heading=0, skill=None):
         logger.info("Copying " + str(len(self.vehicles)) + " vehicle groups as " + dest_name)
         new_groups = []
 
@@ -129,6 +129,8 @@ class ImportObjects:
 
                     # ng.units[0].livery_id = group.units[0].livery_id
                     ng.units[0].name = dest_name + " " + group.units[i].name
+                    if skill:
+                        ng.units[0].skill = skill
                     new_groups.append(ng)
 
                 else:
@@ -138,6 +140,8 @@ class ImportObjects:
                     u.position = group.units[i].position
                     u.heading = group.units[i].heading
                     # u.livery_id = group.units[i].livery_id
+                    if skill:
+                        u.skill = skill
                     ng.add_unit(u)
 
         return new_groups
@@ -196,7 +200,7 @@ class ImportObjects:
 
         return new_groups
 
-    def copyVehiclesAsGroup(self, mission, dest_country_name, dest_name, dest_point, dest_heading=0):
+    def copyVehiclesAsGroup(self, mission, dest_country_name, dest_name, dest_point, dest_heading=0, skill=None):
         logger.info("Copying " + str(len(self.vehicles)) + " vehicle groups as single group name: " + dest_name)
         new_group = None
 
@@ -216,6 +220,8 @@ class ImportObjects:
                     unit_count = unit_count + 1
                     # new_group.units[0].livery_id = group.units[0].livery_id
                     new_group.units[0].name = dest_name + " " + group.units[i].name
+                    if skill:
+                        new_group.units[0].skill = skill
 
                 else:
 
@@ -226,6 +232,8 @@ class ImportObjects:
                     u.heading = group.units[i].heading
 
                     # u.livery_id = group.units[i].livery_id
+                    if skill:
+                        u.skill = skill
                     new_group.add_unit(u)
 
                     unit_count = unit_count + 1
