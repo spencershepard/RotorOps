@@ -27,3 +27,4 @@ MissionOutput/
 *.env
 RotorOps_setup.exe
 Generator/resources.py
+venv
