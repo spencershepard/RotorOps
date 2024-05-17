@@ -1,6 +1,7 @@
 import json
 
 import dcs.installation
+import dcs.unit
 import yaml
 import sys
 import os
@@ -13,7 +14,6 @@ import logging
 
 import requests
 from packaging import version as ver
-
 
 from PyQt5.QtWidgets import (
     QApplication, QDialog, QMainWindow, QMessageBox, QCheckBox, QSpinBox, QSplashScreen, QFileDialog, QRadioButton,
@@ -103,6 +103,10 @@ sys.excepthook = handle_exception
 defenders_text = "Defending Forces:"
 attackers_text = "Attacking Forces:"
 ratings_json = None
+
+skillNameList = ["From Template", "Average", "Good", "High", "Excellent", "Random"]
+skillValueList = [None, dcs.unit.Skill.Average, dcs.unit.Skill.Good, dcs.unit.Skill.High, dcs.unit.Skill.Excellent, dcs.unit.Skill.Random]
+
 
 logger.info("RotorOps v" + version.version_string)
 logger.info("pydcs DCS installation directory: " + dcs.installation.get_dcs_install_directory())
@@ -323,6 +327,9 @@ class Window(QMainWindow, Ui_MainWindow):
         for forces in self.forces_list:
             self.redforces_comboBox.addItem(forces.name)
             self.blueforces_comboBox.addItem(forces.name)
+        for skill in skillNameList:
+            self.redforces_skill_comboBox.addItem(skill)
+            self.blueforces_skill_comboBox.addItem(skill)
 
     def getImports(self):
         self.imports_list = []
@@ -617,6 +624,8 @@ class Window(QMainWindow, Ui_MainWindow):
 
         red_forces = self.forces_list[self.redforces_comboBox.currentIndex()]
         blue_forces = self.forces_list[self.blueforces_comboBox.currentIndex()]
+        red_forces_skill = skillValueList[self.redforces_skill_comboBox.currentIndex()]
+        blue_forces_skill = skillValueList[self.blueforces_skill_comboBox.currentIndex()]
         scenario_name = self.scenario.name
         scenario_path = self.scenario.path
 
@@ -637,6 +646,8 @@ class Window(QMainWindow, Ui_MainWindow):
                 "scenario_name": scenario_name,
                 "red_forces_path": red_forces.path,
                 "blue_forces_path": blue_forces.path,
+                "red_forces_skill": red_forces_skill,
+                "blue_forces_skill": blue_forces_skill,
                 "red_quantity": self.redqty_spinBox.value(),
                 "blue_quantity": self.blueqty_spinBox.value(),
                 "inf_spawn_qty": self.inf_spawn_spinBox.value(),
