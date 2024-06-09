@@ -15,7 +15,7 @@
 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.6.0"
+RotorOpsPerks.version = "1.6.1"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -234,6 +234,7 @@ function RotorOpsPerks.spawnJtacDrone(dest_point, country, laser_code)
         country = country,
         category = "airplane",
         route = drone_route,
+        name="Reaper"
     }
 
     local orbit = {

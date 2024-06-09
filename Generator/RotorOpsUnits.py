@@ -23,6 +23,7 @@ player_helos = [
     dcs.helicopters.SA342Minigun,
     dcs.helicopters.SA342Mistral,
     dcs.helicopters.UH_1H,
+    dcs.helicopters.OH58D,
     aircraftMods.UH_60L,
     dcs.planes.AV8BNA,
     dcs.planes.L_39ZA,

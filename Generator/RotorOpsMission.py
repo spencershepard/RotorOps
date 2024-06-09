@@ -788,7 +788,7 @@ class RotorOpsMission:
                     scenario_red_cap_spawn_zone = True
                     e_cap_spawn_point = zone.point
             if not scenario_red_cap_spawn_zone:
-                e_cap_spawn_point = primary_e_airport.position.point_from_heading(e_airport_heading, 100000)
+                e_cap_spawn_point = primary_e_airport.position.point_from_heading(e_airport_heading, 40000)
                 self.m.triggers.add_triggerzone(e_cap_spawn_point, 30000, hidden=True, name="RED_CAP_SPAWN")
 
         if options["blue_cap"]:
@@ -797,7 +797,7 @@ class RotorOpsMission:
                 if zone.name == "BLUE_CAP_SPAWN":
                     scenario_blue_cap_spawn_zone = True
             if not scenario_blue_cap_spawn_zone:
-                f_cap_spawn_point = primary_f_airport.position.point_from_heading(e_airport_heading + 180, 100000)
+                f_cap_spawn_point = primary_f_airport.position.point_from_heading(e_airport_heading + 180, 40000)
                 self.m.triggers.add_triggerzone(f_cap_spawn_point, 30000, hidden=True, name="BLUE_CAP_SPAWN")
 
         # Fat Cow
