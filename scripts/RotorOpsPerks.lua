@@ -15,7 +15,7 @@
 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.6.1"
+RotorOpsPerks.version = "1.7.0"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -50,6 +50,14 @@ RotorOpsPerks.points = {
 RotorOpsPerks.player_fatcow_types = {
     "UH-60L",
     "Mi-8MT",
+    --insert CH-47 here!
+}
+
+RotorOpsPerks.static_helicopters_at_farp = true --spawn static helicopters at the FARP if player reslots
+RotorOpsPerks.static_helicopter_types = {  --mapping of player helicopters to their static equivalents
+    ["UH-60L"] = "UH-60L",
+    ["Mi-8MT"] = "Mi-8MT",
+    --insert CH-47 here!
 }
 
 ---- END OPTIONS ----
@@ -125,13 +133,12 @@ RotorOpsPerks.perks.fatcow["action_condition"] = function(args)
 end
 
 RotorOpsPerks.perks.fatcow["action_function"] = function(args)
-    local index = RotorOpsPerks.perks.fatcow.used + 1
-    local farp = table.remove(RotorOpsPerks.fat_cow_farps, 1) --get the first farp from the list
+    local farp = RotorOpsPerks.getFatCowFarp()
     if farp == nil then
         env.error("No FARP resources available!")
         return
     end
-    RotorOpsPerks.spawnFatCow(args.target_point, farp)
+    RotorOpsPerks.spawnAiChinook(args.target_point, farp.index)
     return true
 end
 
@@ -298,9 +305,10 @@ end
 
 RotorOpsPerks.perks.player_fatcow["action_condition"] = function(args)
     local player_unit = Group.getByName(args.player_group_name):getUnit(1)
+    local player_name = player_unit:getPlayerName()
 
-    if RotorOpsPerks.perks.player_fatcow.active[args.player_group_name] then
-        return {msg="FARP already deployed at your position!", valid=false}
+    if player_name and RotorOpsPerks.perks.player_fatcow.active[player_name] then
+        return {msg="You already have a Fat Cow farp!", valid=false}
     end
 
     if #RotorOpsPerks.fat_cow_farps < 1 then
@@ -337,56 +345,31 @@ RotorOpsPerks.perks.player_fatcow["action_condition"] = function(args)
 end
 
 RotorOpsPerks.perks.player_fatcow["action_function"] = function(args)
-    local farp = table.remove(RotorOpsPerks.fat_cow_farps)
+   local farp = RotorOpsPerks.getFatCowFarp()
     if farp == nil then
         env.error("No FARP resources available!")
         return
     end
+    local dest_point = {x=args.target_point.x, z=args.target_point.z}
+    --RotorOpsPerks.teleportStatic('FAT COW FARP ' .. farp.index, dest_point)  --axis mixed up
     RotorOpsPerks.teleportStatic('FAT COW FARP ' .. farp.index, {x=args.target_point.x, y=args.target_point.z})
-    RotorOpsPerks.spawnFatCowFarpObjects(args.target_point.x, args.target_point.z, farp.index, 15)
-    args.farp = farp
-    RotorOpsPerks.perks.player_fatcow.active[args.player_group_name] = true
-    RotorOpsPerks.perks.player_fatcow.monitor_player(args)
-    return true
+    local owner_player_name = Group.getByName(args.player_group_name):getUnit(1):getPlayerName()
+    local monitored_unit = Group.getByName(args.player_group_name):getUnit(1)
+    local owner_group_name = args.player_group_name
+    log("FARP DEPLOYED AT: "..args.target_point.x..", "..args.target_point.z)
+    log("OWNER PLAYER: "..owner_player_name)
+    log("OWNER GROUP: "..owner_group_name)
+    log("MONITORED UNIT: "..monitored_unit:getName())
+    local request = {
+        dest_point = dest_point,
+        owner_player_name = owner_player_name,
+        owner_group_name = owner_group_name,
+        monitored_unit = monitored_unit,}
+    RotorOpsPerks.changeFarpState(farp.index, "requested", request)
+    RotorOpsPerks.perks.player_fatcow.active[owner_player_name] = true
+    farp = RotorOpsPerks.fat_cow_farps[farp.index]
+    return { farp = farp, request = request }
 end
-
-RotorOpsPerks.perks.player_fatcow["monitor_player"] = function(args)
-    local despawn_farp = false
-    if Group.getByName(args.player_group_name) then
-
-        local player_unit = Group.getByName(args.player_group_name):getUnit(1)
-        if player_unit:inAir() or not player_unit:isExist() then
-            despawn_farp = true
-            log("Player is no longer on the ground, despawning FARP!")
-        end
-        if math.abs(player_unit:getPosition().p.x - args.target_point.x) > 50 or math.abs(player_unit:getPosition().p.z - args.target_point.z) > 50 then
-            log("Player has moved from target position, despawning FARP!")
-            despawn_farp = true
-        end
-    else
-        despawn_farp = true
-    end
-
-    if despawn_farp then
-        RotorOpsPerks.despawnFatCowFarp(args.farp)
-        RotorOpsPerks.perks.player_fatcow.active[args.player_group_name] = nil
-        if Group.getByName(args.player_group_name) then
-            trigger.action.outTextForGroup(Group.getByName(args.player_group_name):getID(), "FARP despawned.", 10)
-        end
-    else
-        timer.scheduleFunction(RotorOpsPerks.perks.player_fatcow.monitor_player, args, timer.getTime() + 2)
-    end
-end
-
-
-function RotorOpsPerks.despawnFatCowFarp(farp)
-    RotorOpsPerks.teleportStatic('FAT COW FARP '..farp.index, {x=farp.farp_p.x, y=farp.farp_p.z})
-    RotorOpsPerks.teleportStatic('FAT COW TENT '..farp.index, {x=farp.tent_p.x, y=farp.tent_p.z})
-    RotorOpsPerks.teleportStatic('FAT COW AMMO '..farp.index, {x=farp.ammo_p.x, y=farp.ammo_p.z})
-    RotorOpsPerks.teleportStatic('FAT COW FUEL '..farp.index, {x=farp.fuel_p.x, y=farp.fuel_p.z})
-    table.insert(RotorOpsPerks.fat_cow_farps, 1, farp) --put back in list at the begining to be reused
-end
-
 
 ---- End of PLAYER FAT COW ----
 
@@ -572,7 +555,7 @@ end
 
 function RotorOpsPerks.updatePlayer(identifier, groupName, name, slot)
     if not Group.getByName(groupName) then
-        env.warning('GROUP ' .. groupName .. ' DOES NOT EXIST')
+        debugMsg('GROUP ' .. groupName .. ' DOES NOT EXIST')
         return
     end
 
@@ -702,6 +685,30 @@ function RotorOpsPerks.monitorFarps()
             trigger.action.outText('Some FARP resources have been destroyed', 30)
             env.warning('FAT COW FARP ' .. i .. ' RESOURCES DESTROYED')
             RotorOpsPerks.fat_cow_farps[i] = nil
+            --remove farp marks
+        else  --farp still exists
+
+            --**** monitor player farps
+            local despawn_farp = false
+            if farp.state == "deployed_occupied" then
+
+                if not farp.monitored_unit:isExist() then
+                    --despawn_farp = true
+                    log("FARP monitored_unit doesn't exist, doing NOTHING!")
+                elseif farp.monitored_unit:inAir() then
+                    despawn_farp = true
+                    log("FARP monitored_unit no longer on the ground, despawning FARP!")
+                elseif math.abs(farp.monitored_unit:getPosition().p.x - farp.deployed_p.x) > 50 or math.abs(farp.monitored_unit:getPosition().p.z - farp.deployed_p.z) > 50 then
+                    log("FARP monitored_unit moved from the FARP, despawning FARP!")
+                    despawn_farp = true
+                end
+            end
+
+            if despawn_farp then
+                RotorOpsPerks.changeFarpState(farp.index, 'not_deployed', nil)
+            end
+            --*****
+
         end
     end
 end
@@ -715,8 +722,15 @@ function RotorOpsPerks.buildFatCowFarpTable()
         local tent = StaticObject.getByName('FAT COW TENT ' .. i)
         local ammo = StaticObject.getByName('FAT COW AMMO ' .. i)
         local fuel = StaticObject.getByName('FAT COW FUEL ' .. i)
+        local chinook = mist.DBs.MEgroupsByName['FAT COW CHINOOK ' .. i]
         if farp and tent and ammo and fuel then
             log("FAT COW FARP " .. i .. " FOUND")
+            if not chinook then
+                env.warning('FAT COW CHINOOK ' .. i .. ' NOT FOUND')
+                trigger.action.outText('FAT COW CHINOOK ' .. i .. ' NOT FOUND', 5)
+            else
+                log("FAT COW CHINOOK " .. i .. " FOUND")
+            end
             RotorOpsPerks.fat_cow_farps[i] = {
                 index = i,
                 farp = farp,
@@ -727,6 +741,16 @@ function RotorOpsPerks.buildFatCowFarpTable()
                 ammo_p = ammo:getPosition().p,
                 fuel = fuel,
                 fuel_p = fuel:getPosition().p,
+                chinook = chinook,
+                owner_player_name = nil,
+                owner_original_group_name = nil,
+                expiration_time = nil,
+                available = true,
+                deployed = false,
+                mark_id_base = 5550 + (i * 10), --arbitrary id for map drawing; allows 10 marks per FARP
+                deployed_p = nil,
+                monitored_unit = nil,
+                state = 'not_deployed',
             }
             i = i + 1
         else
@@ -735,9 +759,128 @@ function RotorOpsPerks.buildFatCowFarpTable()
     end
 end
 
+function RotorOpsPerks.getFatCowFarp()
+    for i, farp in pairs(RotorOpsPerks.fat_cow_farps) do
+        if farp.available then
+            RotorOpsPerks.updateFarpAttribute(farp.index, 'available', false)
+            farp.available = false
+            return farp
+        end
+    end
+    return nil
+end
+
+function RotorOpsPerks.returnFatCowFarp(farp_index, despawn)  -- return the farp to the pool of available farps
+    local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    RotorOpsPerks.updateFarpAttribute(farp.index, 'available', true)
+    if despawn then
+        RotorOpsPerks.despawnFatCowFarp(farp.index)
+    end
+end
+
+function RotorOpsPerks.changeFarpState(farp_index, new_state, request)
+   local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+
+    local old_state = farp.state
+    log("Changing FARP state from " .. old_state .. " to " .. new_state)
 
 
+    if new_state == old_state then
+        return
+    end
 
+    if new_state == 'requested' then --set the farp attributes
+        if not request then
+            env.error("No request object provided for FARP state change")
+            return
+        end
+        farp.deployed = false
+        farp.available = false
+        farp.deployed_p = request.dest_point
+        farp.owner_player_name = request.owner_player_name
+        farp.owner_original_group_name = request.owner_original_group_name
+        farp.monitored_unit = request.monitored_unit
+        --log all vars
+        log("FARP REQUESTED AT: "..request.dest_point.x..", "..request.dest_point.z)
+        log("OWNER PLAYER: "..request.owner_player_name)
+        log("OWNER GROUP: "..request.owner_group_name)
+        log("MONITORED UNIT: "..request.monitored_unit:getName())
+
+        RotorOpsPerks.spawnFatCowFarp(farp.deployed_p.x, farp.deployed_p.z, farp.index, 15, "deployed_occupied")  --what about AI farps?
+
+    elseif new_state == 'deploying' then
+        farp.expiration_time = timer.getTime() + 1800
+
+    elseif new_state == 'deployed_occupied' then
+        farp.deployed = true
+        if old_state == 'deployed_static' then
+            RotorOpsPerks.despawnStaticChinook(farp.index)
+        end
+        log("Player is on station. Now monitoring: " .. farp.monitored_unit:getName())
+
+    elseif new_state == 'deployed_static' then
+        local static_type = nil
+        if farp.monitored_unit then
+            local player_type = farp.monitored_unit:getTypeName()
+            static_type = RotorOpsPerks.static_helicopter_types[player_type]
+        end
+
+        if not static_type then
+            static_type = 'CH-47D'
+        end
+
+        farp.deployed = true
+        farp.monitored_unit = nil
+        RotorOpsPerks.spawnStaticFatCowHeli(farp.index, static_type)
+
+    elseif new_state == 'deployed_empty' then
+        farp.deployed = true
+        farp.monitored_unit = nil
+        if old_state == 'deployed_static' then
+            RotorOpsPerks.despawnStaticChinook(farp.index)
+        end
+
+    elseif new_state == 'not_deployed' then  --reset the farp
+
+        RotorOpsPerks.returnFatCowFarp(farp.index, true)
+        if old_state == 'deployed_static' then
+            RotorOpsPerks.despawnStaticChinook(farp.index)
+        elseif old_state == 'deployed_occupied' then
+            RotorOpsPerks.perks.player_fatcow.active[farp.owner_player_name] = nil  --what about the AI fatcow perk??
+            if farp.monitored_unit and farp.monitored_unit:getGroup() then
+                trigger.action.outTextForGroup(farp.monitored_unit:getGroup():getID(), "FARP despawned.", 10)
+            end
+        end
+
+        farp.deployed = false
+        farp.deployed_p = nil
+        farp.owner_player_name = nil
+        farp.monitored_unit = nil
+
+    end
+
+    --update F10 map
+    if farp.deployed then
+       RotorOpsPerks.updateFarpMarks(farp.index)
+    else
+        RotorOpsPerks.removeFarpMarks(farp.index)
+    end
+
+    farp.state = new_state
+    RotorOpsPerks.fat_cow_farps[farp_index] = farp
+end
+
+
+function RotorOpsPerks.updateFarpAttribute(farp_index, attribute, value)
+    local value_str = tostring(value)
+    if type(value) ~= 'string' and type(value) ~= 'number' and type(value) ~= 'boolean' then
+        value_str = "type " .. type(value)
+    end
+    debugMsg('RotorOpsPerks.updateFarpAttribute: ' .. farp_index .. ' ' .. attribute .. ' ' .. value_str)
+    local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    farp[attribute] = value
+    RotorOpsPerks.fat_cow_farps[farp_index] = farp
+end
 
 
 function RotorOpsPerks.teleportStatic(source_name, dest_point)
@@ -759,8 +902,14 @@ function RotorOpsPerks.teleportStatic(source_name, dest_point)
     end
 end
 
-function RotorOpsPerks.spawnFatCowFarpObjects(pt_x, pt_y, index, delay)
-    log('spawnFatCowFarpObjects called. Looking for static group names ending in ' .. index)
+function RotorOpsPerks.spawnFatCowFarp(pt_x, pt_y, index, delay, new_state)
+    --log all vars
+    log("spawnFatCowFarp called with:")
+    log("FARP DEPLOYED AT: "..pt_x..", "..pt_y)
+    log("FARP INDEX: "..index)
+    log("DELAY: "..delay)
+    log("NEW STATE: "..new_state)
+    local farp = RotorOpsPerks.fat_cow_farps[index]
     local dest_point = mist.utils.makeVec3GL({x = pt_x, y = pt_y})
     trigger.action.smoke(dest_point, 2)
 
@@ -773,22 +922,123 @@ function RotorOpsPerks.spawnFatCowFarpObjects(pt_x, pt_y, index, delay)
         local ammo_point = {x = dest_point.x - 35, y = dest_point.y, z = dest_point.z}
         RotorOpsPerks.teleportStatic('FAT COW AMMO ' .. index, ammo_point)
 
+        RotorOpsPerks.changeFarpState(farp.index, new_state, dest_point, nil, nil, nil)
+
     end, nil, timer.getTime() + delay)
 end
 
+function RotorOpsPerks.despawnFatCowFarp(farp_index)
+   local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    RotorOpsPerks.teleportStatic('FAT COW FARP '..farp.index, {x=farp.farp_p.x, y=farp.farp_p.z})
+    RotorOpsPerks.teleportStatic('FAT COW TENT '..farp.index, {x=farp.tent_p.x, y=farp.tent_p.z})
+    RotorOpsPerks.teleportStatic('FAT COW AMMO '..farp.index, {x=farp.ammo_p.x, y=farp.ammo_p.z})
+    RotorOpsPerks.teleportStatic('FAT COW FUEL '..farp.index, {x=farp.fuel_p.x, y=farp.fuel_p.z})
+end
 
-function RotorOpsPerks.spawnFatCow(dest_point, farp)
-    local index = farp.index
+function RotorOpsPerks.updateFarpMarks(farp_index)
+   local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    log('setUpFatCowZone called for FARP ' .. farp.index)
+    
+    -- get the current farp position
+    local farp_point = farp.deployed_p
+
+    --add map marker
+    local coal = -1
+    local color = {0, 0.4, 0.95, 0.7}
+    local fill_color = {0, 0.4, 0.95, 0.4}
+    local text_fill_color = {0, 0, 0, 0}
+    local line_type = 3 --1 Solid  2 Dashed  3 Dotted  4 Dot Dash  5 Long Dash  6 Two Dash
+    local font_size = 20
+    local read_only = false
+    local text = "FAT COW FARP " .. farp.index
+    if farp.owner_player_name then
+      text = farp.owner_player_name .. "'s " .. text
+    end
+    
+    local radius = 150 --ctld FOB pickup radius
+    
+    trigger.action.circleToAll(coal, farp.mark_id_base + 0, farp_point, radius, color, fill_color, line_type)
+    trigger.action.textToAll(coal, farp.mark_id_base + 1, farp_point, color, text_fill_color, font_size, read_only, text)
+
+end
+
+function RotorOpsPerks.removeFarpMarks(farp_index)
+   local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    --for loop with 10 iterations to remove all marks
+    -- maybe we should store each mark in the farp object
+    for i = 0, 9 do
+        trigger.action.removeMark(farp.mark_id_base + i)
+    end
+end
+
+function RotorOpsPerks.spawnStaticFatCowHeli(farp_index, type)
+    -- this will dynamically create a static Chinook at the farp, as a placeholder for players who chose another slot
+    -- or to resplace the AI Chinook which will eventually despawn
+    if not RotorOpsPerks.static_helicopters_at_farp then
+        return false
+    end
+
+    log('spawnStaticChinook called with farp_index:' .. farp_index)
+
+   local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    if not farp then
+        return false
+    end
+
+    local static_unit_name = farp.chinook.groupName .. ' STATIC'
+
+    --use mist.dynAddStatic at the farp position
+    local chinook = {
+        category = 'helicopters',
+        type = type,
+        country = farp.chinook.country,
+        x = farp.deployed_p.x,
+        y = farp.deployed_p.z,
+        name = static_unit_name,
+        heading = 0,
+    }
+    local new_chinook = mist.dynAddStatic(chinook)
+    if new_chinook then
+        log('Static Chinook spawned as ' .. static_unit_name)
+        RotorOpsPerks.updateFarpAttribute(farp_index, 'static_chinook_name', static_unit_name)
+        return true
+    end
+    return false
+end
+
+function RotorOpsPerks.despawnStaticChinook(farp_index)
+    local farp = RotorOpsPerks.fat_cow_farps[farp_index]
+    if farp.static_chinook_name then
+        log('Despawning static Chinook ' .. farp.static_chinook_name)
+        local unit = StaticObject.getByName(farp.static_chinook_name)
+        local sphere = {
+            point = unit:getPosition().p,
+            radius = 20
+        }
+        unit:destroy()
+        RotorOpsPerks.updateFarpAttribute(farp_index, 'static_chinook_name', nil)
+
+        sphere.point.y = land.getHeight({x = sphere.point.x, y = sphere.point.z})
+         local volS = {
+           id = world.VolumeType.SPHERE,
+           params = {
+             point = sphere.point,
+             radius = sphere.radius
+           }
+         }
+         world.removeJunk(volS)
+        return true
+    end
+end
+
+
+function RotorOpsPerks.spawnAiChinook(dest_point, farp_index)  --the AI Chinook with spawn and fly to the FARP
+   local farp =RotorOpsPerks.fat_cow_farps[farp_index]
+    local index = farp_index
     local fatcow_name = 'FAT COW'
     local source_farp_name = 'FAT COW FARP ' .. index
 
-    log('spawnFatCow called with ' .. source_farp_name)
-
-    --set a timer to return the farp static resources to be reused
-    timer.scheduleFunction(function()
-        table.insert(RotorOpsPerks.fat_cow_farps, farp) --put it back at the end of the list
-        log('FatCow FARP timer expired, making the farp available to be used again.')
-    end, nil, timer.getTime() + 1800)
+    log('spawnAiChinook called with ' .. source_farp_name)
 
     dest_point = mist.utils.makeVec2(dest_point)
     local approach_point = mist.getRandPointInCircle(dest_point, 1000, 900)
@@ -814,7 +1064,7 @@ function RotorOpsPerks.spawnFatCow(dest_point, farp)
 
 
     local script =  [[
-        RotorOpsPerks.spawnFatCowFarpObjects(]] .. dest_point.x ..[[,]] .. dest_point.y .. [[,]] .. index .. [[, 235)
+        RotorOpsPerks.spawnFatCowFarp(]] .. dest_point.x ..[[,]] .. dest_point.y .. [[,]] .. index .. [[, 235, "deployed_ai")
     ]]
 
 
@@ -888,6 +1138,7 @@ function RotorOpsPerks.requestPerk(args)
     local player_unit = player_group:getUnits()[1]
     local player_unit_name = player_unit:getName()
     local player_pos = player_unit:getPoint()
+    local pilot_name = player_unit:getPlayerName() --doesn't work
     local players = RotorOpsPerks.playersByGroupName(args.player_group_name)
     if not players then
         env.warning('No players found in group ' .. args.player_group_name)
@@ -1013,6 +1264,8 @@ function RotorOpsPerks.requestPerk(args)
     args.player_unit = player_unit
     args.player_unit_name = player_unit_name
     args.player_coalition = player_group:getCoalition()
+    args.pilot_name = pilot_name
+
 
     --show all variables available to perk actions and conditions
     --log('args: ' .. mist.utils.tableShow(args, 'args'))
@@ -1050,9 +1303,11 @@ function RotorOpsPerks.requestPerk(args)
 
 
     --call perk action and deduct points if successful
-    if perk.action_function(args) then
+    local action_result = perk.action_function(args)
+    if action_result then
+        local data = {action_result = action_result}
         RotorOpsPerks.spendPoints(args.player_group_name, perk.cost, true)
-        RotorOpsPerks.processCallbacks({action='onPerkUsed', perk=perk, request=args })
+        RotorOpsPerks.processCallbacks({action='onPerkUsed', perk=perk, request=args, data=data })
     end
 
     --update last_used
@@ -1135,6 +1390,89 @@ end
 
 local handle = {}
 function handle:onEvent(e)
+
+    if e.id == world.event.S_EVENT_BIRTH then
+        log('S_EVENT_BIRTH')
+        if not e.initiator then
+            log('BIRTH: initiator is not a unit. Returning.')
+            return
+        end
+
+        if e.initiator.getPlayerName == nil then
+            log('BIRTH: initiator is not a player. Returning.')
+            return
+        end
+        log('e table' .. mist.utils.tableShow(e, 'e'))
+
+
+        local player_name = e.initiator:getPlayerName()
+        local player_group_name = e.initiator:getGroup():getName()
+        log('player_name is ' .. player_name)
+        log('player_group_name is ' .. player_group_name)
+
+        for i, farp in pairs(RotorOpsPerks.fat_cow_farps) do
+
+
+            if farp.owner_player_name and player_name and farp.deployed then
+                log('farps owner_player_name is ' .. farp.owner_player_name)
+                if player_name == farp.owner_player_name and player_group_name ~= farp.chinook.groupName then
+                    --if a farp owner has spawned into a slot other than the farp chinook slot, we'll spawn the static chinook
+                    -- in the case where a player changes from spectator to a slot, we can't get the player from the S_EVENT_PLAYER_ENTER_UNIT event
+                    -- we will try to change to 'deployed_empty' again, but it may not despawn the static chinook fast enough
+                    RotorOpsPerks.changeFarpState(farp.index, 'deployed_empty', nil)
+                    RotorOpsPerks.updateFarpAttribute(farp.index, 'monitored_unit', nil)
+                    RotorOpsPerks.changeFarpState(farp.index, 'deployed_static', nil)
+                elseif player_name == farp.owner_player_name and player_group_name == farp.chinook.groupName then
+                    --player spawned into the farp chinook slot
+                    RotorOpsPerks.changeFarpState(farp.index, 'deployed_empty', nil)
+                    RotorOpsPerks.updateFarpAttribute(farp.index, 'monitored_unit', e.initiator)
+                    RotorOpsPerks.changeFarpState(farp.index, 'deployed_occupied', nil)
+                end
+
+            end
+        end
+    end
+
+    if e.id == world.event.S_EVENT_PLAYER_ENTER_UNIT then
+        log('S_EVENT_PLAYER_ENTER_UNIT')
+        log('e table' .. mist.utils.tableShow(e, 'e'))
+        if not e.initiator then
+            log('ENTER: initiator is not a unit. Returning.')
+            return
+        end
+
+
+    end
+
+    if e.id == world.event.S_EVENT_PLAYER_LEAVE_UNIT then  --getGroup will not work here
+        log('S_EVENT_PLAYER_LEAVE_UNIT')
+        log('e table' .. mist.utils.tableShow(e, 'e'))
+        if not e.initiator then
+            log('LEAVE: initiator is not a unit. Returning.')
+            return
+        end
+        -- determine if player is leaving a farp chinook slot, to spawn the static chinook
+        local player_unit_name = e.initiator:getName()
+        log('player_unit_name is ' .. player_unit_name)
+        local player_name = e.initiator:getPlayerName()
+        log('player_name is ' .. player_name)
+        for i, farp in pairs(RotorOpsPerks.fat_cow_farps) do
+
+            --if the player is a farp owner, we'll despawn the static chinook, even if we don't know what slot they'll choose
+            -- as the birth event does not let us despawn the static before the player enters the unit
+
+            if farp.owner_player_name and player_name then
+                log('farps owner_player_name is ' .. farp.owner_player_name)
+                if player_name == farp.owner_player_name then
+                    RotorOpsPerks.changeFarpState(farp.index, 'deployed_empty', nil)
+                end
+            end
+        end
+
+
+    end
+
+
 
     --if enemy unit destroyed
     if e.id == world.event.S_EVENT_KILL then
@@ -1244,6 +1582,7 @@ function RotorOpsPerks.registerCtldCallbacks()
         return
     end
 
+    RotorOpsPerks.addFarpsToCtld()
 
 	ctld.addCallback(function(_args)
 		local action = _args.action
@@ -1273,6 +1612,18 @@ function RotorOpsPerks.registerCtldCallbacks()
 			end
 		end
 	end)
+
+end
+
+function RotorOpsPerks.addFarpsToCtld()
+   	for i, farp in pairs(RotorOpsPerks.fat_cow_farps) do
+	   if farp.tent then
+	       log('Adding fat cow tent to ctld.buildFOBS for troop pickup: ' .. farp.tent:getName())
+	       table.insert(ctld.builtFOBS, farp.tent:getName())
+	   else
+	       log('No tent found for FARP ' .. farp.index)
+       end
+	end
 end
 
 function RotorOpsPerks.monitorPlayers()
