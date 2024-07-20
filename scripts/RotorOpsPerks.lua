@@ -55,7 +55,7 @@ RotorOpsPerks.player_fatcow_types = {
 
 RotorOpsPerks.static_helicopters_at_farp = true --spawn static helicopters at the FARP if player reslots
 RotorOpsPerks.static_helicopter_types = {  --mapping of player helicopters to their static equivalents
-    ["UH-60L"] = "UH-60L",
+    ["UH-60L"] = "UH-60A",
     ["Mi-8MT"] = "Mi-8MT",
     --insert CH-47 here!
 }
@@ -1012,6 +1012,10 @@ function RotorOpsPerks.despawnStaticHelicopter(farp_index)
     if farp.static_heli_name then
         log('Despawning static helicopter ' .. farp.static_heli_name)
         local unit = StaticObject.getByName(farp.static_heli_name)
+        if not unit then
+            log('Static helicopter not found: ' .. farp.static_heli_name, 'error')
+            return false
+        end
         local sphere = {
             point = unit:getPosition().p,
             radius = 20
