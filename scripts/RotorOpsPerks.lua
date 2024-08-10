@@ -43,6 +43,8 @@ RotorOpsPerks.points = {
     dropped_troops_kill_inf=10, --your troops killed infantry
     dropped_troops_kill=20, --your troops killed a vehicle
     dropped_troops_kill_armor=30, --your troops killed armor
+    dropped_troops_kill_plane=50, --your troops killed an plane
+    dropped_troops_kill_heli=50, --your troops killed a helicopter
     rearm=15, --ctld rearm/repair of ground units
     unpack=15, --ctld unpack of ground units
 }
@@ -688,7 +690,6 @@ function RotorOpsPerks.monitorFarps()
             trigger.action.outText('Some FARP resources have been destroyed', 30)
             env.warning('FAT COW FARP ' .. i .. ' RESOURCES DESTROYED')
             RotorOpsPerks.fat_cow_farps[i] = nil
-            --remove farp marks
         else  --farp still exists
 
             --**** monitor player farps
@@ -798,7 +799,8 @@ function RotorOpsPerks.changeFarpState(farp_index, new_state, request)
             RotorOpsPerks.spawnFatCowFarp(farp.deployed_p.x, farp.deployed_p.z, farp.index, 15, "deployed_occupied") 
         end
 
-    elseif new_state == 'deployed_ai' then 
+    elseif new_state == 'deployed_ai' then
+        farp.deployed = true
         farp.expiration_time = timer.getTime() + 3600
         RotorOpsPerks.spawnFatCowFarp(farp.deployed_p.x, farp.deployed_p.z, farp.index, 15, "deployed_empty") 
 
@@ -864,6 +866,7 @@ function RotorOpsPerks.changeFarpState(farp_index, new_state, request)
         RotorOpsPerks.removeFarpMarks(farp.index)
     end
 
+    --update the farp state
     farp.state = new_state
     RotorOpsPerks.fat_cow_farps[farp_index] = farp
 
@@ -1514,14 +1517,17 @@ function handle:onEvent(e)
                     if e.target:getDesc().category == Unit.Category.GROUND_UNIT == true then
                         if e.target:hasAttribute("Infantry") then
                             RotorOpsPerks.scorePoints(dropped_troops.player_group, RotorOpsPerks.points.dropped_troops_kill_inf, 'Your troops killed infantry!')
-                        --else if target is armor
+                            --else if target is armor
                         elseif e.target:hasAttribute("Tanks") then
                             RotorOpsPerks.scorePoints(dropped_troops.player_group, RotorOpsPerks.points.dropped_troops_kill_armor, 'Your troops killed armor!')
                         else
                             RotorOpsPerks.scorePoints(dropped_troops.player_group, RotorOpsPerks.points.dropped_troops_kill, 'Your troops killed a vehicle!')
                         end
+                    elseif e.target:getDesc().category == Unit.Category.HELICOPTER == true then
+                        RotorOpsPerks.scorePoints(dropped_troops.player_group, RotorOpsPerks.points.dropped_troops_kill_heli, 'Your troops killed a helicopter!')
+                    elseif e.target:getDesc().category == Unit.Category.AIRPLANE == true then
+                        RotorOpsPerks.scorePoints(dropped_troops.player_group, RotorOpsPerks.points.dropped_troops_kill_plane, 'Your troops killed a plane!')
                     end
-
                 end
 
                 --if the initiator is a player
