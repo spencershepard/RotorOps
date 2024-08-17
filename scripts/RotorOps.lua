@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.4.3"
+RotorOps.version = "1.4.4"
 local debug = false
 
 
@@ -32,7 +32,7 @@ RotorOps.farp_smoke_color = 2  -- Green=0 Red=1 White=2 Orange=3 Blue=4 NONE= -1
 
 
 --RotorOps settings that are safe to change only before calling setupConflict()
-RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral', 'UH-60L'} --players flying these will have ctld transport access
+RotorOps.transports = {'UH-1H', 'Mi-8MT', 'Mi-24P', 'SA342M', 'SA342L', 'SA342Mistral', 'UH-60L', 'CH-47Fbl1'} --players flying these will have ctld transport access
 RotorOps.CTLD_crates = false
 RotorOps.CTLD_sound_effects = true --sound effects for troop pickup/dropoffs
 RotorOps.exclude_ai_group_name = "Static"  --include this somewhere in a group name to exclude the group from being tasked in the active zone
@@ -333,7 +333,7 @@ function RotorOps.eventHandler:onEvent(event)
    ---UNIT DESTROYED EVENTS
     if (world.event.S_EVENT_KILL == event.id) then
       if event.initiator and event.target then
-        if not Unit.getGroup(event.initiator) then
+        if not event.initiator.getCoalition or not event.target.getCoalition then
           return
         end
         if event.initiator:getCoalition() and event.target:getCoalition() and event.initiator:getCoalition() ~= event.target:getCoalition() then
@@ -523,17 +523,18 @@ end
 
 
 function RotorOps.getValidUnitFromGroup(grp)
+ if grp == nil then return end
  local group_obj
  if type(grp) == 'string' then
    group_obj = Group.getByName(grp)
  else
   group_obj = grp
  end
- if not group_obj then
-  return nil
+ if group_obj == nil then
+  return
  end
- if group_obj:isExist() ~= true then
-  return nil
+ if group_obj.isExist == nil or group_obj:isExist() ~= true then
+  return
  end
  local first_valid_unit
  for index, unit in pairs(group_obj:getUnits())
@@ -703,8 +704,9 @@ function RotorOps.chargeEnemy(vars)
  --trigger.action.outText("charge enemies: "..mist.utils.tableShow(vars), 5)
  local grp = vars.grp
  local search_radius = vars.radius or 5000
- ----
+  ----
  local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+  if first_valid_unit == nil then return end
 
  if first_valid_unit == nil then return end
  local start_point = first_valid_unit:getPoint()
@@ -781,8 +783,8 @@ function RotorOps.patrolRadius(vars)
  --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))
  local grp = vars.grp
  local search_radius = vars.radius or 100
- local first_valid_unit
- if grp:isExist() ~= true then return end
+ local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+ if first_valid_unit == nil then return end
  for index, unit in pairs(grp:getUnits())
  do
    if unit:isExist() == true then
@@ -847,8 +849,8 @@ function RotorOps.shiftPosition(vars)
  local grp = vars.grp
  local search_radius = vars.radius or 100
  local inner_radius = 50 --minimum distance to move for randpointincircle
- local first_valid_unit
- if grp and grp:isExist() ~= true then return end
+ local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+ if first_valid_unit == nil then return end
  local start_point = vars.point
 
  if not start_point then
@@ -897,8 +899,8 @@ function RotorOps.guardPosition(vars)
  --debugMsg("patrol radius: "..mist.utils.tableShow(vars.grp))
  local grp = vars.grp
  local search_radius = vars.radius or 100
- local first_valid_unit
- if not grp or grp:isExist() ~= true then return end
+ local first_valid_unit = RotorOps.getValidUnitFromGroup(grp)
+ if first_valid_unit == nil then return end
  local start_point = vars.point
 
  if not start_point then
@@ -1611,6 +1613,7 @@ function RotorOps.setupCTLD()
      ["Mi-8MT"] = 24,
      ["Mi-24P"] = 8,
      ["UH-60L"] = 11,
+     ["CH-47Fbl1"] = 33
    }
 
    ctld.loadableGroups = {
