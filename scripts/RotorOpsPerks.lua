@@ -15,7 +15,7 @@
 
 
 RotorOpsPerks = {}
-RotorOpsPerks.version = "1.7.0"
+RotorOpsPerks.version = "1.7.1"
 env.warning('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version)
 trigger.action.outText('ROTOROPS PERKS STARTED: '..RotorOpsPerks.version, 10)
 RotorOpsPerks.perks = {}
@@ -52,14 +52,14 @@ RotorOpsPerks.points = {
 RotorOpsPerks.player_fatcow_types = {
     "UH-60L",
     "Mi-8MT",
-    --insert CH-47 here!
+    "CH-47Fbl1"
 }
 
 RotorOpsPerks.static_helicopters_at_farp = true --spawn static helicopters at the FARP if player reslots
 RotorOpsPerks.static_helicopter_types = {  --mapping of player helicopters to their static equivalents
     ["UH-60L"] = "UH-60A",
     ["Mi-8MT"] = "Mi-8MT",
-    --insert CH-47 here!
+    ["CH-47Fbl1"] = "CH-47D"
 }
 
 ---- END OPTIONS ----
@@ -1466,6 +1466,11 @@ function handle:onEvent(e)
         log('e table' .. mist.utils.tableShow(e, 'e'))
         if not e.initiator then
             log('LEAVE: initiator is not a unit. Returning.')
+            return
+        end
+
+        if not e.initiator.getName then
+            log('LEAVE: cannot get initiator player name. Returning.')
             return
         end
 
