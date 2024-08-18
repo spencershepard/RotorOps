@@ -1610,7 +1610,7 @@ function RotorOps.setupCTLD()
      ["SA342L"] = 4,
      ["SA342M"] = 4,
      ["UH-1H"] = 10,
-     ["Mi-8MT"] = 24,
+     ["Mi-8MT"] = 18,
      ["Mi-24P"] = 8,
      ["UH-60L"] = 11,
      ["CH-47Fbl1"] = 33
@@ -1653,7 +1653,14 @@ function RotorOps.setupCTLD()
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops9", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
    ctld.pickupZones[#ctld.pickupZones + 1] = { "troops10", RotorOps.pickup_zone_smoke, -1, "yes", 0 }
 
+   ctld.logisticUnits = {}  --eg 'logistic1', 'logistic2', 'logistic3'  --plus -1 -2 -3 suffix for each
 
+  for i = 1, 10 do
+    ctld.logisticUnits[#ctld.logisticUnits + 1] = "logistic"..i
+    ctld.logisticUnits[#ctld.logisticUnits + 1] = "logistic"..i.."-1"
+    ctld.logisticUnits[#ctld.logisticUnits + 1] = "logistic"..i.."-2"
+    ctld.logisticUnits[#ctld.logisticUnits + 1] = "logistic"..i.."-3"
+  end
 
 end
 
