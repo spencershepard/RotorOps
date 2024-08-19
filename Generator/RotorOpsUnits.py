@@ -14,6 +14,7 @@ client_helos = [
 
 player_helos = [
     dcs.helicopters.AH_64D_BLK_II,
+    dcs.helicopters.CH_47Fbl1,
     dcs.helicopters.Ka_50,
     dcs.helicopters.Ka_50_3,
     dcs.helicopters.Mi_8MT,

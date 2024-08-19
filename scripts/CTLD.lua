@@ -18,6 +18,8 @@
         - davidp57 - https://github.com/veaf
         - Queton1-1 - https://github.com/Queton1-1
         - Proxy404 - https://github.com/Proxy404
+        - GRIMM - https://github.com/spencershepard
+
  ]]
 
  ctld = {} -- DONT REMOVE!
@@ -26,7 +28,7 @@
  ctld.Id = "CTLD - "
  
  --- Version.
- ctld.Version = "202401.01"
+ ctld.Version = "202408.01"
  --https://github.com/spencershepard/DCS-CTLD/tree/rotorops
  
  -- To add debugging messages to dcs.log, change the following log levels to `true`; `Debug` is less detailed than `Trace`
@@ -57,10 +59,10 @@
  ctld.maximumDistanceLogistic = 200 -- max distance from vehicle to logistics to allow a loading or spawning operation
  ctld.maximumSearchDistance = 4000 -- max distance for troops to search for enemy
  ctld.maximumMoveDistance = 2000 -- max distance for troops to move from drop point if no enemy is nearby
- 
+
  ctld.minimumDeployDistance = 1000 -- minimum distance from a friendly pickup zone where you can deploy a crate
- 
- ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli or C-130 
+
+ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli or C-130
                           -- also works as maximum size of group that'll fit into a helicopter unless overridden
  ctld.enableFastRopeInsertion = true -- allows you to drop troops by fast rope
  ctld.fastRopeMaximumHeight = 18.28 -- in meters which is 60 ft max fast rope (not rappell) safe height
@@ -93,7 +95,7 @@
  
  ctld.buildTimeFOB = 120 --time in seconds for the FOB to be built
  
- ctld.crateWaitTime = 120 -- time in seconds to wait before you can spawn another crate
+ ctld.crateWaitTime = 60 -- time in seconds to wait before you can spawn another crate
  
  ctld.forceCrateToBeMoved = true -- a crate must be picked up at least once and moved before it can be unpacked. Helps to reduce crate spam
  
@@ -421,6 +423,14 @@
      "76MD", -- the il-76 mod doesnt use a normal - sign so il-76md wont match... !!!! GRR
      "Hercules",
  }
+
+ -- ************** Units able to use DCS dynamic cargo system ******************
+ -- DCS (version) added the ability to load and unload cargo from aircraft.
+ -- Units listed here will spawn a cargo static that can be loaded with the standard DCS cargo system
+ -- We will also use this to make modifications to the menu and other checks and messages
+ ctld.dynamicCargoUnits = {
+     "CH-47Fbl1",
+ }
  
  
  -- ************** Maximum Units SETUP for UNITS ******************
@@ -583,20 +593,29 @@
          { weight = 595, desc = "Early Warning Radar", unit = "1L13 EWR", side = 1 }, -- cant be used by BLUE coalition
      },
  }
- 
- --- 3D model that will be used to represent a loadable crate ; by default, a generator
- ctld.spawnableCratesModel_load = {
-     ["category"] = "Fortifications",
-     ["shape_name"] = "GeneratorF",
-     ["type"] = "GeneratorF"
+
+ ctld.spawnableCratesModels = {
+     ["load"] = {
+         ["category"] = "Fortifications",
+         ["shape_name"] = "GeneratorF",
+         ["type"] = "GeneratorF",
+         ["canCargo"] = false,
+     },
+     ["sling"] = {
+         ["category"] = "Cargos",
+         ["shape_name"] = "bw_container_cargo",
+         ["type"] = "container_cargo",
+         ["canCargo"] = true
+     },
+     ["dynamic"] = {
+         ["category"] = "Cargos",
+         ["shape_name"] = "ammo_box_cargo",
+         ["type"] = "ammo_cargo",
+         ["canCargo"] = true
+     }
  }
  
- --- 3D model that will be used to represent a slingable crate ; by default, a crate
- ctld.spawnableCratesModel_sling = {
-     ["category"] = "Cargos",
-     ["shape_name"] = "bw_container_cargo",
-     ["type"] = "container_cargo"
- }
+
  
  --[[ Placeholder for different type of cargo containers. Let's say pipes and trunks, fuel for FOB building
      ["shape_name"] = "ab-212_cargo",
@@ -1536,15 +1555,15 @@
      return nil
  end
  
- function ctld.spawnCrateStatic(_country, _unitId, _point, _name, _weight,_side)
+ function ctld.spawnCrateStatic(_country, _unitId, _point, _name, _weight, _side, _model_type)
  
      local _crate
      local _spawnedCrate
- 
+
      if ctld.staticBugWorkaround and ctld.slingLoad == false then
          local _groupId = ctld.getNextGroupId()
          local _groupName = "Crate Group #".._groupId
- 
+
          local _group = {
              ["visible"] = false,
             -- ["groupId"] = _groupId,
@@ -1555,27 +1574,27 @@
              ["name"] = _groupName,
              ["task"] = {},
          }
- 
+
          _group.units[1] = ctld.createUnit(_point.x , _point.z , 0, {type="UAZ-469",name=_name,unitId=_unitId})
- 
+
          --switch to MIST
          _group.category = Group.Category.GROUND;
          _group.country = _country;
- 
+
          local _spawnedGroup = Group.getByName(mist.dynAdd(_group).name)
- 
+
          -- Turn off AI
          trigger.action.setGroupAIOff(_spawnedGroup)
- 
+
          _spawnedCrate = Unit.getByName(_name)
      else
- 
-         if ctld.slingLoad then
-             _crate = mist.utils.deepCopy(ctld.spawnableCratesModel_sling)
-             _crate["canCargo"] = true
+
+         if _model_type ~= nil then
+             _crate = mist.utils.deepCopy(ctld.spawnableCratesModels[_model_type])
+         elseif ctld.slingLoad then
+             _crate = mist.utils.deepCopy(ctld.spawnableCratesModels["sling"])
          else
-             _crate = mist.utils.deepCopy(ctld.spawnableCratesModel_load)
-             _crate["canCargo"] = false
+             _crate = mist.utils.deepCopy(ctld.spawnableCratesModels["load"])
          end
  
          _crate["y"] = _point.z
@@ -1732,8 +1751,14 @@
              local _side = _heli:getCoalition()
  
              local _name = string.format("%s #%i", _crateType.desc, _unitId)
+
+             local _model_type = nil
+
+             if ctld.unitDynamicCargoCapable(_heli) then
+                 _model_type = "dynamic"
+             end
  
-             local _spawnedCrate = ctld.spawnCrateStatic(_heli:getCountry(), _unitId, _point, _name, _crateType.weight,_side)
+             local _spawnedCrate = ctld.spawnCrateStatic(_heli:getCountry(), _unitId, _point, _name, _crateType.weight, _side, _model_type)
  
              -- add to move table
              ctld.crateMove[_name] = _name
@@ -2601,7 +2626,7 @@
              local _transUnit = ctld.getTransportUnit(_name)
  
              --only check transports that are hovering and not planes
-             if _transUnit ~= nil and ctld.inTransitSlingLoadCrates[_name] == nil and ctld.inAir(_transUnit) and ctld.unitCanCarryVehicles(_transUnit) == false then
+             if _transUnit ~= nil and ctld.inTransitSlingLoadCrates[_name] == nil and ctld.inAir(_transUnit) and ctld.unitCanCarryVehicles(_transUnit) == false and not ctld.unitDynamicCargoCapable(_transUnit) then
  
  
                  local _crates = ctld.getCratesAndDistance(_transUnit)
@@ -3105,7 +3130,7 @@
  
              elseif _crate ~= nil and _crate.dist < 200 then
  
-                 if ctld.forceCrateToBeMoved and ctld.crateMove[_crate.crateUnit:getName()] then
+                 if ctld.forceCrateToBeMoved and ctld.crateMove[_crate.crateUnit:getName()] and not ctld.unitDynamicCargoCapable(_heli) then
                      ctld.displayMessageToGroup(_heli,"Sorry you must move this crate before you unpack it!", 20)
                      return
                  end
@@ -4688,11 +4713,25 @@
  
      for _, _name in ipairs(ctld.vehicleTransportEnabled) do
          local _nameLower = string.lower(_name)
-         if string.match(_type, _nameLower) then
+         if string.find(_type, _nameLower, 1, true) then
              return true
          end
      end
  
+     return false
+ end
+
+ function ctld.unitDynamicCargoCapable(_unit)
+
+     local _type = string.lower(_unit:getTypeName())
+
+     for _, _name in ipairs(ctld.dynamicCargoUnits) do
+         local _nameLower = string.lower(_name)
+         if string.find(_type, _nameLower, 1, true) then   --string.match does not work with patterns containing '-' as it is a magic character
+             return true
+         end
+     end
+
      return false
  end
  
