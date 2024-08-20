@@ -95,7 +95,7 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
  
  ctld.buildTimeFOB = 120 --time in seconds for the FOB to be built
  
- ctld.crateWaitTime = 60 -- time in seconds to wait before you can spawn another crate
+ ctld.crateWaitTime = 40 -- time in seconds to wait before you can spawn another crate
  
  ctld.forceCrateToBeMoved = true -- a crate must be picked up at least once and moved before it can be unpacked. Helps to reduce crate spam
  
@@ -609,8 +609,8 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
      },
      ["dynamic"] = {
          ["category"] = "Cargos",
-         ["shape_name"] = "ammo_box_cargo",
-         ["type"] = "ammo_cargo",
+         ["shape_name"] = "m117_cargo",
+		 ["type"] = "m117_cargo",
          ["canCargo"] = true
      }
  }
@@ -3030,13 +3030,14 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
      local _closetCrate = nil
      local _shortestDistance = -1
      local _distance = 0
+     local _minimumDistance = 5  -- prevents dynamic cargo crates from unpacking while in cargo hold
  
      for _, _crate in pairs(_crates) do
  
          if (_crate.details.unit == _type or _type == nil) then
              _distance = _crate.dist
  
-             if _distance ~= nil and (_shortestDistance == -1 or _distance < _shortestDistance) then
+             if _distance ~= nil and (_shortestDistance == -1 or _distance < _shortestDistance) and _distance > _minimumDistance then
                  _shortestDistance = _distance
                  _closetCrate = _crate
              end
@@ -3198,7 +3199,7 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
  
              else
  
-                 ctld.displayMessageToGroup(_heli, "No friendly crates close enough to unpack", 20)
+                 ctld.displayMessageToGroup(_heli, "No friendly crates close enough to unpack, or crate too close to aircraft.", 20)
              end
          end
      end, _arguments)
