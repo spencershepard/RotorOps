@@ -96,6 +96,8 @@ example:
 
 # Building new RotorOps_setup.exe installer package
 
+For a new release, the installer package must be built on your dev machine and attached to the release on GitHub.  Installforge does not offer a CLI.
+
 Uses https://installforge.net/
 See install-config.ifp and installforge_constants.txt
 

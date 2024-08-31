@@ -1,0 +1,85 @@
+name: Pre-deployment build check
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+    branches:
+      - main
+
+jobs:
+  version-increment-check:
+    runs-on: ubuntu-latest
+    name: Check if version number was incremented
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Get the version string from the working directory
+        run: |
+          cd Generator
+          VERSION=$(python -c "from version import *; print(version_string)")
+          echo NEW_VERSION=$VERSION >> $GITHUB_ENV
+
+      - name: Get the current version string from main branch
+        run: |
+          git fetch origin main
+          git checkout main
+          cd Generator
+          VERSION=$(python -c "from version import *; print(version_string)")
+          echo CURRENT_VERSION=$VERSION >> $GITHUB_ENV
+
+      - name: Install packaging module
+        run: |
+          python -m pip install --upgrade pip
+          pip install packaging
+
+      - name: Check if version number was incremented
+        run: |
+          python -c "from packaging import version as ver; assert ver.parse('${{env.NEW_VERSION}}') > ver.parse('${{env.CURRENT_VERSION}}'), 'Version number was not incremented'"
+
+  build-exe:
+      needs: version-increment-check
+      runs-on: windows-latest
+      name: Build the executable
+      steps:
+        - uses: actions/checkout@v3
+          with:
+            fetch-depth: 0  # OR "2" -> To retrieve the preceding commit.
+
+        - name: Set up Python 3.10.7
+          uses: actions/setup-python@v3
+          with:
+            python-version: "3.10.7"
+
+        - name: Install requirements from requirements.txt
+          run: |
+            cd Generator
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+
+        - name: Build UI resources
+          run: |
+            cd Generator
+            pyuic5 -x MissionGeneratorUI.ui -o MissionGeneratorUI.py
+            pyrcc5 -o resources.py resources.qrc
+
+        - name: Build the executable
+          run: |
+            cd Generator
+            pyinstaller MissionGenerator.spec --clean --log-level=DEBUG
+
+        - name: Archive the executable
+          uses: actions/upload-artifact@v4
+          with:
+            name: MissionGenerator
+            path: Generator/dist/MissionGenerator.exe
+            if-no-files-found: error
