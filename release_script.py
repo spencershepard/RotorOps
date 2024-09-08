@@ -73,6 +73,8 @@ if __name__ == "__main__":
 
 
     changed_files = json.loads(os.getenv("changed_files"))
+    print("Adding MissionGenerator.exe to changed files, as it is always updated but not monitored.")
+    changed_files.append("MissionGenerator.exe")
     if changed_files:
         print("Changed files: " + str(changed_files))
 
