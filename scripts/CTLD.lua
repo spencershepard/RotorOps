@@ -28,7 +28,7 @@
  ctld.Id = "CTLD - "
  
  --- Version.
- ctld.Version = "202408.01"
+ ctld.Version = "2025-02-01-GRIMM"
  --https://github.com/spencershepard/DCS-CTLD/tree/rotorops
  
  -- To add debugging messages to dcs.log, change the following log levels to `true`; `Debug` is less detailed than `Trace`
@@ -522,75 +522,89 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
  --
  ctld.spawnableCrates = {
      -- name of the sub menu on F10 for spawning crates
-     ["Ground Forces"] = {
+     ["Combat Vehicles"] = {
          --crates you can spawn
          -- weight in KG
          -- Desc is the description on the F10 MENU
          -- unit is the model name of the unit to spawn
          -- cratesRequired - if set requires that many crates of the same type within 100m of each other in order build the unit
          -- side is optional but 2 is BLUE and 1 is RED
-         -- dont use that option with the HAWK Crates
-         { weight = 500, desc = "HMMWV - TOW", unit = "M1045 HMMWV TOW", side = 2 },
-         { weight = 505, desc = "HMMWV - MG", unit = "M1043 HMMWV Armament", side = 2 },
- 
-         { weight = 510, desc = "BTR-D", unit = "BTR_D", side = 1 },
-         { weight = 515, desc = "BRDM-2", unit = "BRDM-2", side = 1 },
- 
-         { weight = 520, desc = "HMMWV - JTAC", unit = "Hummer", side = 2, }, -- used as jtac and unarmed, not on the crate list if JTAC is disabled
-         { weight = 525, desc = "SKP-11 - JTAC", unit = "SKP-11", side = 1, }, -- used as jtac and unarmed, not on the crate list if JTAC is disabled
- 
-         { weight = 100, desc = "2B11 Mortar", unit = "2B11 mortar" },
- 
-         { weight = 250, desc = "SPH 2S19 Msta", unit = "SAU Msta", side = 1, cratesRequired = 3 },
-         { weight = 255, desc = "M-109", unit = "M-109", side = 2, cratesRequired = 3 },
- 
-         { weight = 252, desc = "Ural-375 Ammo Truck", unit = "Ural-375", side = 1, cratesRequired = 2 },
-         { weight = 253, desc = "M-818 Ammo Truck", unit = "M 818", side = 2, cratesRequired = 2 },
- 
-         { weight = 800, desc = "FOB Crate - Small", unit = "FOB-SMALL" }, -- Builds a FOB! - requires 3 * ctld.cratesRequiredForFOB
+
+         -- Some descriptions are filtered to determine if JTAC or not!
+
+         --- BLUE
+         { weight = 1000, desc = "Humvee - MG", unit = "M1043 HMMWV Armament", side = 2 },  --careful with the names as the script matches the desc to JTAC types
+         { weight = 1001, desc = "Humvee - TOW", unit = "M1045 HMMWV TOW", side = 2, cratesRequired = 2 },
+         { weight = 1002, desc = "Light Tank - MRAP", unit="MaxxPro_MRAP", side = 2, cratesRequired = 2 },
+         { weight = 1003, desc = "Med Tank - LAV-25", unit="LAV-25", side = 2, cratesRequired = 3 },
+         { weight = 1004, desc = "Heavy Tank - Abrams", unit="M1A2C_SEP_V3", side = 2, cratesRequired = 4 },
+
+         --- RED
+         { weight = 1005, desc = "BTR-D", unit = "BTR_D", side = 1 },
+         { weight = 1006, desc = "BRDM-2", unit = "BRDM-2", side = 1 },
+         -- need more redfor!
      },
-     ["AA short range"] = {
-         { weight = 50, desc = "Stinger", unit = "Soldier stinger", side = 2 },
-         { weight = 55, desc = "Igla", unit = "SA-18 Igla manpad", side = 1 },
- 
-         { weight = 405, desc = "Strela-1 9P31", unit = "Strela-1 9P31", side = 1, cratesRequired = 3 },
-         { weight = 400, desc = "M1097 Avenger", unit = "M1097 Avenger", side = 2, cratesRequired = 3 },
+     ["Support"] = {
+         --- BLUE
+         { weight = 1007, desc = "Hummer - JTAC", unit = "Hummer", side = 2, cratesRequired = 2 }, -- used as jtac and unarmed, not on the crate list if JTAC is disabled
+         { weight = 1008, desc = "M-818 Ammo Truck", unit = "M 818", side = 2, cratesRequired = 2 },
+
+         --- RED
+         { weight = 1009, desc = "SKP-11 - JTAC", unit = "SKP-11", side = 1 }, -- used as jtac and unarmed, not on the crate list if JTAC is disabled
+         { weight = 1010, desc = "Ural-375 Ammo Truck", unit = "Ural-375", side = 1, cratesRequired = 2 },
+
+         --- Both
+         { weight = 1011, desc = "EWR Radar", unit="FPS-117", cratesRequired = 3 },
+         { weight = 1012, desc = "FOB Crate - Small", unit = "FOB-SMALL" }, -- Builds a FOB! - requires 3 * ctld.cratesRequiredForFOB
+
      },
-     ["AA mid range"] = {
+     ["Artillery"] = {
+         --- BLUE
+         { weight = 1013, desc = "MLRS", unit = "MLRS", side=2, cratesRequired = 3 },
+         { weight = 1014, desc = "SpGH DANA", unit = "SpGH_Dana", side=2, cratesRequired = 3 },
+         { weight = 1015, desc = "T155 Firtina", unit = "T155_Firtina", side=2, cratesRequired = 3 },
+         { weight = 1016, desc = "Howitzer", unit = "M-109", side=2, cratesRequired = 3 },
+
+         --- RED
+         { weight = 1017, desc = "SPH 2S19 Msta", unit = "SAU Msta", side = 1, cratesRequired = 3 },
+
+     },
+     ["SAM short range"] = {
+         --- BLUE
+         { weight = 1018, desc = "M1097 Avenger", unit = "M1097 Avenger", side = 2, cratesRequired = 3 },
+
+         --- RED
+         { weight = 1019, desc = "Strela-1 9P31", unit = "Strela-1 9P31", side = 1, cratesRequired = 3 },
+
+     },
+     ["SAM mid range"] = {
+         --- BLUE
          -- HAWK System
-         { weight = 540, desc = "HAWK Launcher", unit = "Hawk ln", side = 2},
-         { weight = 545, desc = "HAWK Search Radar", unit = "Hawk sr", side = 2 },
-         { weight = 546, desc = "HAWK Track Radar", unit = "Hawk tr", side = 2 },
-         { weight = 547, desc = "HAWK PCP", unit = "Hawk pcp" , side = 2 }, -- Remove this if on 1.2
-         { weight = 548, desc = "HAWK CWAR", unit = "Hawk cwar" , side = 2 }, -- Remove this if on 2.5    
-         { weight = 549, desc = "HAWK Repair", unit = "HAWK Repair" , side = 2 },
+         { weight = 1020, desc = "HAWK Launcher", unit = "Hawk ln", side = 2},
+         { weight = 1021, desc = "HAWK Search Radar", unit = "Hawk sr", side = 2 },
+         { weight = 1022, desc = "HAWK Track Radar", unit = "Hawk tr", side = 2 },
+         { weight = 1023, desc = "HAWK PCP", unit = "Hawk pcp" , side = 2 },
+         { weight = 1024, desc = "HAWK CWAR", unit = "Hawk cwar" , side = 2 },
+         { weight = 1025, desc = "HAWK Repair", unit = "HAWK Repair" , side = 2 },
          -- End of HAWK
- 
+
+         --- RED
          -- KUB SYSTEM
-         { weight = 560, desc = "KUB Launcher", unit = "Kub 2P25 ln", side = 1},
-         { weight = 565, desc = "KUB Radar", unit = "Kub 1S91 str", side = 1 },
-         { weight = 570, desc = "KUB Repair", unit = "KUB Repair", side = 1},
+         { weight = 1026, desc = "KUB Launcher", unit = "Kub 2P25 ln", side = 1},
+         { weight = 1027, desc = "KUB Radar", unit = "Kub 1S91 str", side = 1 },
+         { weight = 1028, desc = "KUB Repair", unit = "KUB Repair", side = 1},
          -- End of KUB
- 
-         -- BUK System
-         --        { weight = 575, desc = "BUK Launcher", unit = "SA-11 Buk LN 9A310M1"},
-         --        { weight = 580, desc = "BUK Search Radar", unit = "SA-11 Buk SR 9S18M1"},
-         --        { weight = 585, desc = "BUK CC Radar", unit = "SA-11 Buk CC 9S470M1"},
-         --        { weight = 590, desc = "BUK Repair", unit = "BUK Repair"},
-         -- END of BUK
+
      },
-     ["AA long range"] = {
+     ["SAM long range"] = {
+         --- BLUE
          -- Patriot System
-         { weight = 555, desc = "Patriot Launcher", unit = "Patriot ln", side = 2 },
-         { weight = 556, desc = "Patriot Radar", unit = "Patriot str" , side = 2 },
-         { weight = 557, desc = "Patriot ECS", unit = "Patriot ECS", side = 2 },
-         -- { weight = 553, desc = "Patriot ICC", unit = "Patriot cp", side = 2 },
-         -- { weight = 554, desc = "Patriot EPP", unit = "Patriot EPP", side = 2 },
-         { weight = 558, desc = "Patriot AMG (optional)", unit = "Patriot AMG" , side = 2 },
-         { weight = 559, desc = "Patriot Repair", unit = "Patriot Repair" , side = 2 },
+         { weight = 1029, desc = "Patriot Launcher", unit = "Patriot ln", side = 2 },
+         { weight = 1030, desc = "Patriot Radar", unit = "Patriot str" , side = 2 },
+         { weight = 1031, desc = "Patriot ECS", unit = "Patriot ECS", side = 2 },
+         { weight = 1032, desc = "Patriot AMG (optional)", unit = "Patriot AMG" , side = 2 },
+         { weight = 1033, desc = "Patriot Repair", unit = "Patriot Repair" , side = 2 },
          -- End of Patriot
- 
-         { weight = 595, desc = "Early Warning Radar", unit = "1L13 EWR", side = 1 }, -- cant be used by BLUE coalition
      },
  }
 
@@ -4097,7 +4111,7 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
  
  
          local _spawnedGroup = ctld.spawnCrateGroup(_heli, { _point }, { _nearestCrate.details.unit })
- 
+         ctld.setGrpROE(_spawnedGroup)
          ctld.processCallback({unit = _heli, crate =  _nearestCrate , spawnedGroup = _spawnedGroup, action = "unpack"})
  
          local _txt = string.format("%s successfully deployed %s to the field using %d crates", ctld.getPlayerNameOrType(_heli), _nearestCrate.details.desc, #_nearbyMultiCrates)
@@ -6322,6 +6336,21 @@ ctld.numberOfTroops = 10 -- default number of troops to load on a transport heli
      end
  end
  ctld.jtacSpecialOptions._9Line.setter = ctld.setJTAC9Line
+
+ function ctld.setGrpROE(_grp, _ROE)
+     if _ROE == nil then
+         _ROE = AI.Option.Ground.val.ROE.OPEN_FIRE
+     end
+
+     _grp = ctld.getAliveGroup(_grp)
+
+    if _grp ~= nil then
+         local _controller = _grp:getController();
+         Controller.setOption(_controller, AI.Option.Ground.id.ALARM_STATE, AI.Option.Ground.val.ALARM_STATE.AUTO)
+         Controller.setOption(_controller, AI.Option.Ground.id.ROE, _ROE)
+         _controller:setTask(_grp)
+     end
+ end
  
  function ctld.isInfantry(_unit)
  
