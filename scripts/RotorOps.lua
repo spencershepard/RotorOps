@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.4.4"
+RotorOps.version = "1.4.5"
 local debug = false
 
 
@@ -1137,7 +1137,7 @@ function RotorOps.assessUnitsInZone(var)
      local halt_convoy = false
      local convoy_status = "enroute"
 
-     if #attacking_ground_units > 0 and RotorOps.halt_convoy_without_airsupport then
+     if #attacking_ground_units > 0 and not RotorOps.defending and RotorOps.halt_convoy_without_airsupport then
       if RotorOps.convoy_suppressor then
         if RotorOps.convoy_suppressor:isExist() then
           halt_convoy = true
@@ -1146,7 +1146,7 @@ function RotorOps.assessUnitsInZone(var)
           RotorOps.convoy_suppressor = nil
         end
 
-      elseif not RotorOps.predAirSupportNearActive() and not RotorOps.defending then
+      elseif not RotorOps.predAirSupportNearActive() then
         convoy_status = "waiting_for_escort"
         halt_convoy = true
       end
