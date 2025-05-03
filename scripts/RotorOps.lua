@@ -51,6 +51,7 @@ RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
 RotorOps.enable_staging_pickzones = true
 RotorOps.persistent_tasking = false --prevent the script from restasking in a loop --might help with odd movement patterns between zones
 RotorOps.halt_convoy_without_airsupport = true --if true, attacking convoys not proceed in zone without player helicopters nearby. Does not affect defensive missions
+RotorOps.zone_structures_destruction_percent = 30 --percentage of structures that must be destroyed in order to clear the zone
 
 --RotorOps settings that are safe to change only in the script config option in the scenario config file
 RotorOps.draw_conflict_zones = true
@@ -92,6 +93,7 @@ RotorOps.eventHandler = {}
 local commandDB = {}
 local game_message_buffer = {}
 local active_zone_initial_defenders
+local active_zone_initial_structures_health
 local initial_stage_units
 local apcs = {} --table to keep track of infantry vehicles
 local low_units_message_fired = false
@@ -520,6 +522,21 @@ function RotorOps.sortOutInfantry(mixed_units)
   end
   return {infantry = _infantry, not_infantry = _not_infantry}
 end
+
+function RotorOps.sortOutStatics(mixed_statics)
+  local targets = {}
+  local not_targets = {}
+  --- statics that have :getCategory() == UNIT or :getCategory() == BASE are targets
+  for index, static in pairs(mixed_statics) do
+        if static:getCategory() and static:getCategory() == StaticObject.Category.UNIT or static:getCategory() == StaticObject.Category.BASE then
+          targets[#targets + 1] = unit
+        else
+          not_targets[#not_targets + 1] = unit
+        end
+  end
+    return {targets = targets, not_targets = not_targets}
+end
+
 
 
 function RotorOps.getValidUnitFromGroup(grp)
@@ -1105,16 +1122,28 @@ function RotorOps.assessUnitsInZone(var)
    local defending_ground_units
    local defending_infantry
    local defending_vehicles
+   local defending_structures
    local attacking_ground_units
    local attacking_infantry
    local attacking_vehicles
 
+   local get_total_health = function(units)
+     local total_health = 0
+     for index, unit in pairs(units) do
+       if unit:isExist() and unit:getLife() then
+         total_health = total_health + unit:getLife()
+       end
+     return total_health
+     end
+   end
 
     --find and sort units found in the active zone
    if RotorOps.defending then
      defending_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
      defending_infantry = RotorOps.sortOutInfantry(defending_ground_units).infantry
      defending_vehicles = RotorOps.sortOutInfantry(defending_ground_units).not_infantry
+     local defending_statics = mist.getUnitsInZones(mist.makeUnitTable({'[blue][static]'}), {RotorOps.active_zone})
+     defending_structures = RotorOps.sortOutStatics(defending_statics).targets
      attacking_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})
      attacking_infantry = RotorOps.sortOutInfantry(attacking_ground_units).infantry
      attacking_vehicles = RotorOps.sortOutInfantry(attacking_ground_units).not_infantry
@@ -1237,6 +1266,10 @@ function RotorOps.assessUnitsInZone(var)
      RotorOps.inf_spawns_avail = math.ceil(RotorOps.inf_spawns_avail)
 	 end
 
+     --get the health of the defending structures in the zone
+     active_zone_initial_structures_health = get_total_health(defending_structures)
+     env.info("ROTOR OPS: initial defenders: "..#active_zone_initial_defenders..", initial structures health: "..active_zone_initial_structures_health)
+
      env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
    end
 
@@ -1244,12 +1277,15 @@ function RotorOps.assessUnitsInZone(var)
    local defenders_status_flag = RotorOps.zones[RotorOps.active_zone_index].defenders_status_flag
    --if #active_zone_initial_defenders == 0 then active_zone_initial_defenders = 1 end --prevent divide by zero
    local defenders_remaining_percent = math.floor((#defending_ground_units / #active_zone_initial_defenders) * 100)
+   local defending_structures_dead_health = math.floor(active_zone_initial_structures_health * (RotorOps.zone_structures_destruction_percent/100))
+   local defending_structures_remaining_health_percent = math.floor((get_total_health(defending_structures) - defending_structures_dead_health) / (active_zone_initial_structures_health - defending_structures_dead_health))
 
-   if #defending_ground_units <= RotorOps.max_units_left then  --if we should declare the zone cleared
+   if #defending_ground_units <= RotorOps.max_units_left and defending_structures_remaining_health_percent <= 1 then  --if we should declare the zone cleared
      active_zone_initial_defenders = nil
+     active_zone_initial_structures_health = nil
      defenders_remaining_percent = 0
      trigger.action.setUserFlag(defenders_status_flag, 0)  --set the zone's flag to cleared
-	 trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], 0)  --set the zone's flag to cleared
+	   trigger.action.setUserFlag(zone_defenders_flags[RotorOps.active_zone_index], 0)  --set the zone's flag to cleared
      if RotorOps.defending == true then
        RotorOps.gameMsg(RotorOps.gameMsgs.enemy_cleared_zone, RotorOps.active_zone_index)
      else
@@ -1409,10 +1445,10 @@ function RotorOps.assessUnitsInZone(var)
    local body = ""
    if RotorOps.defending == true then
      header = "[DEFEND "..RotorOps.active_zone .. "]   "
-     body = "BLUE: "..#defending_infantry.. " infantry, " .. #defending_vehicles.." vehicles.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
+     body = "BLUE: "..#defending_infantry.. " inf, " .. #defending_vehicles.." vehicles, ".. defending_structures_remaining_health_percent .."% structures.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
    else
      header = "[ATTACK "..RotorOps.active_zone .. "]   "
-     body = "RED: " ..#defending_infantry.. " infantry, " .. #defending_vehicles .. " vehicles.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
+     body = "RED: " ..#defending_infantry.. " inf, " .. #defending_vehicles .. " vehicles, ".. defending_structures_remaining_health_percent .."% structures.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
    end
 
     if clear_text_index == 1 and not RotorOps.defending then
