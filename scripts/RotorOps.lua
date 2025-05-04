@@ -1314,12 +1314,12 @@ function RotorOps.assessUnitsInZone(var)
     if remaining_health < 0 then
         remaining_health = 0
     end
-
-    local defending_structures_remaining_health_percent = math.floor((remaining_health / (active_zone_initial_structures_health - defending_structures_dead_health)) * 100)
-
-    -- Ensure percentage is not negative
-    if defending_structures_remaining_health_percent < 0 then
-        defending_structures_remaining_health_percent = 0
+  
+        -- Ensure denominator is not zero before calculating percentage
+    local denominator = active_zone_initial_structures_health - defending_structures_dead_health
+    local defending_structures_remaining_health_percent = 0
+    if denominator > 0 then
+        defending_structures_remaining_health_percent = math.floor((remaining_health / denominator) * 100)
     end
     env.info("ROTOROPS: dead health: "..defending_structures_dead_health..", remaining health: "..remaining_health..", initial health: "..active_zone_initial_structures_health)
     env.info("ROTOROPS: structures remaining percent: "..defending_structures_remaining_health_percent.." current health: "..defending_structures_current_health)
