@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.4.5"
+RotorOps.version = "1.5.0"
 local debug = false
 
 
@@ -527,11 +527,33 @@ function RotorOps.sortOutStatics(mixed_statics)
   local targets = {}
   local not_targets = {}
   --- statics that have :getCategory() == UNIT or :getCategory() == BASE are targets
+  debugTable(mixed_statics)
   for index, static in pairs(mixed_statics) do
-        if static:getCategory() and static:getCategory() == StaticObject.Category.UNIT or static:getCategory() == StaticObject.Category.BASE then
-          targets[#targets + 1] = unit
-        else
-          not_targets[#not_targets + 1] = unit
+        --ensure unit exists
+        env.info("Iterating through statics, index: "..index)
+        if static == nil then
+          env.info("RotorOps: "..index.." is nil")
+        end
+
+        success, err = pcall(function()  -- it was very tricky to access the 'Big Smoke' object properties without breaking the script
+          if static:getDesc() == nil then
+            env.info("RotorOps: "..index.." has no description")
+          end
+        end)
+        if err then
+          env.info("RotorOps: err "..static:getName().." has no description")
+        end
+
+        if not err and static:isExist() and static.getDesc and static.getID and static.getName and static.getCategory and Object.getCategory(static) == Object.Category.STATIC then
+          env.info("RotorOps: "..static:getName().." is a static object")
+          if static:getCategory() == Object.Category.STATIC and (static:getDesc().category == StaticObject.Category.UNIT or static:getDesc().category == StaticObject.Category.BASE or static:getDesc().category == StaticObject.Category.WEAPON or static:getDesc().category == StaticObject.Category.VOID) then
+            targets[#targets + 1] = static
+            env.info("RotorOps: "..static:getName().." is a static target")
+          else
+            not_targets[#not_targets + 1] = static
+            env.info("RotorOps: "..static:getName().." is NOT a static target")
+          end
+
         end
   end
     return {targets = targets, not_targets = not_targets}
@@ -1128,13 +1150,19 @@ function RotorOps.assessUnitsInZone(var)
    local attacking_vehicles
 
    local get_total_health = function(units)
+     env.info("RotorOps: get_total_health() called on units: "..#units)
      local total_health = 0
+     -- if not a table, or table is empty return 0
+      if type(units) ~= "table" or #units == 0 then
+        return 0
+      end
      for index, unit in pairs(units) do
        if unit:isExist() and unit:getLife() then
          total_health = total_health + unit:getLife()
+         env.info("RotorOps: "..unit:getName().." health: "..unit:getLife().." total health: "..total_health)
        end
-     return total_health
      end
+     return total_health
    end
 
     --find and sort units found in the active zone
@@ -1142,8 +1170,6 @@ function RotorOps.assessUnitsInZone(var)
      defending_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
      defending_infantry = RotorOps.sortOutInfantry(defending_ground_units).infantry
      defending_vehicles = RotorOps.sortOutInfantry(defending_ground_units).not_infantry
-     local defending_statics = mist.getUnitsInZones(mist.makeUnitTable({'[blue][static]'}), {RotorOps.active_zone})
-     defending_structures = RotorOps.sortOutStatics(defending_statics).targets
      attacking_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})
      attacking_infantry = RotorOps.sortOutInfantry(attacking_ground_units).infantry
      attacking_vehicles = RotorOps.sortOutInfantry(attacking_ground_units).not_infantry
@@ -1151,6 +1177,8 @@ function RotorOps.assessUnitsInZone(var)
      defending_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[red][vehicle]'}), {RotorOps.active_zone})
      defending_infantry = RotorOps.sortOutInfantry(defending_ground_units).infantry
      defending_vehicles = RotorOps.sortOutInfantry(defending_ground_units).not_infantry
+     local defending_statics = mist.getUnitsInZones(mist.makeUnitTable({'[red][static]'}), {RotorOps.active_zone})
+     defending_structures = RotorOps.sortOutStatics(defending_statics).targets
      attacking_ground_units = mist.getUnitsInZones(mist.makeUnitTable({'[blue][vehicle]'}), {RotorOps.active_zone})
      attacking_infantry = RotorOps.sortOutInfantry(attacking_ground_units).infantry
      attacking_vehicles = RotorOps.sortOutInfantry(attacking_ground_units).not_infantry
@@ -1267,9 +1295,8 @@ function RotorOps.assessUnitsInZone(var)
 	 end
 
      --get the health of the defending structures in the zone
-     active_zone_initial_structures_health = get_total_health(defending_structures)
-     env.info("ROTOR OPS: initial defenders: "..#active_zone_initial_defenders..", initial structures health: "..active_zone_initial_structures_health)
-
+     active_zone_initial_structures_health = get_total_health(defending_structures) or 0
+     env.info("ROTOR OPS: initial defenders: "..#active_zone_initial_defenders..", initial structures: "..#defending_structures.." health: "..active_zone_initial_structures_health)
      env.info("ROTOR OPS: zone activated: "..RotorOps.active_zone..", inf spawns avail:"..RotorOps.inf_spawns_avail..", spawn zones:"..#inf_spawn_zones)
    end
 
@@ -1277,8 +1304,25 @@ function RotorOps.assessUnitsInZone(var)
    local defenders_status_flag = RotorOps.zones[RotorOps.active_zone_index].defenders_status_flag
    --if #active_zone_initial_defenders == 0 then active_zone_initial_defenders = 1 end --prevent divide by zero
    local defenders_remaining_percent = math.floor((#defending_ground_units / #active_zone_initial_defenders) * 100)
-   local defending_structures_dead_health = math.floor(active_zone_initial_structures_health * (RotorOps.zone_structures_destruction_percent/100))
-   local defending_structures_remaining_health_percent = math.floor((get_total_health(defending_structures) - defending_structures_dead_health) / (active_zone_initial_structures_health - defending_structures_dead_health))
+
+  --structures/assets
+    local defending_structures_dead_health = math.floor(active_zone_initial_structures_health * (RotorOps.zone_structures_destruction_percent / 100))
+    local defending_structures_current_health = get_total_health(defending_structures) or 0
+    local remaining_health = defending_structures_current_health - defending_structures_dead_health
+
+    -- Ensure remaining health is not negative
+    if remaining_health < 0 then
+        remaining_health = 0
+    end
+
+    local defending_structures_remaining_health_percent = math.floor((remaining_health / (active_zone_initial_structures_health - defending_structures_dead_health)) * 100)
+
+    -- Ensure percentage is not negative
+    if defending_structures_remaining_health_percent < 0 then
+        defending_structures_remaining_health_percent = 0
+    end
+    env.info("ROTOROPS: dead health: "..defending_structures_dead_health..", remaining health: "..remaining_health..", initial health: "..active_zone_initial_structures_health)
+    env.info("ROTOROPS: structures remaining percent: "..defending_structures_remaining_health_percent.." current health: "..defending_structures_current_health)
 
    if #defending_ground_units <= RotorOps.max_units_left and defending_structures_remaining_health_percent <= 1 then  --if we should declare the zone cleared
      active_zone_initial_defenders = nil
@@ -1445,10 +1489,10 @@ function RotorOps.assessUnitsInZone(var)
    local body = ""
    if RotorOps.defending == true then
      header = "[DEFEND "..RotorOps.active_zone .. "]   "
-     body = "BLUE: "..#defending_infantry.. " inf, " .. #defending_vehicles.." vehicles, ".. defending_structures_remaining_health_percent .."% structures.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
+     body = "BLUE: "..#defending_infantry.. " inf, " .. #defending_vehicles.." vehicles, ".. defending_structures_remaining_health_percent .."% assets.  RED CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
    else
      header = "[ATTACK "..RotorOps.active_zone .. "]   "
-     body = "RED: " ..#defending_infantry.. " inf, " .. #defending_vehicles .. " vehicles, ".. defending_structures_remaining_health_percent .."% structures.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
+     body = "RED: " ..#defending_infantry.. " inf, " .. #defending_vehicles .. " vehicles, ".. defending_structures_remaining_health_percent .."% assets.  BLUE CONVOY: " .. #staged_units_remaining .." vehicles. ["..percent_staged_remain.."%]"
    end
 
     if clear_text_index == 1 and not RotorOps.defending then
