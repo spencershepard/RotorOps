@@ -1,5 +1,5 @@
 RotorOps = {}
-RotorOps.version = "1.5.0"
+RotorOps.version = "1.5.1"
 local debug = false
 
 
@@ -51,7 +51,8 @@ RotorOps.farp_pickups = true --allow ctld troop pickup at FARPs
 RotorOps.enable_staging_pickzones = true
 RotorOps.persistent_tasking = false --prevent the script from restasking in a loop --might help with odd movement patterns between zones
 RotorOps.halt_convoy_without_airsupport = true --if true, attacking convoys not proceed in zone without player helicopters nearby. Does not affect defensive missions
-RotorOps.zone_structures_destruction_percent = 30 --percentage of structures that must be destroyed in order to clear the zone
+RotorOps.zone_structures_destruction_percent = 30 --percentage of structures/statics that can remain in a zone before it is considered cleared (ie. a value of 30 means that 70% of the structures must be destroyed)
+RotorOps.disable_asset_destruction = false --if true, there is no requirement to destroy enemy statics/structures to clear a zone
 
 --RotorOps settings that are safe to change only in the script config option in the scenario config file
 RotorOps.draw_conflict_zones = true
@@ -1323,6 +1324,10 @@ function RotorOps.assessUnitsInZone(var)
     end
     env.info("ROTOROPS: dead health: "..defending_structures_dead_health..", remaining health: "..remaining_health..", initial health: "..active_zone_initial_structures_health)
     env.info("ROTOROPS: structures remaining percent: "..defending_structures_remaining_health_percent.." current health: "..defending_structures_current_health)
+
+    if RotorOps.disable_asset_destruction then
+      defending_structures_remaining_health_percent = 0
+    end
 
    if #defending_ground_units <= RotorOps.max_units_left and defending_structures_remaining_health_percent <= 1 then  --if we should declare the zone cleared
      active_zone_initial_defenders = nil
