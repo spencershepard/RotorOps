@@ -1,4 +1,4 @@
-﻿git+https://github.com/spencershepard/dcs@7b79a8f241bae32af27a8003ac278dbb17bbe99e
+﻿git+https://github.com/spencershepard/dcs@1bfc687aec12ab7fbb91080b8e6fe1111e60785a
 packaging==21.3
 PyQt5==5.15.9
 PyYAML==6.0
