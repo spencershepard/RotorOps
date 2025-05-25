@@ -11,6 +11,9 @@ def triggerSetup(rops, options):
     def lb(var):
         return str(options[var]).lower()
 
+    def nlb(var):
+        return str(not options[var]).lower()
+
 
     game_flag = 100
     # Add the first trigger
@@ -31,6 +34,7 @@ def triggerSetup(rops, options):
               "RotorOps.inf_spawn_messages = true\n\n" +
               "RotorOps.inf_spawns_total = " + lb("inf_spawn_qty") + "\n\n" +
               "RotorOps.apcs_spawn_infantry = " + lb("apc_spawns_inf") + " \n\n" +
+              "RotorOps.disable_asset_destruction = " + nlb("static_destruction") + "\n\n" +
               "RotorOps.fighter_min_detection_alt = 609\n\n" +
               "RotorOps.fighter_max_active = 2\n\n")
     if not options["smoke_pickup_zones"]:

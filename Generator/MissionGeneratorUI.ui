@@ -79,7 +79,7 @@
     <property name="geometry">
      <rect>
       <x>510</x>
-      <y>350</y>
+      <y>340</y>
       <width>341</width>
       <height>28</height>
      </rect>
@@ -1413,7 +1413,6 @@ p, li { white-space: pre-wrap; }
     <property name="font">
      <font>
       <pointsize>9</pointsize>
-      <weight>50</weight>
       <bold>false</bold>
      </font>
     </property>
@@ -1430,9 +1429,33 @@ p, li { white-space: pre-wrap; }
     <property name="font">
      <font>
       <pointsize>9</pointsize>
-      <weight>50</weight>
       <bold>false</bold>
      </font>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="static_destruction_checkBox">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>370</y>
+      <width>341</width>
+      <height>28</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>10</pointsize>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="statusTip">
+     <string>If enemy static structures are found in conflict zones, require them to be destroyed to clear the zone.</string>
+    </property>
+    <property name="text">
+     <string>Require Static Destruction</string>
+    </property>
+    <property name="checked">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
@@ -1442,7 +1465,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>1280</width>
-     <height>21</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMap">
@@ -1454,6 +1477,7 @@ p, li { white-space: pre-wrap; }
     <addaction name="actionMarianas"/>
     <addaction name="actionNevada"/>
     <addaction name="actionSyria"/>
+    <addaction name="actionGermany"/>
    </widget>
    <widget class="QMenu" name="menuFilter">
     <property name="title">
@@ -1712,6 +1736,14 @@ p, li { white-space: pre-wrap; }
    </property>
    <property name="toolTip">
     <string>Save Mission Config</string>
+   </property>
+  </action>
+  <action name="actionGermany">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Germany</string>
    </property>
   </action>
  </widget>
