@@ -187,6 +187,7 @@ class Window(QMainWindow, Ui_MainWindow):
         self.actionMarianas.triggered.connect(self.filterMenuTouched)
         self.actionNevada.triggered.connect(self.filterMenuTouched)
         self.actionSyria.triggered.connect(self.filterMenuTouched)
+        self.actionGermany.triggered.connect(self.filterMenuTouched)
         self.actionMultiplayer.triggered.connect(self.filterMenuTouched)
         self.actionSingle_Player.triggered.connect(self.filterMenuTouched)
         self.actionCo_Op.triggered.connect(self.filterMenuTouched)
@@ -211,6 +212,8 @@ class Window(QMainWindow, Ui_MainWindow):
             maps.append('nevada')
         if self.actionSyria.isChecked():
             maps.append('syria')
+        if self.actionGermany.isChecked():
+            maps.append('germany')
 
         if self.actionMultiplayer.isChecked():
             tags.append('multiplayer')
